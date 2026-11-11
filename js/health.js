@@ -98,8 +98,12 @@ export function view(h) {
     plan,
     limits: h.limits.map((l) => {
       const share = l.limit ? l.spent / l.limit : 0;
-      return { name: l.name, ops: { limit: l.name }, spent: fmt(l.spent), limit: fmt(l.limit), over: l.over ? `+${fmt(l.over)}` : '',
+      const row = { name: l.name, ops: { limit: l.name }, spent: fmt(l.spent), limit: fmt(l.limit), over: l.over ? `+${fmt(l.over)}` : '',
         fill: Math.max(0, Math.min(1, share)), color: limitColor(share, plan) };
+      // резерв: своих трат нет — операции перевалов других лимитов, в шапке — чьи и сколько покрыто
+      if (l.eaten) row.note = `перевалы ${h.limits.filter((x) => x.over > 0 && x !== l).map((x) => `«${x.name}»`).join(', ')}`
+        + ` · резерв покрыл ${fmt(l.eaten)}`;
+      return row;
     }),
     limitsShown: Math.min(TOP, h.limits.length),
     reserve: reserveNote(h.limits),

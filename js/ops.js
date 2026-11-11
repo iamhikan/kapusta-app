@@ -100,11 +100,11 @@ export function headView(ctx, body) {
   // шапка операций лимита, «вне лимитов» или категории: сумма периода против лимита (решение 3)
   const [, m] = ctx.month.split('-').map(Number);
   const day = Number(ctx.to.slice(8));
-  const lim = ctx.limit;
+  const lim = ctx.note ? null : ctx.limit;          // своя подпись (резерв) — вместо «из лимита»
   const over = lim != null && body.total > lim;
   return {
     title: ctx.title, period: monthTitle(ctx.month), sum: fmt(body.total),
-    note: lim == null ? '' : over ? `сверх ${fmt(body.total - lim)}` : `из ${fmt(lim)}`, tone: over ? 'bad' : '',
+    note: ctx.note || (lim == null ? '' : over ? `сверх ${fmt(body.total - lim)}` : `из ${fmt(lim)}`), tone: over ? 'bad' : '',
     fill: lim == null ? null : lim > 0 ? Math.min(1, body.total / lim) : 1,
     sub: [lim == null ? '' : `Лимит ${fmt(lim)}`, records(body.count), `1–${day} ${OF_MONTH[m - 1]}`]
       .filter(Boolean).join(' · '),

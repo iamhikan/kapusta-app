@@ -44,6 +44,13 @@ const nav = {
     open(entry);
     window.scrollTo(0, 0);
   },
+  noteOf(ctx, m) {
+    // резерв: чьи перевалы и сколько покрыто — из «Здоровья» того же месяца
+    if (!ctx.reserve) return '';
+    const hh = cache.get(m);
+    const l = hh && view(hh).limits.find((x) => x.name === ctx.params.limit);
+    return (l && l.note) || 'перевалы других лимитов';
+  },
   limitOf(ctx, m) {
     // лимит месяца — из «Здоровья» того же месяца, если оно уже загружено
     if (!ctx.params.limit) return null;
@@ -176,10 +183,10 @@ function pace(v, data) {
       data.closed ? null : legend('forecast', 'прогноз'))));
 }
 
-function opsOf(title, params, data) {
+function opsOf(title, params, data, reserve = false) {
   // строка лимита или «вне лимитов» -> операции этих трат за месяц (решения 3 и 25)
   tap();
-  nav.push(newOps(data.month, { title: upper(title), params }));
+  nav.push(newOps(data.month, { title: upper(title), params, reserve }));
 }
 
 function limits(v, data) {
@@ -195,7 +202,7 @@ function limits(v, data) {
   return [
     h('div', { class: 'section-head' }, h('h2', {}, 'Лимиты')),
     h('section', { class: 'card list' }, ...shown.map((l) => h('button', { type: 'button', class: 'limit',
-      'aria-label': `Операции: ${l.name}`, on: { click: () => opsOf(l.name, l.ops, data) } },
+      'aria-label': `Операции: ${l.name}`, on: { click: () => opsOf(l.name, l.ops, data, !!l.note) } },
     h('span', { class: 'limit-body' },
       h('span', { class: 'row' },
         h('span', { class: 'limit-name' }, h('span', { class: 'ellipsis' }, l.name),

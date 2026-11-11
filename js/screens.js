@@ -75,7 +75,7 @@ function opLine(r, nav, opts = {}) {
 function head(entry, nav) {
   const body = entry.pages[0] || { total: 0, count: 0 };
   const ctx = entry.ctx;
-  const v = headView({ title: ctx.title, limit: nav.limitOf(ctx, entry.month), month: entry.month,
+  const v = headView({ title: ctx.title, limit: nav.limitOf(ctx, entry.month), note: nav.noteOf(ctx, entry.month), month: entry.month,
     to: monthRange(entry.month, nav.today()).to }, body);
   const arrow = (dir, label, d, enabled = true) => h('button', { class: 'arrow', type: 'button', 'aria-label': label,
     disabled: !enabled, on: { click: () => { tap(); entry.month = shiftMonth(entry.month, dir); loadOps(entry, nav); } } },

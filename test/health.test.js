@@ -147,3 +147,10 @@ test('резерв: под лимитами — из чего он (свои + �
   const calm = { ...NOW, limits: NOW.limits.filter((l) => !l.eaten && !l.over) };
   assert.equal(view(calm).reserve, '');
 });
+
+test('строка резерва открывает операции перевалов; шапка — чьи перевалы и сколько покрыто (Алексей 11.11.2026)', () => {
+  const res = view(NOW).limits.find((l) => l.name === 'резерв');
+  assert.deepEqual(res.ops, { limit: 'резерв' });
+  assert.equal(res.note, 'перевалы «питомцы» · резерв покрыл 2\u00a0000');
+  assert.equal(view(NOW).limits.find((l) => l.name === 'питомцы').note, undefined);
+});
