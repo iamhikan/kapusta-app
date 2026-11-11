@@ -1,6 +1,7 @@
 // «Операции» и карточка: ответы /api/tx и /api/tx/{ref} -> что видит человек. Свёртку, доли, переводы и вид зрителя
 // считает сервер (fin api); страница только подписывает и раскладывает строки.
 import { fmt } from './health.js';
+import { periodTitle, rangeText } from './period.js';
 
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь',
   'Ноябрь', 'Декабрь'];
@@ -48,8 +49,9 @@ export function monthTitle(month) {
   return `${MONTHS[m - 1]} ${y}`;
 }
 
-export function emptyText(month, title) {
+export function emptyText(month, title, period = null) {
   const what = title ? `трат «${title.toLowerCase()}»` : 'операций';
+  if (period) return `За ${periodTitle(period)} ${what} нет`;
   return `В ${IN_MONTH[Number(month.slice(5)) - 1]} ${what} нет`;
 }
 
@@ -97,16 +99,17 @@ export function opRow(op, { inCategory = false } = {}) {
 }
 
 export function headView(ctx, body) {
-  // шапка операций лимита, «вне лимитов» или категории: сумма периода против лимита (решение 3)
-  const [, m] = ctx.month.split('-').map(Number);
-  const day = Number(ctx.to.slice(8));
+  // шапка операций лимита, «вне лимитов» или категории: сумма периода против лимита (решение 3); период — месяц
+  // или любой период «Категорий» (неделя, квартал, год, свой)
+  const days = ctx.period ? rangeText(ctx.period.from, ctx.to)
+    : `1–${Number(ctx.to.slice(8))} ${OF_MONTH[Number(ctx.month.slice(5)) - 1]}`;
   const lim = ctx.note ? null : ctx.limit;          // своя подпись (резерв) — вместо «из лимита»
   const over = lim != null && body.total > lim;
   return {
-    title: ctx.title, period: monthTitle(ctx.month), sum: fmt(body.total),
+    title: ctx.title, period: ctx.period ? periodTitle(ctx.period) : monthTitle(ctx.month), sum: fmt(body.total),
     note: ctx.note || (lim == null ? '' : over ? `сверх ${fmt(body.total - lim)}` : `из ${fmt(lim)}`), tone: over ? 'bad' : '',
     fill: lim == null ? null : lim > 0 ? Math.min(1, body.total / lim) : 1,
-    sub: [lim == null ? '' : `Лимит ${fmt(lim)}`, records(body.count), `1–${day} ${OF_MONTH[m - 1]}`]
+    sub: [lim == null ? '' : `Лимит ${fmt(lim)}`, records(body.count), days]
       .filter(Boolean).join(' · '),
   };
 }

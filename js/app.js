@@ -1,10 +1,12 @@
-// Mini App «Капуста»: вкладки «Здоровье» и «Операции», карточка операции. Тема — themeParams Telegram (CSS-переменные
+// Mini App «Капуста»: вкладки «Здоровье», «Операции» и «Категории», карточка операции. Тема — themeParams Telegram (CSS-переменные
 // --tg-theme-*), отступы — safeAreaInset. «Назад» — системная BackButton. Данные — только в памяти страницы.
 import { apiBase, get, screen } from './api.js';
 import { fmt, shiftMonth, view } from './health.js';
 import { BOX, curve } from './chart.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
 import { cardScreen, loadCard, loadOps, newOps, opsScreen } from './screens.js';
+import { catsScreen, loadCats, newCats } from './catscreen.js';
+import { isPeriod, periodOf } from './period.js';
 
 const root = document.getElementById('app');
 const cache = new Map();
@@ -14,6 +16,8 @@ let allLimits = false;
 let seq = 0;             // листают быстро — рисуем только ответ на последний запрос
 let stack = [{ kind: 'health' }];   // экраны: низ — вкладка, сверху — операции лимита, карточка
 let opsTab = null;                  // вкладка «Операции» помнит фильтры и прокрутку
+let catsTab = null;                 // вкладка «Категории» — период и «Шкала / Все траты»
+const STORE = 'kapusta.period';     // localStorage — только период «Категорий» (спека, «Безопасность»)
 
 const today = () => {
   const d = new Date();
@@ -51,8 +55,12 @@ const nav = {
     const l = hh && view(hh).limits.find((x) => x.name === ctx.params.limit);
     return (l && l.note) || 'перевалы других лимитов';
   },
+  savePeriod(p) {
+    try { localStorage.setItem(STORE, JSON.stringify({ kind: p.kind, from: p.from, to: p.to })); } catch { /* приватный режим */ }
+  },
   limitOf(ctx, m) {
-    // лимит месяца — из «Здоровья» того же месяца, если оно уже загружено
+    // лимит месяца — из «Здоровья» того же месяца, если оно уже загружено; у категории — лимит периода с «Категорий»
+    if (ctx.limitValue != null) return ctx.limitValue;
     if (!ctx.params.limit) return null;
     const hh = cache.get(m);
     const l = hh && hh.limits.find((x) => x.name === ctx.params.limit);
@@ -62,6 +70,7 @@ const nav = {
 
 function open(entry) {
   if (entry.kind === 'card') { render(); loadCard(entry, nav); } else if (entry.kind === 'ops') loadOps(entry, nav);
+  else if (entry.kind === 'cats') loadCats(entry, nav);
   else render();
 }
 
@@ -86,6 +95,10 @@ function switchTab(tab) {
   if (tab === 'health') {
     stack = [{ kind: 'health' }];
     load(month);
+  } else if (tab === 'cats') {
+    if (!catsTab) catsTab = newCats(savedPeriod());
+    stack = [catsTab];
+    if (!catsTab.data) loadCats(catsTab, nav); else render();
   } else {
     if (!opsTab) opsTab = newOps(today().slice(0, 7));
     stack = [opsTab];
@@ -94,12 +107,21 @@ function switchTab(tab) {
   window.scrollTo(0, stack[0].scroll || 0);
 }
 
+function savedPeriod() {
+  // прошлый период «Категорий»; нет или испорчен — текущий месяц (спека, «Периоды»)
+  try {
+    const p = JSON.parse(localStorage.getItem(STORE));
+    if (isPeriod(p) && p.from <= today()) return p;
+  } catch { /* нет хранилища */ }
+  return periodOf('month', today());
+}
+
 function tabs() {
   const current = stack[0].kind;
   const tab = (kind, label, d) => h('button', { type: 'button', class: `tab${current === kind ? ' on' : ''}`,
     'aria-current': current === kind ? 'page' : null, on: { click: () => switchTab(kind) } }, icon(d, 24), label);
   return h('nav', { class: 'tabs', 'aria-label': 'Разделы' }, tab('health', 'Здоровье', ICONS.health),
-    tab('ops', 'Операции', ICONS.list));
+    tab('ops', 'Операции', ICONS.list), tab('cats', 'Категории', ICONS.pie));
 }
 
 function skeleton() {
@@ -259,6 +281,7 @@ function draw() {
     return show(healthScreen(cache.get(month)), tabs());
   }
   if (top.kind === 'ops') return show(opsScreen(top, nav), tabs());
+  if (top.kind === 'cats') return show(catsScreen(top, nav), tabs());
   return show(cardScreen(top, nav));
 }
 

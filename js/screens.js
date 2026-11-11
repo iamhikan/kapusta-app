@@ -2,6 +2,7 @@
 import { h, icon, tap, ICONS, tg } from './dom.js';
 import { cardView, dayLabel, emptyText, headView, money, monthRange, monthTitle, opRow, txPath } from './ops.js';
 import { shiftMonth } from './health.js';
+import { canNext, periodEnd, shiftPeriod } from './period.js';
 
 // фильтры (холст «Операции» → «Фильтры»): значение — параметр /api/tx
 export const FILTERS = [
@@ -18,8 +19,14 @@ export function newOps(month, ctx = null) {
     pages: [], error: null, loading: false, expanded: new Set(), sheet: false, scroll: 0 };
 }
 
+function range(entry, today) {
+  // операции категории — за период «Категорий» (неделя, квартал, год, свой), остальные — за месяц
+  const p = entry.ctx && entry.ctx.period;
+  return p ? { from: p.from, to: periodEnd(p, today) } : monthRange(entry.month, today);
+}
+
 function query(entry, today, cursor = null) {
-  return txPath({ ...monthRange(entry.month, today), ...(entry.ctx ? entry.ctx.params : {}), ...entry.f, cursor });
+  return txPath({ ...range(entry, today), ...(entry.ctx ? entry.ctx.params : {}), ...entry.f, cursor });
 }
 
 export async function loadOps(entry, nav, more = false) {
@@ -75,15 +82,20 @@ function opLine(r, nav, opts = {}) {
 function head(entry, nav) {
   const body = entry.pages[0] || { total: 0, count: 0 };
   const ctx = entry.ctx;
-  const v = headView({ title: ctx.title, limit: nav.limitOf(ctx, entry.month), note: nav.noteOf(ctx, entry.month), month: entry.month,
-    to: monthRange(entry.month, nav.today()).to }, body);
+  const today = nav.today();
+  const v = headView({ title: ctx.title, limit: nav.limitOf(ctx, entry.month), note: nav.noteOf(ctx, entry.month),
+    month: entry.month, period: ctx.period, to: range(entry, today).to }, body);
+  const shift = (dir) => {
+    if (ctx.period) entry.ctx = { ...ctx, period: shiftPeriod(ctx.period, dir) };
+    else entry.month = shiftMonth(entry.month, dir);
+  };
   const arrow = (dir, label, d, enabled = true) => h('button', { class: 'arrow', type: 'button', 'aria-label': label,
-    disabled: !enabled, on: { click: () => { tap(); entry.month = shiftMonth(entry.month, dir); loadOps(entry, nav); } } },
-  icon(d));
+    disabled: !enabled, on: { click: () => { tap(); shift(dir); loadOps(entry, nav); } } }, icon(d));
+  const word = ctx.period ? 'период' : 'месяц';
   return h('section', { class: 'card pad stack' },
-    h('div', { class: 'month' }, arrow(-1, 'Прошлый месяц', ICONS.left),
+    h('div', { class: 'month' }, arrow(-1, `Прошлый ${word}`, ICONS.left),
       h('div', { class: 'month-title' }, h('h1', {}, v.title), h('p', { class: 'muted small' }, v.period)),
-      arrow(1, 'Следующий месяц', ICONS.right, entry.month < nav.today().slice(0, 7))),
+      arrow(1, `Следующий ${word}`, ICONS.right, ctx.period ? canNext(ctx.period, today) : entry.month < today.slice(0, 7))),
     h('div', { class: 'big' }, h('span', { class: `big-num ${v.tone}` }, v.sum),
       h('span', { class: `muted ${v.tone}` }, v.note || 'RSD')),
     v.fill == null ? null : h('span', { class: 'bar thin' },
@@ -151,8 +163,8 @@ export function opsScreen(entry, nav) {
     body = h('div', { class: 'stack', 'aria-busy': 'true', 'aria-label': 'Загрузка' },
       ...[1, 2, 3].map(() => h('section', { class: 'card', style: { height: '160px' } })));
   } else if (!list.length) {
-    body = h('div', { class: 'empty' }, h('h2', {}, emptyText(entry.month, entry.ctx && entry.ctx.title)),
-    h('p', { class: 'muted' }, 'Смените месяц или фильтры.'));
+    body = h('div', { class: 'empty' }, h('h2', {}, emptyText(entry.month, entry.ctx && entry.ctx.title,
+      entry.ctx && entry.ctx.period)), h('p', { class: 'muted' }, 'Смените период или фильтры.'));
   } else {
     body = h('div', { class: 'stack' }, ...list.map((d) => h('div', { class: 'day' },
       h('div', { class: 'day-head muted small' }, h('span', {}, dayLabel(d.date)), d.sum ? h('span', {}, money(d.sum)) : null),
