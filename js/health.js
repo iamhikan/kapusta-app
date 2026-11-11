@@ -8,7 +8,7 @@ const OF_MONTH = ['января', 'февраля', 'марта', 'апреля'
 const SYMBOL = { EUR: '€', RUB: '₽' };
 const FOR_MONTH = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь',
   'ноябрь', 'декабрь'];
-const ZONE = { ok: 'good', savings: 'warn', over: 'bad' };
+const ZONE = { ok: 'good', fast: 'fast', savings: 'warn', over: 'bad' };   // fast — выше плана на сегодня (решение 46)
 export const TOP = 6;   // лимитов сразу; остальные — по «Все N»
 
 export function fmt(n) {

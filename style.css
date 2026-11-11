@@ -9,6 +9,7 @@
   --button-text: var(--tg-theme-button-text-color, #ffffff);
   --line: var(--tg-theme-section-separator-color, #e3e3e8);
   --good: #1f8f4e;
+  --fast: #8a6a00;           /* выше плана на сегодня: тёмно-жёлтый текст, читается на белом */
   --warn: #b36200;
   --bad: var(--tg-theme-destructive-text-color, #d6342c);
   --bar-green: #34c759;      /* полоски — яркие цвета iOS: зелёный, жёлтый, оранжевый */
@@ -26,6 +27,7 @@
   --accent: var(--tg-theme-link-color, #3e88f7);
   --line: var(--tg-theme-section-separator-color, #2c2c2e);
   --good: #34c26b;
+  --fast: #ffd60a;
   --warn: #f0a020;
   --bad: var(--tg-theme-destructive-text-color, #ff5d55);
   --bar-green: #30d158;
@@ -52,6 +54,7 @@ h1, h2, p { margin: 0; }
 .muted { color: var(--muted); }
 .small { font-size: 13px; }
 .good { color: var(--good); }
+.fast { color: var(--fast); }
 .warn { color: var(--warn); }
 .bad { color: var(--bad); }
 .nowrap { white-space: nowrap; }
@@ -77,6 +80,7 @@ h1, h2, p { margin: 0; }
 .bar { position: relative; display: block; height: 10px; border-radius: 5px; background: var(--track); }
 .bar.thin { height: 6px; border-radius: 3px; }
 .bar .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit; background: var(--bar-green); }
+.bar .fill.fast { background: var(--bar-yellow); }
 .bar .fill.warn { background: var(--bar-orange); }
 .bar .fill.bad { background: var(--bad); }
 .plan-mark { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--fg); }

@@ -188,3 +188,8 @@ test('под лимитами — «Весь бюджет месяца»: у о�
   assert.equal(view(NOW).budgetLabel, 'Весь бюджет на ноябрь');
   assert.equal(view(OCT).budgetLabel, 'Весь бюджет на октябрь');
 });
+
+test('решение 46: выше плана на сегодня, но в норме — «быстрее плана», жёлтые плашка и полоска', () => {
+  const v = view({ ...NOW, spent: 126000, zone: { status: 'fast', word: 'быстрее плана' } });
+  assert.deepEqual(v.zone, { word: 'быстрее плана', tone: 'fast' });
+});
