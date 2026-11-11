@@ -7,6 +7,7 @@ import { h, icon, tap, ICONS, tg } from './dom.js';
 import { cardScreen, loadCard, loadOps, newOps, opsScreen } from './screens.js';
 import { catsScreen, loadCats, newCats } from './catscreen.js';
 import { isPeriod, periodOf } from './period.js';
+import { restore, save, snapView } from './snapshot.js';
 
 const root = document.getElementById('app');
 const cache = new Map();
@@ -18,6 +19,10 @@ let stack = [{ kind: 'health' }];   // экраны: низ — вкладка, 
 let opsTab = null;                  // вкладка «Операции» помнит фильтры и прокрутку
 let catsTab = null;                 // вкладка «Категории» — период и «Шкала / Все траты»
 const STORE = 'kapusta.period';     // localStorage — только период «Категорий» (спека, «Безопасность»)
+const cloud = tg && tg.CloudStorage;   // снимок «Здоровья» (этап 5): у каждого человека своё хранилище Telegram
+let snap = null;                       // показанный снимок: Мак молчит
+let hasSnap = false;                   // снимок есть в CloudStorage — ссылка на него с «Операций» и «Категорий»
+let retrying = false;                  // «Повторить» на снимке: снимок остаётся на экране, пока ждём Мак
 
 const today = () => {
   const d = new Date();
@@ -42,6 +47,8 @@ const nav = {
   get: (path) => get(path, { base: apiBase(location.search), initData: tg.initData }),
   render: () => render(),
   problem: (kind, detail) => problem(kind, detail),
+  get hasSnap() { return hasSnap; },
+  snapshot: () => openSnapshot(),
   push(entry) {
     stack[stack.length - 1].scroll = window.scrollY;
     stack.push(entry);
@@ -107,6 +114,18 @@ function switchTab(tab) {
   window.scrollTo(0, stack[0].scroll || 0);
 }
 
+async function openSnapshot() {
+  // холст 6.2: с «Операций» и «Категорий» без Мака — на снимок «Здоровья», без нового запроса
+  tap();
+  stack = [{ kind: 'health' }];
+  const s = snap || await restore(cloud, today().slice(0, 7));
+  if (!s) return problem('down');
+  snap = s;
+  month = s.month;
+  render();
+  window.scrollTo(0, 0);
+}
+
 function savedPeriod() {
   // прошлый период «Категорий»; нет или испорчен — текущий месяц (спека, «Периоды»)
   try {
@@ -146,13 +165,23 @@ function problem(kind, detail) {
     h('p', {}, s.text), act, detail ? h('p', { class: 'small detail' }, detail) : null));
 }
 
-function monthNav(v) {
+function monthNav(v, snapped) {
+  // в снимке — один месяц: листать нечего (холст 6.1)
   const arrow = (dir, label, enabled, d) => h('button', { class: 'arrow', type: 'button', 'aria-label': label,
-    disabled: !enabled, on: { click: () => { tap(); load(shiftMonth(month, dir)); } } }, icon(d));
+    disabled: !enabled || snapped, on: { click: () => { tap(); load(shiftMonth(month, dir)); } } }, icon(d));
   return h('header', { class: 'month' },
     arrow(-1, 'Прошлый месяц', true, ICONS.left),
     h('div', { class: 'month-title' }, h('h1', {}, v.title), h('p', { class: 'muted small' }, v.sub)),
     arrow(1, 'Следующий месяц', v.canNext, ICONS.right));
+}
+
+function banner(s) {
+  // холст 6.1: Мак молчит — плашка над снимком: «Капуста не отвечает. Данные на …» и «Повторить»
+  return h('div', { class: 'offline', role: 'status' },
+    icon(['M12 9v4', 'M12 17h.01', 'M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'], 20),
+    h('span', { class: 'offline-text' }, h('b', {}, s.banner), ` ${s.when}`),
+    h('button', { type: 'button', class: 'link', disabled: retrying,
+      on: { click: () => { tap(); load(month); } } }, retrying ? 'Проверяю…' : 'Повторить'));
 }
 
 function summary(v) {
@@ -192,6 +221,10 @@ function chart(c) {
 }
 
 function pace(v, data) {
+  if (!v.curve.chart) {   // кривая отрезана в снимке (решение 32) — только подпись
+    return h('section', { class: 'card' }, h('div', { class: 'curve-head' }, h('span', { class: 'grow' },
+      h('span', { class: 'title' }, 'Темп месяца'), h('span', { class: `note ${v.curve.note.tone}` }, v.curve.note.text))));
+  }
   const head = h('button', { class: 'curve-head', type: 'button', 'aria-expanded': String(curveOpen),
     'aria-label': `Темп месяца: ${v.curve.note.text}. ${curveOpen ? 'Свернуть' : 'Показать'} кривую`,
     on: { click: () => { tap(); curveOpen = !curveOpen; render(); } } },
@@ -259,10 +292,11 @@ function balances(v) {
     v.empty ? h('p', { class: 'note-text muted small' }, v.empty) : null];
 }
 
-function healthScreen(data) {
+function healthScreen(data, snapped = false) {
   const v = view(data);
-  return h('div', { class: 'screen with-tabs' }, monthNav(v), summary(v), pace(v, data), ...limits(v, data),
-    ...outside(v, data), ...balances(v), h('p', { class: 'fresh muted small' }, v.fresh));
+  const s = snapped ? snapView(data) : null;
+  return h('div', { class: 'screen with-tabs' }, s ? banner(s) : null, monthNav(v, snapped), summary(v), pace(v, data),
+    ...limits(v, data), ...outside(v, data), ...balances(v), h('p', { class: 'fresh muted small' }, s ? s.fresh : v.fresh));
 }
 
 function render() {
@@ -277,8 +311,9 @@ function draw() {
   const top = stack[stack.length - 1];
   backButton();
   if (top.kind === 'health') {
-    if (!cache.has(month)) return skeleton();
-    return show(healthScreen(cache.get(month)), tabs());
+    if (cache.has(month)) return show(healthScreen(cache.get(month)), tabs());
+    if (snap && snap.month === month) return show(healthScreen(snap, true), tabs());
+    return skeleton();
   }
   if (top.kind === 'ops') return show(opsScreen(top, nav), tabs());
   if (top.kind === 'cats') return show(catsScreen(top, nav), tabs());
@@ -291,12 +326,29 @@ async function load(next) {
   const mine = ++seq;
   month = next;
   if (cache.has(month)) return render();
-  skeleton();
+  retrying = !!(snap && snap.month === month);
+  if (retrying) render(); else skeleton();
   const r = await get(`/api/health${month ? `?month=${month}` : ''}`, { base, initData: tg.initData });
   if (mine !== seq) return;
+  retrying = false;
+  if (r.error === 'down') return offlineHealth(mine, r.detail);
   if (r.error) return problem(r.error, r.detail);
   month = r.data.month;
   cache.set(month, r.data);
+  snap = null;
+  // после каждого удачного ответа — снимок в CloudStorage (ключ на месяц, до 4096 знаков, решение 32)
+  save(cloud, r.data).then((ok) => { if (ok) hasSnap = true; });
+  if (stack[stack.length - 1].kind === 'health') render();
+}
+
+async function offlineHealth(mine, detail) {
+  // Мак молчит: снимок этого месяца (или самый поздний) с пометкой «данные на …»; снимка нет — «не отвечает»
+  const s = await restore(cloud, month || today().slice(0, 7));
+  if (mine !== seq) return;
+  if (!s) return problem('down', detail);
+  snap = s;
+  hasSnap = true;
+  month = s.month;
   if (stack[stack.length - 1].kind === 'health') render();
 }
 

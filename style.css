@@ -221,3 +221,10 @@ section .title { font-size: 17px; font-weight: 600; }
 .date { font: inherit; color: var(--fg); background: none; border: 0; min-height: 34px; }
 .chips.periods { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .chips.periods .chip-btn { padding: 0 4px; justify-content: center; font-size: 13px; }
+/* Мак молчит — плашка над снимком «Здоровья» (холст 6.1) */
+.offline { display: flex; align-items: center; gap: 10px; padding: 4px 14px; border-radius: 12px;
+  background: color-mix(in srgb, var(--warn) 14%, var(--bg)); color: var(--fg); font-size: 14px; line-height: 1.3; }
+.offline > svg { color: var(--warn); flex: none; }
+.offline-text { flex-grow: 1; min-width: 0; }
+.offline .link { font-weight: 600; padding: 10px 0; background: none; border: 0; font-size: 15px; white-space: nowrap; }
+.offline .link:disabled { color: var(--muted); }

@@ -3,6 +3,7 @@ import { h, icon, tap, ICONS, tg } from './dom.js';
 import { cardView, dayLabel, emptyText, headView, money, monthRange, monthTitle, opRow, txPath } from './ops.js';
 import { shiftMonth } from './health.js';
 import { canNext, periodEnd, shiftPeriod } from './period.js';
+import { offline } from './snapshot.js';
 
 // фильтры (холст «Операции» → «Фильтры»): значение — параметр /api/tx
 export const FILTERS = [
@@ -150,15 +151,21 @@ function sheet(entry, nav) {
         tap(); entry.f = { ...draft }; entry.sheet = false; entry.draft = null; loadOps(entry, nav); } } }, 'Показать')));
 }
 
+export function offlineBody(kind, entry, nav, retry) {
+  // холст 6.2: Мак молчит — «Повторить» и ссылка на снимок «Здоровья» (операций и категорий в снимке нет)
+  const o = offline(kind, nav.hasSnap);
+  return h('div', { class: 'empty' }, h('h2', {}, o.title), h('p', { class: 'muted' }, o.text),
+    h('button', { type: 'button', class: 'button', on: { click: () => { tap(); retry(); } } }, 'Повторить'),
+    o.link ? h('button', { type: 'button', class: 'link', on: { click: () => nav.snapshot() } }, o.link) : null,
+    h('p', { class: 'small detail muted' }, entry.error));
+}
+
 export function opsScreen(entry, nav) {
   const list = days(entry);
   const last = entry.pages[entry.pages.length - 1];
   let body;
   if (entry.error && !entry.pages.length) {
-    body = h('div', { class: 'empty' }, h('h2', {}, 'Капуста не отвечает'),
-      h('p', { class: 'muted' }, 'Операции приходят с Мака. Мак спит или Капуста перезапускается.'),
-      h('button', { type: 'button', class: 'button', on: { click: () => { tap(); loadOps(entry, nav); } } }, 'Повторить'),
-      h('p', { class: 'small detail muted' }, entry.error));
+    body = offlineBody('ops', entry, nav, () => loadOps(entry, nav));
   } else if (!entry.pages.length) {
     body = h('div', { class: 'stack', 'aria-busy': 'true', 'aria-label': 'Загрузка' },
       ...[1, 2, 3].map(() => h('section', { class: 'card', style: { height: '160px' } })));

@@ -154,3 +154,12 @@ test('строка резерва открывает операции перев
   assert.equal(res.note, 'перевалы «питомцы» · резерв покрыл 2\u00a0000');
   assert.equal(view(NOW).limits.find((l) => l.name === 'питомцы').note, undefined);
 });
+
+test('кривая отрезана в снимке (решение 32): графика нет, подпись — по итогу, а не по кривой', () => {
+  const v = view({ ...NOW, curve: [] });
+  assert.equal(v.curve.chart, false);
+  assert.equal(view(NOW).curve.chart, true);
+  assert.deepEqual(view({ ...OCT, curve: [] }).curve.note, { text: 'итог 500 000 · сверх нормы на 300 000', tone: 'bad' });
+  assert.deepEqual(view({ ...OCT, spent: 150000, left: 50000, curve: [] }).curve.note,
+    { text: 'итог 150 000 · в пределах нормы', tone: 'good' });
+});

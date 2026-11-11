@@ -3,7 +3,7 @@
 import { h, icon, tap, ICONS } from './dom.js';
 import { barsView, BARS, catsView, R } from './cats.js';
 import { barsRange, canNext, KINDS, periodEnd, periodOf, periodSub, periodTitle, shiftPeriod } from './period.js';
-import { newOps } from './screens.js';
+import { newOps, offlineBody } from './screens.js';
 
 const upper = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -160,10 +160,7 @@ export function catsScreen(entry, nav) {
   const sub = periodSub(entry.period, today, data && data.prev);
   let body;
   if (entry.error && !data) {
-    body = h('div', { class: 'empty' }, h('h2', {}, 'Капуста не отвечает'),
-      h('p', { class: 'muted' }, 'Категории приходят с Мака. Мак спит или Капуста перезапускается.'),
-      h('button', { type: 'button', class: 'button', on: { click: () => { tap(); loadCats(entry, nav); } } }, 'Повторить'),
-      h('p', { class: 'small detail muted' }, entry.error));
+    body = offlineBody('cats', entry, nav, () => loadCats(entry, nav));
   } else if (!data) {
     body = h('div', { class: 'stack', 'aria-busy': 'true', 'aria-label': 'Загрузка' },
       h('section', { class: 'card', style: { height: '190px' } }), h('section', { class: 'card', style: { height: '320px' } }));

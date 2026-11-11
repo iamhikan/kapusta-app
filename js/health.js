@@ -54,6 +54,10 @@ function reserveNote(limits) {
 
 function curveNote(h) {
   if (h.closed) {
+    if (!h.curve.length) {   // кривая отрезана в снимке (решение 32) — по итогу
+      return h.spent > h.norm ? { text: `итог ${fmt(h.spent)} · сверх нормы на ${fmt(h.spent - h.norm)}`, tone: 'bad' }
+        : { text: `итог ${fmt(h.spent)} · в пределах нормы`, tone: 'good' };
+    }
     const crossed = h.curve.find(([, total]) => total > h.norm);
     if (!crossed) return { text: `итог ${fmt(h.spent)} · в пределах нормы`, tone: 'good' };
     return { text: `итог ${fmt(h.spent)} · норма кончилась ${crossed[0]} ${OF_MONTH[Number(h.month.slice(5)) - 1]}`,
@@ -94,7 +98,7 @@ export function view(h) {
     scale: [`${Math.round((h.spent / h.norm) * 100)} % нормы`, h.closed ? '' : `план на сегодня ${fmt(h.plan_today)}`,
       `норма ${fmt(h.norm)}`],
     stats: [left, first, second],
-    curve: { note: curveNote(h) },
+    curve: { note: curveNote(h), chart: h.curve.length > 0 },
     plan,
     limits: h.limits.map((l) => {
       const share = l.limit ? l.spent / l.limit : 0;

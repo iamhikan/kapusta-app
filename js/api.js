@@ -11,14 +11,21 @@ export function apiBase(search) {
   return TS_NET.test(base) ? base : null;
 }
 
-export async function get(path, { base, initData, fetch = globalThis.fetch }) {
+export const TIMEOUT = 8000;   // решение 31: Мак спит — запрос не висит, через 8 с снимок или «не отвечает»
+
+export async function get(path, { base, initData, fetch = globalThis.fetch, timeout = TIMEOUT }) {
   // detail — причина мелким шрифтом на экране «не отвечает»: по ней видно, где оборвался запрос (без данных)
   const host = base.replace('https://', '');
+  const stop = new AbortController();
+  const timer = setTimeout(() => stop.abort(), timeout);
   let r;
   try {
-    r = await fetch(base + path, { headers: { Authorization: `tma ${initData}` }, cache: 'no-store' });
+    r = await fetch(base + path, { headers: { Authorization: `tma ${initData}` }, cache: 'no-store', signal: stop.signal });
   } catch (e) {
+    if (stop.signal.aborted) return { error: 'down', detail: `сеть: нет ответа за ${timeout / 1000} с · ${host}` };
     return { error: 'down', detail: `сеть: ${e.name}: ${e.message} · ${host}` };
+  } finally {
+    clearTimeout(timer);
   }
   if (r.status === 401) return { error: 'stale' };
   if (r.status === 403) return { error: 'stranger' };
