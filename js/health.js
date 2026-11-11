@@ -59,6 +59,13 @@ function limitColor(share, plan) {
   return `color-mix(in oklch, var(--bar-orange) ${warm}%, var(--bar-yellow))`;
 }
 
+function limitState(share, plan, closed) {
+  // те же пороги, что у цвета полоски, — словами для диктора (фаза 12); итог месяца — без плана на сегодня
+  if (share > 1) return 'сверх лимита';
+  if (closed) return 'в лимите';
+  return share <= plan ? 'в плане' : 'выше плана';
+}
+
 function reserveNote(limits) {
   // резерв сжимается на перевалы других лимитов (fin budget): из чего он и чей перерасход покрыт
   const res = limits.find((l) => l.eaten);
@@ -120,7 +127,7 @@ export function view(h) {
     limits: h.limits.map((l) => {
       const share = l.limit ? l.spent / l.limit : 0;
       const row = { name: l.name, ops: { limit: l.name }, spent: fmt(l.spent), limit: fmt(l.limit), over: l.over ? `+${fmt(l.over)}` : '',
-        fill: Math.max(0, Math.min(1, share)), color: limitColor(share, plan) };
+        fill: Math.max(0, Math.min(1, share)), color: limitColor(share, plan), state: limitState(share, plan, h.closed) };
       // резерв: своих трат нет — операции перевалов других лимитов, в шапке — чьи и сколько покрыто
       if (l.eaten) row.note = `перевалы ${h.limits.filter((x) => x.over > 0 && x !== l).map((x) => `«${x.name}»`).join(', ')}`
         + ` · резерв покрыл ${fmt(l.eaten)}`;

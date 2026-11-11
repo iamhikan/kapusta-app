@@ -44,7 +44,10 @@ test('к плану на день: траты шкалы против плана
   const day = (d) => v.cells.find((c) => c.d === d);
   assert.deepEqual(['1', '2', '3', '4', '5'].map((d) => day(d).tone), ['good', 'bad', 'warn', 'good', 'bad']);
   assert.equal(day('2').k, '20');
-  assert.equal(day('3').aria, sp('3 ноября: 9 000 RSD при плане 7 600'));
+  // цвет клетки — и словами для диктора (фаза 12)
+  assert.equal(day('3').aria, sp('3 ноября: 9 000 RSD при плане 7 600 — выше плана'));
+  assert.equal(day('1').aria, sp('1 ноября: 2 000 RSD при плане 8 000 — в плане'));
+  assert.equal(day('2').aria, sp('2 ноября: 20 000 RSD при плане 8 200 — вдвое выше плана'));
   assert.deepEqual(v.legend.map((l) => [l.text, l.tone]), [['в плане', 'good'], ['выше', 'warn'], ['вдвое выше', 'bad']]);
   assert.equal(v.sub, '1–5 ноября · к плану на день');
   assert.equal(v.note, 'Вдвое выше плана: 2.11, 5.11. План дня — (норма − потрачено до этого дня) / оставшиеся дни, '

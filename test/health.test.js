@@ -93,6 +93,13 @@ test('лимиты: горячие сверху, «+N» сверх лимита;
   assert.equal(v.plan, 11 / 30);
 });
 
+test('состояние полоски лимита — словами для диктора (фаза 12): в плане, выше плана, сверх лимита; итог месяца — в лимите', () => {
+  const [pets, travel, food] = view(NOW).limits;
+  assert.deepEqual([pets.state, travel.state, food.state], ['сверх лимита', 'выше плана', 'в плане']);
+  assert.equal(view(NOW).limits.find((l) => l.name === 'транспорт').state, 'в плане');      // трат нет
+  assert.deepEqual(view(OCT).limits.slice(0, 3).map((l) => l.state), ['сверх лимита', 'в лимите', 'в лимите']);
+});
+
 test('остатки — группами по типу, суммы в две строки, плитка, итог наличных и карт (решения 47, 48)', () => {
   const v = view({ ...NOW, balances_total: 293200, balances: [
     { account: 'Assets:Family:Cash:Aleksey', name: 'нал Алексея', amounts: { EUR: 1000, RSD: 150000 }, group: 'cash', rsd: 267200 },

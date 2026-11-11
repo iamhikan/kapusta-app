@@ -93,7 +93,8 @@ function list(entry, nav, v) {
   return h('section', { class: 'card list cats' },
     h('div', { class: 'cat-row cat-head muted small' }, h('span', {}, entry.cat ? 'подкатегория' : 'категория'),
       h('span', {}, 'сумма'), h('span', {}, 'доля'), h('span', {}, v.cmpHead)),
-    ...v.rows.map((r) => h('button', { type: 'button', class: 'cat-row', 'aria-label': `${r.name}: ${r.sum} RSD`,
+    ...v.rows.map((r) => h('button', { type: 'button', class: 'cat-row', 'aria-label': [`${r.name}${r.limit ? `, ${r.limit}` : ''}: `
+      + `${r.sum} RSD`, `доля ${r.share}`, r.delta ? `${v.cmpHead} ${r.delta}` : ''].filter(Boolean).join(', '),
       on: { click: () => open(r) } },
     h('span', { class: 'cat-name' }, h('span', { class: 'dot', style: { background: r.color } }),
       h('span', { class: 'grow' }, h('span', { class: 'ellipsis' }, r.name),

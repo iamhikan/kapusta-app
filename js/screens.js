@@ -277,7 +277,7 @@ function pickerSheet(entry, nav) {
   const it = p.item == null ? null : card.receipt.items[p.item];
   // решение 39: «Все категории» — верхние; категория с подкатегориями открывает их, первой — она сама
   const group = (g) => (g.subs ? h('button', { type: 'button', class: `line op choice${g.on ? ' on' : ''}`,
-    'aria-label': `${g.name}: подкатегории`, on: { click: () => { tap(); p.group = g.account; nav.render(); } } },
+    'aria-label': `${g.name}${g.hint ? `, ${g.hint}` : ''}: подкатегории, ${g.subs + 1}`, on: { click: () => { tap(); p.group = g.account; nav.render(); } } },
   h('span', { class: 'grow' }, h('span', {}, g.name), g.hint ? h('span', { class: 'muted small' }, g.hint) : null),
   h('span', { class: 'muted small' }, String(g.subs + 1)), icon(ICONS.right, 16)) : choice(g));
   let lists;
@@ -336,10 +336,10 @@ export function cardScreen(entry, nav) {
     const kids = [h('span', { class: 'grow' }, h('span', {}, it.name),
       h('span', { class: `small ${changed ? 'good' : 'muted'}` }, sub)), h('span', { class: 'nowrap' }, it.value)];
     if (!canItems) {   // сменить нельзя — тап сразу открывает историю цены (решение 37)
-      return h('button', { type: 'button', class: 'line op', 'aria-label': `${it.name}: история цены`,
+      return h('button', { type: 'button', class: 'line op',
         on: { click: () => { tap(); nav.push({ kind: 'price', q: itemPrice(entry.data, n) }); } } }, ...kids);
     }
-    return h('button', { type: 'button', class: `line op${changed ? ' changed' : ''}`, 'aria-label': `${it.name}: цена и категория`,
+    return h('button', { type: 'button', class: `line op${changed ? ' changed' : ''}`,
       on: { click: () => { tap(); entry.picker = { item: n, q: '', chosen: null, all: false, group: null }; nav.render(); } } }, ...kids);
   };
   return h('div', { class: 'screen' },

@@ -14,6 +14,7 @@ const thousands = (v) => {
   return k >= 10 ? String(Math.round(k)) : k.toFixed(1).replace(/\.0$/, '').replace('.', ',');
 };
 
+const SAY = { good: 'в плане', warn: 'выше плана', bad: 'вдвое выше плана' };   // цвет клетки — словами для диктора
 const level = (v) => (v <= 0 ? 0 : v <= LEVELS[0] ? 1 : v <= LEVELS[1] ? 2 : v <= LEVELS[2] ? 3 : 4);
 
 function tone(v, plan) {
@@ -36,7 +37,7 @@ export function daysView(b, mode) {
     if (!p) { cells.push({ d: String(d), future: true, date: null }); continue; }
     const v = plan ? p.scale : p.rsd;
     cells.push({ d: String(d), date: p.date, k: thousands(v), level: level(v), tone: tone(p.scale, p.plan),
-      aria: plan ? `${name(d)}: ${fmt(p.scale)} RSD при плане ${fmt(p.plan)}` : `${name(d)}: ${fmt(v)} RSD` });
+      aria: plan ? `${name(d)}: ${fmt(p.scale)} RSD при плане ${fmt(p.plan)} — ${SAY[tone(p.scale, p.plan)]}` : `${name(d)}: ${fmt(v)} RSD` });
   }
   while (cells.length % 7) cells.push({ blank: true });
   const last = b.points.length ? Number(b.points[b.points.length - 1].date.slice(8)) : 0;

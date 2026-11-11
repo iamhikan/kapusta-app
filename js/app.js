@@ -5,6 +5,7 @@ import { fmt, shiftMonth, view } from './health.js';
 import { BOX, curve } from './chart.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
 import { tile } from './tiles.js';
+import { limitRow } from './limitrow.js';
 import { cardScreen, loadCard, loadOps, newOps, opsScreen } from './screens.js';
 import { catsScreen, loadCats, newCats } from './catscreen.js';
 import { isPeriod, periodOf } from './period.js';
@@ -287,20 +288,10 @@ function limits(v, data) {
       on: { click: () => { tap(); allLimits = !allLimits; render(); } } },
     allLimits ? 'Свернуть' : `Показать все ${v.limits.length}`, icon(allLimits ? ICONS.up : ICONS.down, 16))
     : null;
-  const pct = (x) => `${(x * 100).toFixed(1)}%`;
   return [
     h('div', { class: 'section-head' }, h('h2', {}, 'Лимиты')),
-    h('section', { class: 'card list' }, ...shown.map((l) => h('button', { type: 'button', class: 'limit',
-      'aria-label': `Операции: ${l.name}`, on: { click: () => opsOf(l.name, l.ops, data, !!l.note) } },
-    h('span', { class: 'limit-body' },
-      h('span', { class: 'row' },
-        h('span', { class: 'limit-name' }, h('span', { class: 'ellipsis' }, l.name),
-          l.over ? h('span', { class: 'badge' }, l.over) : null),
-        h('span', { class: 'nowrap' }, h('b', { class: l.over ? 'bad' : '' }, l.spent),
-          h('span', { class: 'muted small' }, ` / ${l.limit}`))),
-      h('span', { class: 'bar thin' }, h('span', { class: 'fill', style: { width: pct(l.fill), background: l.color } }),
-        data.closed ? null : h('span', { class: 'plan-mark soft', style: { left: pct(v.plan) } }))),
-    icon(ICONS.right, 16))), more),
+    h('section', { class: 'card list' }, ...shown.map((l) => limitRow(l, { plan: data.closed ? null : v.plan,
+      open: () => opsOf(l.name, l.ops, data, !!l.note) })), more),
     v.reserve ? h('p', { class: 'note-text muted small' }, v.reserve) : null,
     h('p', { class: 'note-text muted small' }, data.closed
       ? 'Итог месяца: без плана на сегодня и без прогноза. «+N» — сверх лимита.'

@@ -8,10 +8,16 @@
   --button: var(--tg-theme-button-color, #2481cc);
   --button-text: var(--tg-theme-button-text-color, #ffffff);
   --line: var(--tg-theme-section-separator-color, #e3e3e8);
-  --good: #1f8f4e;
-  --fast: #8a6a00;           /* выше плана на сегодня: тёмно-жёлтый текст, читается на белом */
-  --warn: #b36200;
+  /* свои цвета текста — не ниже 4,5:1 и на белом, и на подложке плашки своего цвета (фаза 12) */
+  --good: #19723e;
+  --fast: #7c5f00;           /* выше плана на сегодня: тёмно-жёлтый текст */
+  --warn: #985300;
   --bad: var(--tg-theme-destructive-text-color, #d6342c);
+  /* цвета темы Telegram не меняем: текст меток на их подложке — тот же цвет, притемнённый (светлая тема) */
+  --accent-ink: color-mix(in srgb, var(--accent) 70%, #000000);
+  --bad-ink: color-mix(in srgb, var(--bad) 70%, #000000);
+  --bad-fill: color-mix(in srgb, var(--bad) 80%, #000000);   /* заливка с белым текстом */
+  --heat-top: var(--accent-ink);                               /* самый тёмный день «По сумме», белый текст */
   --bar-green: #34c759;      /* полоски — яркие цвета iOS: зелёный, жёлтый, оранжевый */
   --bar-yellow: #ffcc00;
   --bar-orange: #ff9500;
@@ -30,6 +36,10 @@
   --fast: #ffd60a;
   --warn: #f0a020;
   --bad: var(--tg-theme-destructive-text-color, #ff5d55);
+  --accent-ink: color-mix(in srgb, var(--accent) 85%, #ffffff);
+  --bad-ink: var(--bad);
+  --bad-fill: color-mix(in srgb, var(--bad) 70%, var(--card));
+  --heat-top: color-mix(in srgb, var(--accent) 80%, var(--card));
   --bar-green: #30d158;
   --bar-yellow: #ffd60a;
   --bar-orange: #ff9f0a;
@@ -75,6 +85,7 @@ h1, h2, p { margin: 0; }
 
 .chip { font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 99px;
   background: color-mix(in srgb, currentColor 16%, transparent); }
+.chip.bad { color: var(--bad-ink); }
 .big { display: flex; align-items: baseline; gap: 6px; }
 .big-num { font-size: 40px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
 .bar { position: relative; display: block; height: 10px; border-radius: 5px; background: var(--track); }
@@ -119,7 +130,7 @@ h1, h2, p { margin: 0; }
 .limit > svg, .line.op > svg { color: var(--muted); flex-shrink: 0; }
 .limit-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.badge { flex-shrink: 0; font-size: 12px; font-weight: 600; line-height: 18px; color: var(--bad);
+.badge { flex-shrink: 0; font-size: 12px; font-weight: 600; line-height: 18px; color: var(--bad-ink);
   background: color-mix(in srgb, var(--bad) 16%, transparent); border-radius: 6px; padding: 0 6px; }
 .limit b { font-weight: 600; }
 .more { width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -160,6 +171,7 @@ h1, h2, p { margin: 0; }
   min-height: 40px; color: var(--muted); }
 .search input { flex-grow: 1; min-width: 0; border: 0; background: none; font: inherit; color: var(--fg); outline: none;
   min-height: 40px; }
+.search input::placeholder { color: var(--muted); opacity: 1; }
 .chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
 .chips.wrap { flex-wrap: wrap; overflow: visible; }
 .chips::-webkit-scrollbar { display: none; }
@@ -181,8 +193,8 @@ h1, h2, p { margin: 0; }
   font-weight: 600; }
 .op-amount .small { font-weight: 400; }
 .mark { flex-shrink: 0; font-size: 11px; font-weight: 600; line-height: 17px; padding: 0 6px; border-radius: 6px;
-  color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
-.mark.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
+  color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.mark.bad { color: var(--bad-ink); background: color-mix(in srgb, var(--bad) 14%, transparent); }
 .mark.secret { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
 .line.op.strong { font-weight: 600; }
 .empty { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 48px 16px; }
@@ -257,16 +269,16 @@ section .title { font-size: 17px; font-weight: 600; }
 .day-cell { aspect-ratio: 1; border-radius: 8px; display: flex; flex-direction: column; align-items: center;
   justify-content: center; font-size: 13px; line-height: 1.1; color: var(--fg); background: var(--track); }
 .day-cell.blank { background: transparent; }
-.day-cell.future { color: var(--muted); }
-.day-k { font-size: 10px; }
+.day-cell.future { color: var(--muted); background: transparent; box-shadow: inset 0 0 0 1px var(--line); }   /* пустая клетка — рамкой */
+.day-k { font-size: 11px; }
 .heat-0 { background: color-mix(in srgb, var(--accent) 6%, var(--card)); }
 .heat-1 { background: color-mix(in srgb, var(--accent) 22%, var(--card)); }
 .heat-2 { background: color-mix(in srgb, var(--accent) 45%, var(--card)); }
-.heat-3 { background: color-mix(in srgb, var(--accent) 70%, var(--card)); color: #ffffff; }
-.heat-4 { background: var(--accent); color: #ffffff; }
+.heat-3 { background: color-mix(in srgb, var(--accent) 70%, var(--card)); }
+.heat-4 { background: var(--heat-top); color: #ffffff; }
 .tone-good { background: color-mix(in srgb, var(--good) 35%, var(--card)); }
-.tone-warn { background: var(--bar-orange); color: #ffffff; }
-.tone-bad { background: var(--bad); color: #ffffff; }
+.tone-warn { background: var(--bar-orange); color: #1c1c1e; }   /* оранжевый светлый в обеих темах — тёмный текст */
+.tone-bad { background: var(--bad-fill); color: #ffffff; }
 .legend { flex-wrap: wrap; row-gap: 6px; }
 
 /* остатки: плитки счетов и группы (решения 47, 48) */
@@ -286,3 +298,20 @@ section .title { font-size: 17px; font-weight: 600; }
 .acct-flow > div { display: flex; flex-direction: column; gap: 2px; }
 .acct-flow .num { font-size: 18px; font-weight: 700; }
 .chip-btn .tile { margin-left: -6px; }
+
+/* фокус с клавиатуры (фаза 12): кольцо цвета ссылки с отступом; строка списка — кольцо внутри карточки */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.list > :focus-visible, .tab:focus-visible, .curve-head:focus-visible { outline-offset: -3px; border-radius: 12px; }
+.search:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* касание 44 px (фаза 12): видимый размер прежний, невидимая добавка ::after (у чипа inset — от края внутри рамки
+   1 px); ряд чипов прокручивается вбок и обрезает всё за своими полями — добавка чипа помещается в них; ряды
+   чипов при переносе — с зазором, чтобы добавки не заходили друг на друга */
+.chip-btn, .seg, .small-arrow { position: relative; }
+.chip-btn::after { content: ''; position: absolute; inset: -6px -1px; }
+.seg::after { content: ''; position: absolute; inset: -5px 0; }
+.small-arrow::after { content: ''; position: absolute; inset: -6px; }
+.chips { padding-block: 5px; margin-block: -5px; }
+.chips.wrap { row-gap: 10px; }
+/* слова только для диктора (фаза 12): состояние полоски лимита */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
