@@ -1,7 +1,7 @@
 // Вид «Операций» и карточки из ответов /api/tx и /api/tx/{ref}. Числа в тестах придуманы.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cardView, dayLabel, emptyText, filters, headView, money, monthRange, opRow, txPath } from '../js/ops.js';
+import { accountView, cardView, dayLabel, emptyText, filters, headView, money, monthRange, opRow, txPath } from '../js/ops.js';
 
 const sp = (s) => s.replace(/(\d) (\d{3})/g, '$1 $2');   // разделитель тысяч — неразрывный пробел
 
@@ -161,4 +161,19 @@ test('фильтр «Кошелёк или счёт» — счета зрите�
   assert.deepEqual(f.map((g) => g.key), ['account', 'who', 'source']);
   assert.deepEqual(f[0].chips, [['все', ''], ['нал Алексея', 'Assets:Family:Cash:Aleksey'], ['Freedom', 'Assets:Family:Freedom']]);
   assert.ok(filters([])[0].chips.length > 2 && filters()[0].chips[0][0] === 'все');
+});
+
+test('операции счёта (тап по остатку): под строкой нет этого счёта — он в шапке (решение 48)', () => {
+  const op = { ...LIDL, account: 'Assets:Family:Freedom:EUR' };
+  assert.equal(opRow(op, { account: 'Assets:Family:Freedom' }).sub, 'супермаркеты, алкоголь');
+  assert.equal(opRow(op, { account: 'Assets:Family:Cash:Aleksey' }).sub, 'супермаркеты, алкоголь · Freedom');
+});
+
+test('шапка счёта: плитка, имя, остаток в две строки, пришло и ушло за месяц (решение 48)', () => {
+  const bal = { name: 'Нал Алексея', lines: [sp('150 000 RSD'), sp('1 000 €')], tile: { bg: '#3f9d5f', glyph: 'cash' } };
+  const v = accountView(bal, { flow: { in: 5000, out: 12500.4 }, count: 7 }, '2026-11');
+  assert.deepEqual(v, { title: 'Нал Алексея', tile: bal.tile, lines: bal.lines, label: 'остаток сейчас',
+    flow: [['пришло', sp('+5 000')], ['ушло', sp('−12 500')]], sub: 'ноябрь · 7 записей' });
+  const bare = accountView({ name: 'Walt', lines: [], tile: { text: 'W' } }, { count: 0 }, '2026-10');
+  assert.deepEqual([bare.lines, bare.label, bare.flow], [[], '', []]);       // остатка и потока нет — без строк
 });

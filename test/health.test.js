@@ -93,17 +93,32 @@ test('лимиты: горячие сверху, «+N» сверх лимита;
   assert.equal(v.plan, 11 / 30);
 });
 
-test('остатки — все счета, Freedom «остаток — позже», пустые одной строкой; «Вне лимитов» нет (решение 44)', () => {
-  const v = view(NOW);
-  assert.equal(v.outside, undefined);
-  assert.equal(view({ ...NOW, outside: [{ name: 'салон', rsd: 100 }] }).outside, undefined);   // старый сервер
-  assert.deepEqual(v.balances[0], { name: 'Нал Алексея', value: '150 000 RSD · 1 000 €', later: false,
-    ops: { account: 'Assets:Family:Cash:Aleksey' } });
-  assert.deepEqual(v.balances[1], { name: 'Freedom', value: 'остаток — позже', later: true,
-    ops: { account: 'Assets:Family:Freedom' } });
+test('остатки — группами по типу, суммы в две строки, плитка, итог наличных и карт (решения 47, 48)', () => {
+  const v = view({ ...NOW, balances_total: 293200, balances: [
+    { account: 'Assets:Family:Cash:Aleksey', name: 'нал Алексея', amounts: { EUR: 1000, RSD: 150000 }, group: 'cash', rsd: 267200 },
+    { account: 'Assets:Family:Raiffeisen:RUB', name: 'Райффайзен РФ', amounts: { RUB: 20000 }, group: 'cards', rsd: 25000 },
+    { account: 'Assets:PR:ALTA', name: 'ПР Алексея', amounts: { RSD: 300000 }, group: 'business', rsd: 300000 },
+    { account: 'Assets:Family:ALTA', name: 'карта ALTA', amounts: { RSD: 1000 }, group: 'cards', rsd: 1000 },
+  ] });
+  assert.deepEqual(v.groups.map((g) => [g.title, g.rows.map((r) => r.name)]), [['Наличные', ['Нал Алексея']],
+    ['Карты и счета', ['Райффайзен РФ', 'Карта ALTA']], ['Бизнес', ['ПР Алексея']]]);
+  const cash = v.groups[0].rows[0];
+  assert.deepEqual(cash.lines, [sp('150 000 RSD'), sp('1 000 €')]);    // динары сверху, валюта ниже
+  assert.deepEqual(v.groups[1].rows[0].lines, [sp('20 000 ₽')]);
+  assert.equal(cash.tile.glyph, 'cash');
+  assert.deepEqual(cash.ops, { account: 'Assets:Family:Cash:Aleksey' });
+  assert.equal(v.balTotal, sp('наличные и карты ≈ 293 200 RSD'));
   assert.equal(v.empty, 'Пустые счета: другая карта, Walt.');
   assert.equal(v.balTitle, 'Остатки');
   assert.equal(v.fresh, 'последняя запись 11.11 в 08:11 · обновлено в 11:13');
+});
+
+test('прежний сервер без групп и итога — одна группа без заголовка, итога нет; «Вне лимитов» нет (решение 44)', () => {
+  const v = view(NOW);
+  assert.equal(v.outside, undefined);
+  assert.equal(view({ ...NOW, outside: [{ name: 'салон', rsd: 100 }] }).outside, undefined);   // старый сервер
+  assert.deepEqual(v.groups.map((g) => [g.title, g.rows.length]), [['', 3]]);
+  assert.equal(v.balTotal, '');
 });
 
 test('кривая свёрнута; заметка — прогноз к норме', () => {
@@ -169,8 +184,8 @@ test('кривая отрезана в снимке (решение 32): гра�
 
 test('остатки нажимаются: операции этого счёта за месяц (решение 38); счета — в фильтр «Кошелёк или счёт»', () => {
   const v = view(NOW);
-  assert.deepEqual(v.balances[0].ops, { account: 'Assets:Family:Cash:Aleksey' });
-  assert.equal(v.balances[0].name, 'Нал Алексея');
+  assert.deepEqual(v.groups[0].rows[0].ops, { account: 'Assets:Family:Cash:Aleksey' });
+  assert.equal(v.groups[0].rows[0].name, 'Нал Алексея');
   assert.deepEqual(v.accounts, [['нал Алексея', 'Assets:Family:Cash:Aleksey'], ['Freedom', 'Assets:Family:Freedom'],
     ['P2P', 'Assets:Family:P2P']]);
 });

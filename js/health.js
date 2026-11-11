@@ -1,5 +1,6 @@
 // «Здоровье»: ответ /api/health -> что видит человек. Только строки и доли; цифры считает сервер (fin api), страница
 // их не пересчитывает и не фильтрует: что видит зритель, решает сервер.
+import { tileOf } from './tiles.js';
 
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь',
   'Ноябрь', 'Декабрь'];
@@ -10,15 +11,29 @@ const FOR_MONTH = ['январь', 'февраль', 'март', 'апрель',
   'ноябрь', 'декабрь'];
 const ZONE = { ok: 'good', fast: 'fast', savings: 'warn', over: 'bad' };   // fast — выше плана на сегодня (решение 46)
 export const TOP = 6;   // лимитов сразу; остальные — по «Все N»
+// группы остатков (решение 48), порядок показа; прежний сервер без group — одна группа без заголовка
+const GROUPS = [['cash', 'Наличные'], ['cards', 'Карты и счета'], ['business', 'Бизнес'], ['debts', 'Долги']];
 
 export function fmt(n) {
   const s = Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   return (n < 0 ? '−' : '') + s;
 }
 
-export function amounts(obj) {
+export function amountLines(obj) {
+  // динары первыми, остальные валюты — по алфавиту: «150 000 RSD», «1 000 €»
   const order = Object.keys(obj).sort((a, b) => (a !== 'RSD') - (b !== 'RSD') || a.localeCompare(b));
-  return order.map((cur) => `${fmt(obj[cur])} ${SYMBOL[cur] || cur}`).join(' · ');
+  return order.map((cur) => `${fmt(obj[cur])} ${SYMBOL[cur] || cur}`);
+}
+
+export const amounts = (obj) => amountLines(obj).join(' · ');
+
+function balanceGroups(balances) {
+  // решения 47, 48: строка — плитка, имя, суммы в две строки; группы по типу, у прежнего сервера — одна без заголовка
+  const row = (b) => ({ name: upper(b.name), lines: amountLines(b.amounts || {}), tile: tileOf(b.account, b.name),
+    ops: { account: b.account } });
+  if (!balances.some((b) => b.group)) return balances.length ? [{ title: '', rows: balances.map(row) }] : [];
+  return GROUPS.map(([key, title]) => ({ title, rows: balances.filter((b) => (b.group || 'cards') === key).map(row) }))
+    .filter((g) => g.rows.length);
 }
 
 export function shiftMonth(month, by) {
@@ -120,8 +135,8 @@ export function view(h) {
       : null,
     budgetLabel: `Весь бюджет на ${FOR_MONTH[m - 1]}`,
     // решение 38: строка остатка открывает операции этого счёта за месяц; счета — в фильтр «Операций»
-    balances: h.balances.map((b) => ({ name: upper(b.name), value: b.later ? 'остаток — позже' : amounts(b.amounts),
-      later: !!b.later, ops: { account: b.account } })),
+    groups: balanceGroups(h.balances),
+    balTotal: h.balances_total == null ? '' : `наличные и карты ≈ ${fmt(h.balances_total)} RSD`,
     accounts: h.balances.map((b) => [b.name, b.account]),
     empty: h.empty.length ? `Пустые счета: ${h.empty.join(', ')}.` : '',
     balTitle: h.closed ? `Остатки на ${when(h.date)}` : 'Остатки',

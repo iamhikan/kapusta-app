@@ -90,7 +90,7 @@ function exchange(op) {
     amountSub: into.length ? `→ ${full(into[0].number, into[0].currency)}` : '', note: note[0], noteTone: note[1] };
 }
 
-export function opRow(op, { inCategory = false } = {}) {
+export function opRow(op, { inCategory = false, account = '' } = {}) {
   const marks = [op.receipt && 'чек', op.flag && '!', op.secret && 'секрет'].filter(Boolean);
   const base = { ref: op.ref, where: op.count > 1 ? `${op.where} · ${records(op.count)}` : op.where, marks, note: op.hit || '', noteTone: '', gray: false,
     group: (op.group || []).map(opRow), count: op.count || 1 };
@@ -102,7 +102,9 @@ export function opRow(op, { inCategory = false } = {}) {
     return { ...base, gray: true, sub: [...new Set(from)].join(', ') + (to.length ? ` → ${[...new Set(to.map((l) => l.name))].join(', ')}` : ''),
       amount: cur(main.number, main.currency), amountSub: '' };
   }
-  const sub = [inCategory ? '' : op.cats.join(', '), op.src].filter(Boolean).join(' · ');
+  // операции счёта (решение 48): счёт — в шапке, под строкой его не повторяем
+  const own = account && op.account && op.account.startsWith(account);
+  const sub = [inCategory ? '' : op.cats.join(', '), own ? '' : op.src].filter(Boolean).join(' · ');
   if (op.kind === 'income') {
     return { ...base, sub, amount: `+${cur(op.amount.number, op.amount.currency)}`, noteTone: 'good',
       amountSub: op.amount.currency !== 'RSD' ? `${money(op.rsd)} RSD` : '', income: true };
@@ -127,6 +129,13 @@ export function headView(ctx, body) {
     sub: [lim == null ? '' : `Лимит ${fmt(lim)}`, records(body.count), days]
       .filter(Boolean).join(' · '),
   };
+}
+
+export function accountView(bal, body, month) {
+  // шапка «Операций» счёта (решение 48): плитка, имя, остаток на сейчас, пришло и ушло за месяц списка
+  const flow = body.flow ? [['пришло', `+${fmt(body.flow.in)}`], ['ушло', fmt(-body.flow.out)]] : [];
+  return { title: bal.name, tile: bal.tile, lines: bal.lines, label: bal.lines.length ? 'остаток сейчас' : '', flow,
+    sub: [monthTitle(month).split(' ')[0].toLowerCase(), records(body.count || 0)].join(' · ') };
 }
 
 export function cardView(c) {

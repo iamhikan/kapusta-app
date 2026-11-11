@@ -4,6 +4,7 @@ import { apiBase, get, post, screen } from './api.js';
 import { fmt, shiftMonth, view } from './health.js';
 import { BOX, curve } from './chart.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
+import { tile } from './tiles.js';
 import { cardScreen, loadCard, loadOps, newOps, opsScreen } from './screens.js';
 import { catsScreen, loadCats, newCats } from './catscreen.js';
 import { isPeriod, periodOf } from './period.js';
@@ -28,6 +29,7 @@ let retrying = false;                  // «Повторить» на снимк
 let pending = [];                      // смены категории в очереди CloudStorage: Мак молчал (решение 18)
 let flushing = false;
 let accounts = [];                     // счета зрителя из остатков «Здоровья» — в фильтр «Операций» (решение 38)
+let balanceRows = new Map();           // строки остатков по счёту — шапка «Операций» счёта (решение 48)
 
 const today = () => {
   const d = new Date();
@@ -63,6 +65,7 @@ const nav = {
   },
   changed: () => stale(),
   accounts: () => accounts,
+  balanceOf: (account) => balanceRows.get(account) || null,
   healthView(m) {
     const d = cache.get(m) || (snap && snap.month === m ? snap : null);
     return d ? view(d) : null;
@@ -316,18 +319,21 @@ function budgetLinks(v, data) {
 }
 
 function balances(v, data) {
-  // решение 38: остаток открывает «Операции» этого счёта за месяц «Здоровья» (фильтр «Кошелёк или счёт»)
+  // решение 38: остаток открывает «Операции» этого счёта за месяц «Здоровья» (фильтр «Кошелёк или счёт»);
+  // решения 47, 48: плитка, суммы в две строки, группы по типу, итог наличных и карт в заголовке
   const opsOfAccount = (b) => {
     tap();
     const entry = newOps(data.month);
     entry.f.account = b.ops.account;
     nav.push(entry);
   };
-  return [h('div', { class: 'section-head' }, h('h2', {}, v.balTitle)),
-    h('section', { class: 'card list' }, ...v.balances.map((b) => h('button', { type: 'button', class: 'line op',
-      'aria-label': `Операции: ${b.name}`, on: { click: () => opsOfAccount(b) } },
-    h('span', { class: 'grow' }, b.name), h('span', { class: b.later ? 'muted small' : 'nowrap' }, b.value),
-    icon(ICONS.right, 16)))),
+  const row = (b) => h('button', { type: 'button', class: 'line op bal', on: { click: () => opsOfAccount(b) } },
+    tile(b.tile), h('span', { class: 'grow' }, b.name),
+    h('span', { class: 'bal-amounts' }, ...b.lines.map((l, i) => h('span', { class: i ? 'muted small' : 'num' }, l))),
+    icon(ICONS.right, 16));
+  return [h('div', { class: 'section-head' }, h('h2', {}, v.balTitle), v.balTotal ? h('span', { class: 'muted small' }, v.balTotal) : null),
+    ...v.groups.map((g) => h('div', { class: 'bal-group' }, g.title ? h('p', { class: 'group-label muted small' }, g.title) : null,
+      h('section', { class: 'card list' }, ...g.rows.map(row)))),
     v.empty ? h('p', { class: 'note-text muted small' }, v.empty) : null];
 }
 
@@ -376,7 +382,9 @@ async function load(next) {
   if (r.error) return problem(r.error, r.detail);
   month = r.data.month;
   cache.set(month, r.data);
-  accounts = view(r.data).accounts;
+  const fresh = view(r.data);
+  accounts = fresh.accounts;
+  balanceRows = new Map(fresh.groups.flatMap((g) => g.rows).map((b) => [b.ops.account, b]));
   snap = null;
   // после каждого удачного ответа — снимок в CloudStorage (ключ на месяц, до 4096 знаков, решение 32)
   save(cloud, r.data).then((ok) => { if (ok) hasSnap = true; });

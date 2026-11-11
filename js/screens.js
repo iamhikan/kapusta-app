@@ -1,6 +1,7 @@
 // Экраны «Операции» и карточка операции (DOM). Данные — только из /api/tx и /api/tx/{ref}, в памяти страницы.
 import { h, icon, tap, ICONS, tg } from './dom.js';
-import { cardView, dayLabel, emptyText, filters, headView, money, monthRange, monthTitle, opRow, txPath } from './ops.js';
+import { accountView, cardView, dayLabel, emptyText, filters, headView, money, monthRange, monthTitle, opRow, txPath } from './ops.js';
+import { tile, tileOf } from './tiles.js';
 import { shiftMonth } from './health.js';
 import { canNext, periodEnd, shiftPeriod } from './period.js';
 import { offline } from './snapshot.js';
@@ -96,6 +97,21 @@ function head(entry, nav) {
     h('div', { class: 'muted small' }, v.sub));
 }
 
+function accountHead(entry, nav) {
+  // решение 48: «Операции» счёта — плитка, имя, остаток сейчас, пришло и ушло за месяц списка
+  const acc = entry.f.account;
+  const name = (nav.accounts().find(([, a]) => a === acc) || [acc.split(':').pop()])[0];
+  const bal = nav.balanceOf(acc) || { name: name.charAt(0).toUpperCase() + name.slice(1), lines: [], tile: tileOf(acc, name) };
+  const v = accountView(bal, entry.pages[0] || { count: 0 }, entry.month);
+  return h('section', { class: 'card pad stack acct' },
+    h('div', { class: 'acct-top' }, tile(v.tile, 40),
+      h('div', { class: 'grow' }, h('h2', { class: 'acct-name' }, v.title), h('span', { class: 'muted small' }, v.sub)),
+      v.lines.length ? h('div', { class: 'bal-amounts' }, h('span', { class: 'muted small' }, v.label),
+        ...v.lines.map((l, i) => h('span', { class: i ? 'muted small' : 'num' }, l))) : null),
+    v.flow.length ? h('div', { class: 'acct-flow' }, ...v.flow.map(([k, val]) => h('div', {},
+      h('span', { class: 'muted small' }, k), h('span', { class: 'num' }, val)))) : null);
+}
+
 function toolbar(entry, nav) {
   const f = entry.f;
   const chip = (label, on, click, d) => h('button', { type: 'button', class: `chip-btn${on ? ' on' : ''}`,
@@ -136,7 +152,8 @@ function sheet(entry, nav) {
       ...filters(nav.accounts()).map((g) => h('div', { class: 'stack-s' }, h('span', { class: 'muted small' }, g.label),
         h('div', { class: 'chips wrap' }, ...g.chips.map(([label, v]) => h('button', { type: 'button',
           class: `chip-btn${draft[g.key] === v ? ' on' : ''}`, 'aria-pressed': String(draft[g.key] === v),
-          on: { click: () => { tap(); draft[g.key] = v; nav.render(); } } }, label))))),
+          on: { click: () => { tap(); draft[g.key] = v; nav.render(); } } },
+        g.key === 'account' && v ? tile(tileOf(v, label), 18) : null, label))))),
       h('label', { class: 'toggle' }, h('span', {}, 'Только с «!» — на разборе'),
         h('input', { type: 'checkbox', checked: draft.flag, on: { change: (e) => { draft.flag = e.target.checked; } } })),
       h('button', { type: 'button', class: 'button', on: { click: () => {
@@ -167,12 +184,14 @@ export function opsScreen(entry, nav) {
   } else {
     body = h('div', { class: 'stack' }, ...list.map((d) => h('div', { class: 'day' },
       h('div', { class: 'day-head muted small' }, h('span', {}, dayLabel(d.date)), d.sum ? h('span', {}, money(d.sum)) : null),
-      h('section', { class: 'card list' }, ...d.ops.map((op, i) => opLine(opRow(op, { inCategory: !!entry.ctx }), nav,
+      h('section', { class: 'card list' }, ...d.ops.map((op, i) => opLine(opRow(op, { inCategory: !!entry.ctx,
+        account: entry.ctx ? '' : entry.f.account }), nav,
         { expanded: entry.expanded, key: `${d.date}:${i}:${op.where}` }))))),
     last && last.next ? h('button', { type: 'button', class: 'more card', disabled: entry.loading,
       on: { click: () => { tap(); loadOps(entry, nav, true); } } }, entry.loading ? 'Загружаю…' : 'Показать ещё') : null);
   }
-  const screen = h('div', { class: 'screen with-tabs' }, entry.ctx ? head(entry, nav) : toolbar(entry, nav), body,
+  const top = entry.ctx ? head(entry, nav) : [entry.f.account ? accountHead(entry, nav) : null, toolbar(entry, nav)];
+  const screen = h('div', { class: 'screen with-tabs' }, top, body,
     entry.sheet ? sheet(entry, nav) : null);
   const more = screen.querySelector('.more');
   if (more && 'IntersectionObserver' in globalThis) {           // долистали до конца — следующие 50 сами
