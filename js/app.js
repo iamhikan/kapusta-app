@@ -52,7 +52,7 @@ function skeleton() {
     h('section', { class: 'card pad stack' }, ...[90, 120, 140, 80].map((w) => bar(`${w}px`, '13px')))));
 }
 
-function problem(kind) {
+function problem(kind, detail) {
   const s = screen(kind);
   const pic = s.icon === 'logo' ? h('div', { class: 'logo' }, 'К')
     : icon(s.icon === 'lock' ? ['M7 11V7a5 5 0 0 1 10 0v4', 'M5 11h14v10H5z'] : ['M12 9v4', 'M12 17h.01',
@@ -61,7 +61,7 @@ function problem(kind) {
     : s.retry ? h('button', { class: 'button', type: 'button', on: { click: () => { tap(); load(month); } } }, 'Повторить')
       : h('button', { class: 'button', type: 'button', on: { click: () => tg && tg.close() } }, 'Закрыть');
   show(h('div', { class: 'problem' }, h('div', { class: 'problem-icon' }, pic), h('h1', {}, s.title),
-    h('p', {}, s.text), act));
+    h('p', {}, s.text), act, detail ? h('p', { class: 'small detail' }, detail) : null));
 }
 
 function monthNav(v) {
@@ -124,12 +124,15 @@ function pace(v, data) {
 function limits(v, data) {
   if (!v.limits.length) return [];
   const shown = allLimits ? v.limits : v.limits.slice(0, v.limitsShown);
+  // раскрыть — последней строкой под уже открытыми лимитами, там же и свернуть (Алексей 11.11.2026)
   const more = v.limits.length > v.limitsShown
-    ? h('button', { class: 'link', type: 'button', on: { click: () => { tap(); allLimits = !allLimits; render(data); } } },
-      allLimits ? 'Свернуть' : `Все ${v.limits.length}`) : null;
+    ? h('button', { class: 'more', type: 'button', 'aria-expanded': String(allLimits),
+      on: { click: () => { tap(); allLimits = !allLimits; render(data); } } },
+    allLimits ? 'Свернуть' : `Показать все ${v.limits.length}`, icon(allLimits ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6', 16))
+    : null;
   const pct = (x) => `${(x * 100).toFixed(1)}%`;
   return [
-    h('div', { class: 'section-head' }, h('h2', {}, 'Лимиты'), more),
+    h('div', { class: 'section-head' }, h('h2', {}, 'Лимиты')),
     h('section', { class: 'card list' }, ...shown.map((l) => h('div', { class: 'limit' },
       h('div', { class: 'row' },
         h('span', { class: 'limit-name' }, h('span', { class: 'ellipsis' }, l.name),
@@ -137,10 +140,10 @@ function limits(v, data) {
         h('span', { class: 'nowrap' }, h('b', { class: l.over ? 'bad' : '' }, l.spent),
           h('span', { class: 'muted small' }, ` / ${l.limit}`))),
       h('span', { class: 'bar thin' }, h('span', { class: 'fill', style: { width: pct(l.fill), background: l.color } }),
-        data.closed ? null : h('span', { class: 'plan-mark soft', style: { left: pct(v.plan) } }))))),
+        data.closed ? null : h('span', { class: 'plan-mark soft', style: { left: pct(v.plan) } })))), more),
     h('p', { class: 'note-text muted small' }, data.closed
       ? 'Итог месяца: без плана на сегодня и без прогноза. «+N» — сверх лимита.'
-      : 'Черта — план на сегодня. Зелёный — до плана, к оранжевому — до лимита, красный и «+N» — сверх лимита.'),
+      : 'Черта — план на сегодня. Зелёный — в плане, от жёлтого к оранжевому — выше плана, красный и «+N» — сверх лимита.'),
   ];
 }
 
@@ -173,7 +176,7 @@ async function load(next) {
   skeleton();
   const r = await get(`/api/health${month ? `?month=${month}` : ''}`, { base, initData: tg.initData });
   if (mine !== seq) return;
-  if (r.error) return problem(r.error);
+  if (r.error) return problem(r.error, r.detail);
   month = r.data.month;
   cache.set(month, r.data);
   render(r.data);

@@ -49,3 +49,11 @@ test('экраны ошибок — словами человека', () => {
   assert.equal(screen('down').retry, true);
   assert.equal(screen('stale').retry, false);
 });
+
+test('«не отвечает» — с причиной мелким шрифтом: код ответа или ошибка сети и адрес', async () => {
+  const base = 'https://mac.tail0.ts.net';
+  const http = await get('/api/me', { base, initData: 'x', fetch: fake(503, {}) });
+  assert.equal(http.detail, 'HTTP 503 · mac.tail0.ts.net');
+  const net = await get('/api/me', { base, initData: 'x', fetch: fake('down') });
+  assert.equal(net.detail, 'сеть: TypeError: Failed to fetch · mac.tail0.ts.net');
+});

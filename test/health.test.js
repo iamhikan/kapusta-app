@@ -74,7 +74,7 @@ test('Ангелине — без «Весь доход» (сервер его �
   assert.ok(!JSON.stringify(v).includes('Весь доход'));
 });
 
-test('лимиты: горячие сверху, «+N» сверх лимита, цвет от зелёного к оранжевому, красный — сверх', () => {
+test('лимиты: горячие сверху, «+N» сверх лимита; полоска зелёная до плана, выше — от жёлтого к оранжевому, красная — сверх', () => {
   const v = view(NOW);
   const [pets, travel, food] = v.limits;
   assert.equal(pets.name, 'питомцы');
@@ -82,8 +82,9 @@ test('лимиты: горячие сверху, «+N» сверх лимита,
   assert.equal(pets.color, 'var(--bad)');
   assert.equal(pets.fill, 1);                                    // полоска не вылезает за край
   assert.equal(travel.over, '');
-  assert.match(travel.color, /color-mix\(in oklch, var\(--warn\) \d+%, var\(--good\)\)/);
-  assert.equal(food.color, 'var(--good)');                      // 20 % при плане 37 %
+  assert.equal(travel.color, 'color-mix(in oklch, var(--bar-orange) 80%, var(--bar-yellow))');   // 87,5 % при плане 37 %
+  assert.equal(view({ ...NOW, day: 30 }).limits[1].color, 'var(--bar-green)');                   // к концу месяца — в плане
+  assert.equal(food.color, 'var(--bar-green)');                 // 20 % при плане 37 %
   assert.deepEqual([food.spent, food.limit], ['5 000', '25 000']);
   assert.equal(v.limitsShown, 6);                                // остальные — по «Все 7»
   assert.equal(v.plan, 11 / 30);

@@ -35,10 +35,11 @@ function when(stamp) {
 }
 
 function limitColor(share, plan) {
+  // полоска: до плана на сегодня — зелёная, выше — от жёлтого к оранжевому у лимита, сверх — красная
   if (share > 1) return 'var(--bad)';
-  if (share <= plan) return 'var(--good)';
+  if (share <= plan) return 'var(--bar-green)';
   const warm = Math.round(((share - plan) / (1 - plan)) * 100);
-  return `color-mix(in oklch, var(--warn) ${warm}%, var(--good))`;  // через жёлтый, без серой середины
+  return `color-mix(in oklch, var(--bar-orange) ${warm}%, var(--bar-yellow))`;
 }
 
 function curveNote(h) {

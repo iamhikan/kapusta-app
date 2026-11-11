@@ -12,15 +12,17 @@ export function apiBase(search) {
 }
 
 export async function get(path, { base, initData, fetch = globalThis.fetch }) {
+  // detail — причина мелким шрифтом на экране «не отвечает»: по ней видно, где оборвался запрос (без данных)
+  const host = base.replace('https://', '');
   let r;
   try {
     r = await fetch(base + path, { headers: { Authorization: `tma ${initData}` }, cache: 'no-store' });
-  } catch {
-    return { error: 'down' };
+  } catch (e) {
+    return { error: 'down', detail: `сеть: ${e.name}: ${e.message} · ${host}` };
   }
   if (r.status === 401) return { error: 'stale' };
   if (r.status === 403) return { error: 'stranger' };
-  if (!r.ok) return { error: 'down' };
+  if (!r.ok) return { error: 'down', detail: `HTTP ${r.status} · ${host}` };
   return { data: await r.json() };
 }
 
