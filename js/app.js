@@ -270,7 +270,7 @@ function pace(v, data) {
 }
 
 function opsOf(title, params, data, reserve = false) {
-  // строка лимита или «вне лимитов» -> операции этих трат за месяц (решения 3 и 25)
+  // строка лимита -> операции этих трат за месяц (решение 3)
   tap();
   nav.push(newOps(data.month, { title: upper(title), params, reserve }));
 }
@@ -315,17 +315,6 @@ function budgetLinks(v, data) {
     row(v.budgetLabel, { kind: 'budget', month: data.month }));
 }
 
-function outside(v, data) {
-  if (!v.outside.length) return [];
-  const row = (name, value, params, cls = '') => h('button', { type: 'button', class: `line op ${cls}`,
-    'aria-label': `Операции: ${name}`, on: { click: () => opsOf(name, params, data) } },
-  h('span', { class: 'grow' }, name), h('span', { class: 'nowrap' }, value), icon(ICONS.right, 16));
-  const total = data.outside.reduce((s, o) => s + o.rsd, 0);
-  return [h('div', { class: 'section-head' }, h('h2', {}, 'Вне лимитов')),
-    h('section', { class: 'card list' }, row('Все вне лимитов', fmt(total),
-      v.outsideAll, 'strong'), ...v.outside.map((o) => row(o.name, o.value, o.ops)))];
-}
-
 function balances(v, data) {
   // решение 38: остаток открывает «Операции» этого счёта за месяц «Здоровья» (фильтр «Кошелёк или счёт»)
   const opsOfAccount = (b) => {
@@ -346,7 +335,7 @@ function healthScreen(data, snapped = false) {
   const v = view(data);
   const s = snapped ? snapView(data) : null;
   return h('div', { class: 'screen with-tabs' }, s ? banner(s) : null, monthNav(v, snapped), summary(v), pace(v, data),
-    ...limits(v, data), ...outside(v, data), ...balances(v, data), h('p', { class: 'fresh muted small' }, s ? s.fresh : v.fresh));
+    ...limits(v, data), ...balances(v, data), h('p', { class: 'fresh muted small' }, s ? s.fresh : v.fresh));
 }
 
 function render() {

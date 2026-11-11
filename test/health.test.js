@@ -18,7 +18,6 @@ const NOW = {
     { name: 'спорт', spent: 0, limit: 8000, over: 0 },
     { name: 'одежда', spent: 0, limit: 12000, over: 0 },
   ],
-  outside: [{ name: 'салон', rsd: 100 }],
   balances: [
     { account: 'Assets:Family:Cash:Aleksey', name: 'нал Алексея', amounts: { EUR: 1000, RSD: 150000 } },
     { account: 'Assets:Family:Freedom', name: 'Freedom', later: true },
@@ -35,7 +34,7 @@ const OCT = {
   ...NOW, month: '2026-10', date: '2026-10-31', day: 31, days: 31, closed: true,
   zone: { status: 'over', word: 'сверх дохода' }, norm: 200000, spent: 500000, left: -300000,
   plan_today: null, per_day: null, forecast: null,
-  outside: [{ name: 'банк', rsd: 5000 }, { name: 'налоги', rsd: 3000 }],
+  regular: 90000,
   curve: [[1, 50000], [2, 210000], [3, 250000], [31, 500000]],
   available: { total: 260000, left: -240000 },
 };
@@ -94,10 +93,10 @@ test('лимиты: горячие сверху, «+N» сверх лимита;
   assert.equal(v.plan, 11 / 30);
 });
 
-test('вне лимитов — строкой, остатки — все счета, Freedom «остаток — позже», пустые одной строкой', () => {
+test('остатки — все счета, Freedom «остаток — позже», пустые одной строкой; «Вне лимитов» нет (решение 44)', () => {
   const v = view(NOW);
-  assert.deepEqual(v.outside, [{ name: 'салон', value: '100', ops: { outside: 'салон' } }]);
-  assert.deepEqual(v.outsideAll, { outside: '*' });                 // решение 25: строка «Вне лимитов» нажимается
+  assert.equal(v.outside, undefined);
+  assert.equal(view({ ...NOW, outside: [{ name: 'салон', rsd: 100 }] }).outside, undefined);   // старый сервер
   assert.deepEqual(v.balances[0], { name: 'Нал Алексея', value: '150 000 RSD · 1 000 €', later: false,
     ops: { account: 'Assets:Family:Cash:Aleksey' } });
   assert.deepEqual(v.balances[1], { name: 'Freedom', value: 'остаток — позже', later: true,
@@ -124,7 +123,7 @@ test('прошлый месяц — итог: без плана на сегод�
   assert.deepEqual(v.scale, ['250 % нормы', '', 'норма 200 000']);
   assert.deepEqual(v.stats, [
     { label: 'Сверх нормы', value: '300 000', tone: 'bad' },
-    { label: 'Вне лимитов', value: '8 000', tone: '' },
+    { label: 'Регулярные', value: '90 000', tone: '' },           // решение 44: «Вне лимитов» больше нет
     { label: 'Сверх дохода', value: '240 000', tone: 'bad' },
   ]);
   assert.deepEqual(v.curve.note, { text: 'итог 500 000 · норма кончилась 2 октября', tone: 'bad' });

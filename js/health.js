@@ -80,7 +80,7 @@ export function view(h) {
   const left = over ? { label: 'Сверх нормы', value: fmt(-h.left), tone: 'bad' }
     : { label: 'Осталось из нормы', value: fmt(h.left), tone: '' };
   const first = h.closed
-    ? { label: 'Вне лимитов', value: fmt(h.outside.reduce((s, o) => s + o.rsd, 0)), tone: '' }
+    ? { label: 'Регулярные', value: fmt(h.regular), tone: '' }   // решение 44: «Вне лимитов» нет
     : { label: 'Можно в день', value: h.per_day == null ? 'норма исчерпана' : `~${fmt(h.per_day)}`,
       tone: h.per_day == null ? 'bad' : '' };
   // «Весь доход» сервер шлёт только Алексею (решение 11); без него — сколько лимитов сверх
@@ -113,9 +113,6 @@ export function view(h) {
     }),
     limitsShown: Math.min(TOP, h.limits.length),
     reserve: reserveNote(h.limits),
-    // решение 25: «Вне лимитов» и каждая позиция открывают операции этих трат за месяц
-    outside: h.outside.map((o) => ({ name: o.name, value: fmt(o.rsd), ops: { outside: o.name } })),
-    outsideAll: { outside: '*' },
     // решение 40: скрытые лимиты (show: hot) — отдельной кнопкой; дошли до порога — уже в общем списке (сервер)
     hidden: h.hidden && h.hidden.length ? { label: `Скрытые лимиты · ${h.hidden.length}`,
       rows: h.hidden.map((l) => ({ name: l.name, spent: fmt(l.spent), limit: fmt(l.limit), ops: { limit: l.name },

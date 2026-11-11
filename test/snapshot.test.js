@@ -9,7 +9,6 @@ const NOW = {
   zone: { status: 'ok', word: 'в норме' }, norm: 200000, spent: 80000, left: 120000, plan_today: 73333, per_day: 6000,
   regular: 0, oneoff: 0,
   limits: [{ name: 'питомцы', spent: 6000, limit: 4000, over: 2000 }],
-  outside: [],
   balances: [{ account: 'Assets:Family:Cash:Aleksey', name: 'нал Алексея', amounts: { RSD: 150000 } }],
   empty: ['другая карта', 'Walt'],
   curve: [[1, 2000], [2, 20000], [11, 80000]],

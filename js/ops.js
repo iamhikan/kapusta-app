@@ -11,7 +11,7 @@ const IN_MONTH = ['январе', 'феврале', 'марте', 'апреле'
   'ноябре', 'декабре'];
 const WEEKDAY = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
 const SYMBOL = { RSD: '', EUR: ' €', RUB: ' ₽', USD: ' $' };
-const KEYS = ['from', 'to', 'limit', 'outside', 'cat', 'q', 'transfers', 'account', 'who', 'source', 'flag', 'cursor'];
+const KEYS = ['from', 'to', 'limit', 'cat', 'q', 'transfers', 'account', 'who', 'source', 'flag', 'cursor'];
 
 // фильтры (холст «Операции» → «Фильтры»): значение — параметр /api/tx. Кошелёк или счёт — счета зрителя из остатков
 // «Здоровья» (решение 38); «Здоровье» ещё не грузилось — прежний список
@@ -114,7 +114,7 @@ export function opRow(op, { inCategory = false } = {}) {
 }
 
 export function headView(ctx, body) {
-  // шапка операций лимита, «вне лимитов» или категории: сумма периода против лимита (решение 3); период — месяц
+  // шапка операций лимита или категории: сумма периода против лимита (решение 3); период — месяц
   // или любой период «Категорий» (неделя, квартал, год, свой)
   const days = ctx.period ? rangeText(ctx.period.from, ctx.to)
     : `1–${Number(ctx.to.slice(8))} ${OF_MONTH[Number(ctx.month.slice(5)) - 1]}`;
