@@ -47,7 +47,7 @@ test('список: сумма, доля, лимит периода и изме�
   assert.deepEqual([food.name, food.sum, food.share, food.delta, food.deltaTone],
     ['продукты', sp('3 000'), '30 %', '+500', 'warn']);
   assert.equal(food.limit, sp('лимит 9 000'));
-  assert.equal(rest.limit, '');                                 // общий лимит — в шапке подкатегорий, не в строке
+  assert.equal(rest.limit, 'лимит «еда вне дома»');               // общий лимит — подписью (Алексей 12.11)
   assert.deepEqual([rest.delta, rest.deltaTone], ['0', '']);
   assert.deepEqual([travel.delta, travel.deltaTone], [sp('−4 800'), 'good']);
   assert.equal(pets.limit, '');
@@ -91,8 +91,39 @@ test('столбцы по месяцам: подписи в тысячах, те
   assert.equal(v.bars[0].normY != null, true);
   assert.ok(v.bars[0].normY < v.bars[0].y);                      // норма 200 выше столбца 150
   assert.match(v.aria, /сентябрь 150, октябрь 250, ноябрь 40 на сегодня/);
-  assert.equal(v.note, 'шкала градусника, тыс. RSD · черта — норма');
+  assert.equal(v.note, 'в лимитах, тыс. RSD · черта — норма');
   const all = barsView({ by: 'month', scope: 'all', points: [{ from: '2026-11-01', to: '2026-11-30', rsd: 0, partial: true, norm: null }] });
   assert.equal(all.bars[0].normY, null);
   assert.equal(all.note, 'все траты, тыс. RSD');
+});
+
+// расстояние цветов в OKLab: меньше ~0,07 глаз путает соседние сегменты кольца
+function oklab(hex) {
+  const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  const [r, g, b] = [1, 3, 5].map((i) => lin(parseInt(hex.slice(i, i + 2), 16)));
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s, 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s];
+}
+const dist = (a, b) => Math.hypot(...oklab(a).map((x, i) => x - oklab(b)[i]));
+
+test('транспорт и хозяйство — не один бирюзовый (ревью): их цвета глаз различает', () => {
+  assert.ok(dist(colorOf('Expenses:Family:Transport'), colorOf('Expenses:Family:Household')) > 0.08);
+});
+
+test('категория из общего лимита — «лимит «…»» под именем; лимит с тем же именем — «лимит N» (Алексей 12.11)', () => {
+  const v = catsView({ ...BODY, cats: [
+    cat('Expenses:Family:Household', 'хозяйство', 700, { limit: { name: 'дом и хозяйство', own: false, limit: 5000, spent: 900 } }),
+    cat('Expenses:Family:Transport', 'транспорт', 600, { limit: { name: 'транспорт', own: false, limit: 2000, spent: 650 } }),
+    cat('Expenses:Family:Food', 'продукты', 500, { limit: { name: 'продукты', own: true, limit: 9000, spent: 500 } }),
+  ] });
+  assert.deepEqual(v.rows.map((r) => r.limit), ['лимит «дом и хозяйство»', 'лимит 2 000', 'лимит 9 000']);
+});
+
+test('«В лимитах» вместо «Шкала градусника» (решение 51): подпись столбцов по месяцам', () => {
+  const pts = [{ from: '2026-10-01', rsd: 100000, norm: 200000 }, { from: '2026-11-01', rsd: 50000, norm: 200000, partial: true }];
+  assert.equal(barsView({ scope: 'scale', points: pts }).note, 'в лимитах, тыс. RSD · черта — норма');
+  assert.equal(barsView({ scope: 'all', points: pts }).note, 'все траты, тыс. RSD · черта — норма');
 });

@@ -103,3 +103,18 @@ test('POST — JSON с initData; 409 — конфликт с тем, что ст
     assert.equal((await post('/x', {}, { base, initData: 'q', fetch: fake(status, {}) })).error, kind, String(status));
   }
 });
+
+test('слова приложения (решение 51, Алексей 12.11): «неразобранное» — «без категории», Райффайзен — кириллицей;'
+  + ' сервер и ответы бота — как были', async () => {
+  const body = { cats: [{ name: 'неразобранное', key: 'Expenses:Family:Uncategorized' }], src: 'Raiffeisen Ангелина',
+    days: [{ ops: [{ cats: ['супермаркеты', 'неразобранное'], legs: [{ name: 'Opening-Balances' }] }] }],
+    what: 'неразобранное у Raiffeisen Ангелина', n: 1, ok: true, none: null };
+  const r = await get('/api/tx', { base: 'https://mac.tail0.ts.net', initData: 'x', fetch: fake(200, body) });
+  assert.deepEqual(r.data, { cats: [{ name: 'без категории', key: 'Expenses:Family:Uncategorized' }],
+    src: 'Райффайзен Ангелины', days: [{ ops: [{ cats: ['супермаркеты', 'без категории'],
+      legs: [{ name: 'начальный остаток' }] }] }],
+    what: 'неразобранное у Raiffeisen Ангелина', n: 1, ok: true, none: null });   // описание человека не трогаем
+  const p = await post('/api/recat', {}, { base: 'https://mac.tail0.ts.net', initData: 'x',
+    fetch: fake(200, { card: { cats: ['неразобранное'] } }) });
+  assert.deepEqual(p.data, { card: { cats: ['без категории'] } });
+});

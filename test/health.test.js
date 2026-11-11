@@ -61,7 +61,10 @@ test('текущий месяц: крупно — потрачено из нор
   assert.deepEqual(v.big, { label: 'Потрачено', value: '80 000', of: 'из 200 000', tone: '' });
   assert.equal(v.bar.fill, 0.4);
   assert.equal(v.bar.plan, 73333 / 200000);
-  assert.deepEqual(v.scale, ['40 % нормы', 'план на сегодня 73 333', 'норма 200 000']);
+  // решение 49: норма — уже в «из N» у крупного числа; план на сегодня — подписью у черты, без слова «черта»
+  // «Потрачено · 40 %» — у крупного числа (плашка «тратим быстрее плана» и «40 % нормы» в строку не помещались)
+  assert.deepEqual(v.scale, { pct: '40 %', plan: 'план на сегодня 73 333', aria: '40 % нормы, план на сегодня 73 333' });
+  assert.ok(!JSON.stringify(v.scale).includes('норма'));
   assert.deepEqual(v.stats, [
     { label: 'Осталось из нормы', value: '120 000', tone: '' },
     { label: 'Можно в день', value: '~6 000', tone: '' },
@@ -142,7 +145,7 @@ test('прошлый месяц — итог: без плана на сегод�
   assert.deepEqual(v.big, { label: 'Потрачено', value: '500 000', of: 'из 200 000', tone: 'bad' });
   assert.equal(v.bar.plan, null);
   assert.equal(v.bar.fill, 1);
-  assert.deepEqual(v.scale, ['250 % нормы', '', 'норма 200 000']);
+  assert.deepEqual(v.scale, { pct: '250 %', plan: '', aria: '250 % нормы' });
   assert.deepEqual(v.stats, [
     { label: 'Сверх нормы', value: '300 000', tone: 'bad' },
     { label: 'Регулярные', value: '90 000', tone: '' },           // решение 44: «Вне лимитов» больше нет
@@ -163,20 +166,21 @@ test('норма исчерпана в текущем месяце — «мож�
   assert.deepEqual(v.zone, { word: 'тратим отложенное', tone: 'warn' });
 });
 
-test('резерв: под лимитами — из чего он (свои + перевалы других) и чей перерасход покрыт', () => {
-  assert.equal(view(NOW).reserve, 'Резерв: свои 0 + перевалы других 2 000 — перерасход «питомцы» покрыт резервом.');
+test('резерв: под лимитами — из чего он (свои + перерасход других, решение 51) и чей перерасход покрыт', () => {
+  assert.equal(view(NOW).reserve, 'Резерв: свои 0 + перерасход других 2 000 — покрыл «питомцы».');
   const short = { ...NOW, limits: [...NOW.limits.slice(0, 3), { name: 'резерв', spent: 3000, limit: 3000, over: 0, eaten: 3000 },
     { name: 'одежда', spent: 15000, limit: 12000, over: 3000 }] };
   assert.equal(view(short).reserve,
-    'Резерв: свои 0 + перевалы других 3 000 — перерасход «питомцы», «одежда» покрыт резервом частично.');
+    'Резерв: свои 0 + перерасход других 3 000 — покрыл «питомцы», «одежда» частично.');
+  assert.ok(!JSON.stringify(view(short)).includes('перевал'));
   const calm = { ...NOW, limits: NOW.limits.filter((l) => !l.eaten && !l.over) };
   assert.equal(view(calm).reserve, '');
 });
 
-test('строка резерва открывает операции перевалов; шапка — чьи перевалы и сколько покрыто (Алексей 11.11.2026)', () => {
+test('строка резерва открывает операции перерасхода других; шапка — чей перерасход и сколько покрыто (решение 51)', () => {
   const res = view(NOW).limits.find((l) => l.name === 'резерв');
   assert.deepEqual(res.ops, { limit: 'резерв' });
-  assert.equal(res.note, 'перевалы «питомцы» · резерв покрыл 2\u00a0000');
+  assert.equal(res.note, 'перерасход «питомцы» · резерв покрыл 2\u00a0000');
   assert.equal(view(NOW).limits.find((l) => l.name === 'питомцы').note, undefined);
 });
 
@@ -211,7 +215,20 @@ test('под лимитами — «Весь бюджет месяца»: у о�
   assert.equal(view(OCT).budgetLabel, 'Весь бюджет на октябрь');
 });
 
-test('решение 46: выше плана на сегодня, но в норме — «быстрее плана», жёлтые плашка и полоска', () => {
-  const v = view({ ...NOW, spent: 126000, zone: { status: 'fast', word: 'быстрее плана' } });
-  assert.deepEqual(v.zone, { word: 'быстрее плана', tone: 'fast' });
+test('решение 46: выше плана на сегодня, но в норме — жёлтые плашка и полоска; слово — решения 50', () => {
+  const v = view({ ...NOW, spent: 126000, zone: { status: 'fast', word: 'тратим быстрее плана' } });
+  assert.deepEqual(v.zone, { word: 'тратим быстрее плана', tone: 'fast' });
+});
+
+test('решение 50: прежний сервер шлёт «быстрее плана» — на плашке «тратим быстрее плана»; новое слово — как есть', () => {
+  assert.equal(view({ ...NOW, zone: { status: 'fast', word: 'быстрее плана' } }).zone.word, 'тратим быстрее плана');
+  assert.equal(view({ ...NOW, zone: { status: 'fast', word: 'тратим быстрее плана' } }).zone.word, 'тратим быстрее плана');
+  assert.equal(view(NOW).zone.word, 'в норме');
+});
+
+test('решение 49: легенда цветов полосок — одной строкой у «Лимиты»; у итога месяца плана нет', () => {
+  assert.deepEqual(view(NOW).legend.map((l) => l.text), ['в плане', 'выше плана', 'сверх лимита']);
+  assert.deepEqual(view(NOW).legend.map((l) => l.color), ['var(--bar-green)',
+    'linear-gradient(90deg, var(--bar-yellow), var(--bar-orange))', 'var(--bad)']);
+  assert.deepEqual(view(OCT).legend.map((l) => l.text), ['в лимите', 'сверх лимита']);
 });

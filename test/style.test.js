@@ -202,3 +202,13 @@ test('подсказка в поле поиска — серый темы, а н
 test('подписи под списками переносятся без висячего слова в последней строке (детектор: «должны.» одно)', () => {
   assert.equal(decls('.note-text')['text-wrap'], 'pretty');
 });
+
+test('неактивная стрелка месяца видна, но тише активной (ревью: цвет линии на карточке не видно) — в обеих темах', () => {
+  for (const theme of ['light', 'dark']) {
+    const vars = THEMES[theme];
+    const card = color(resolve('var(--card)', vars));
+    const on = ratio(over(color(resolve(decls('.arrow').color, vars)), card), card);
+    const off = ratio(over(color(resolve(decls('.arrow:disabled').color, vars)), card), card);
+    assert.ok(off >= 1.8 && off < on, `${theme}: неактивная ${off.toFixed(2)}:1, активная ${on.toFixed(2)}:1`);
+  }
+});

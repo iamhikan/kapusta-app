@@ -21,7 +21,7 @@ let allLimits = false;
 let seq = 0;             // листают быстро — рисуем только ответ на последний запрос
 let stack = [{ kind: 'health' }];   // экраны: низ — вкладка, сверху — операции лимита, карточка
 let opsTab = null;                  // вкладка «Операции» помнит фильтры и прокрутку
-let catsTab = null;                 // вкладка «Категории» — период и «Шкала / Все траты»
+let catsTab = null;                 // вкладка «Категории» — период и «В лимитах / Все траты»
 const STORE = 'kapusta.period';     // localStorage — только период «Категорий» (спека, «Безопасность»)
 const cloud = tg && tg.CloudStorage;   // снимок «Здоровья» (этап 5): у каждого человека своё хранилище Telegram
 let snap = null;                       // показанный снимок: Мак молчит
@@ -82,11 +82,11 @@ const nav = {
     window.scrollTo(0, 0);
   },
   noteOf(ctx, m) {
-    // резерв: чьи перевалы и сколько покрыто — из «Здоровья» того же месяца
+    // резерв: чей перерасход и сколько покрыто — из «Здоровья» того же месяца
     if (!ctx.reserve) return '';
     const hh = cache.get(m);
     const l = hh && view(hh).limits.find((x) => x.name === ctx.params.limit);
-    return (l && l.note) || 'перевалы других лимитов';
+    return (l && l.note) || 'перерасход других лимитов';
   },
   savePeriod(p) {
     try { localStorage.setItem(STORE, JSON.stringify({ kind: p.kind, from: p.from, to: p.to })); } catch { /* приватный режим */ }
@@ -221,17 +221,19 @@ function banner(s) {
 
 function summary(v) {
   const pct = (x) => `${(x * 100).toFixed(1)}%`;
+  const at = v.bar.plan == null ? null : pct(Math.min(1, v.bar.plan));
   return h('section', { class: 'card pad stack' },
-    h('div', { class: 'row' }, h('span', { class: 'muted small' }, v.big.label),
+    // решение 49: доля нормы — у «Потрачено»; план на сегодня — подписью у черты; норма — только в «из N»
+    h('div', { class: 'row' }, h('span', { class: 'muted small' }, `${v.big.label} · ${v.scale.pct}`),
       h('span', { class: `chip ${v.zone.tone}` }, v.zone.word)),
     h('div', { class: 'big' }, h('span', { class: `big-num ${v.big.tone}` }, v.big.value),
       h('span', { class: 'muted' }, `${v.big.of} RSD`)),
-    h('div', { class: 'bar', role: 'img', 'aria-label': v.scale.filter(Boolean).join(', ') },
+    h('div', { class: 'bar', role: 'img', 'aria-label': v.scale.aria },
       h('span', { class: `fill ${v.zone.tone}`, style: { width: pct(v.bar.fill) } }),
-      v.bar.plan == null ? null : h('span', { class: 'plan-mark', style: { left: pct(Math.min(1, v.bar.plan)) } })),
-    // норма — уже в «из N» у крупного числа: под шкалой — доля нормы и черта плана
-    h('div', { class: 'scale muted small' }, h('span', {}, v.scale[0]),
-      h('span', {}, v.scale[1] ? `черта — ${v.scale[1]}` : '')),
+      at == null ? null : h('span', { class: 'plan-mark', style: { left: at } })),
+    // подпись сдвинута влево на ту же долю своей ширины: у начала месяца — от черты вправо, у конца — влево
+    v.scale.plan && at ? h('div', { class: 'plan-cap muted small', 'aria-hidden': 'true' },
+      h('span', { style: { left: at, transform: `translateX(-${at})` } }, v.scale.plan)) : null,
     h('div', { class: 'sep' }),
     h('div', { class: 'stats' }, ...v.stats.map((s) => h('div', {}, h('div', { class: 'muted small' }, s.label),
       h('div', { class: `stat ${s.tone}` }, s.value)))));
@@ -289,13 +291,13 @@ function limits(v, data) {
     allLimits ? 'Свернуть' : `Показать все ${v.limits.length}`, icon(allLimits ? ICONS.up : ICONS.down, 16))
     : null;
   return [
-    h('div', { class: 'section-head' }, h('h2', {}, 'Лимиты')),
+    // решение 49: легенда цветов полосок — одной строкой у заголовка, а не абзацем под списком
+    h('div', { class: 'section-head' }, h('h2', {}, 'Лимиты'),
+      h('span', { class: 'legend muted small' }, ...v.legend.map((l) => h('span', { class: 'legend-item' },
+        h('span', { class: 'swatch-bar', style: { background: l.color } }), l.text)))),
     h('section', { class: 'card list' }, ...shown.map((l) => limitRow(l, { plan: data.closed ? null : v.plan,
       open: () => opsOf(l.name, l.ops, data, !!l.note) })), more),
     v.reserve ? h('p', { class: 'note-text muted small' }, v.reserve) : null,
-    h('p', { class: 'note-text muted small' }, data.closed
-      ? 'Итог месяца: без плана на сегодня и без прогноза. «+N» — сверх лимита.'
-      : 'Черта — план на сегодня. Зелёный — в плане, от жёлтого к оранжевому — выше плана, красный и «+N» — сверх лимита.'),
     budgetLinks(v, data),
   ];
 }

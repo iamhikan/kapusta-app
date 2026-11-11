@@ -10,6 +10,13 @@ const SYMBOL = { EUR: '€', RUB: '₽' };
 const FOR_MONTH = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь',
   'ноябрь', 'декабрь'];
 const ZONE = { ok: 'good', fast: 'fast', savings: 'warn', over: 'bad' };   // fast — выше плана на сегодня (решение 46)
+// решение 50: «тратим быстрее плана» шлёт сервер; прежний сервер (и снимок до p14a) — «быстрее плана»
+const OLD_WORD = { 'быстрее плана': 'тратим быстрее плана' };
+// решение 49: легенда цветов полосок — одной строкой у «Лимиты»; цвета — те же, что у limitColor
+const LEGEND = [{ text: 'в плане', color: 'var(--bar-green)' },
+  { text: 'выше плана', color: 'linear-gradient(90deg, var(--bar-yellow), var(--bar-orange))' },
+  { text: 'сверх лимита', color: 'var(--bad)' }];
+const LEGEND_CLOSED = [{ text: 'в лимите', color: 'var(--bar-green)' }, { text: 'сверх лимита', color: 'var(--bad)' }];
 export const TOP = 6;   // лимитов сразу; остальные — по «Все N»
 // группы остатков (решение 48), порядок показа; прежний сервер без group — одна группа без заголовка
 const GROUPS = [['cash', 'Наличные'], ['cards', 'Карты и счета'], ['business', 'Бизнес'], ['debts', 'Долги']];
@@ -67,13 +74,13 @@ function limitState(share, plan, closed) {
 }
 
 function reserveNote(limits) {
-  // резерв сжимается на перевалы других лимитов (fin budget): из чего он и чей перерасход покрыт
+  // резерв сжимается на перерасход других лимитов (fin budget): из чего он и чей перерасход покрыл (решения 28, 51)
   const res = limits.find((l) => l.eaten);
   if (!res) return '';
   const over = limits.filter((l) => l.over > 0 && l !== res);
   const sum = over.reduce((s, l) => s + l.over, 0);
-  return `Резерв: свои ${fmt(res.spent - res.eaten)} + перевалы других ${fmt(res.eaten)} — перерасход `
-    + `${over.map((l) => `«${l.name}»`).join(', ')} покрыт резервом${sum > res.eaten ? ' частично' : ''}.`;
+  return `Резерв: свои ${fmt(res.spent - res.eaten)} + перерасход других ${fmt(res.eaten)} — покрыл `
+    + `${over.map((l) => `«${l.name}»`).join(', ')}${sum > res.eaten ? ' частично' : ''}.`;
 }
 
 function curveNote(h) {
@@ -90,6 +97,14 @@ function curveNote(h) {
   if (h.spent > h.norm) return { text: `сверх нормы на ${fmt(h.spent - h.norm)}`, tone: 'bad' };
   if (h.forecast > h.norm) return { text: `прогноз ${fmt(h.forecast)} · выше нормы на ${fmt(h.forecast - h.norm)}`, tone: 'warn' };
   return { text: `прогноз ${fmt(h.forecast)} · в пределах нормы`, tone: 'good' };
+}
+
+function scaleOf(h) {
+  // решение 49: под полоской — доля нормы; план на сегодня — подписью у черты. Норма — уже в «из N» у крупного числа
+  // доля — у «Потрачено» коротко («Потрачено · 50 %»): рядом плашка, «из N» — строкой ниже
+  const pct = `${Math.round((h.spent / h.norm) * 100)} %`;
+  const plan = h.closed || !h.norm ? '' : `план на сегодня ${fmt(h.plan_today)}`;
+  return { pct, plan, aria: [`${pct} нормы`, plan].filter(Boolean).join(', ') };
 }
 
 export function view(h) {
@@ -115,12 +130,11 @@ export function view(h) {
   return {
     title: `${MONTHS[m - 1]} ${y}`,
     sub: h.closed ? 'итог месяца' : `на ${h.day} ${OF_MONTH[m - 1]}, день ${h.day} из ${h.days}`,
-    zone: { word: h.zone.word, tone: ZONE[h.zone.status] },
+    zone: { word: OLD_WORD[h.zone.word] || h.zone.word, tone: ZONE[h.zone.status] },
     big: { label: 'Потрачено', value: fmt(h.spent), of: `из ${fmt(h.norm)}`, tone: over ? 'bad' : '' },
     bar: { fill: h.norm > 0 ? Math.max(0, Math.min(1, h.spent / h.norm)) : 1,
       plan: h.closed || !h.norm ? null : h.plan_today / h.norm },
-    scale: [`${Math.round((h.spent / h.norm) * 100)} % нормы`, h.closed ? '' : `план на сегодня ${fmt(h.plan_today)}`,
-      `норма ${fmt(h.norm)}`],
+    scale: scaleOf(h),
     stats: [left, first, second],
     curve: { note: curveNote(h), chart: h.curve.length > 0 },
     plan,
@@ -128,12 +142,13 @@ export function view(h) {
       const share = l.limit ? l.spent / l.limit : 0;
       const row = { name: l.name, ops: { limit: l.name }, spent: fmt(l.spent), limit: fmt(l.limit), over: l.over ? `+${fmt(l.over)}` : '',
         fill: Math.max(0, Math.min(1, share)), color: limitColor(share, plan), state: limitState(share, plan, h.closed) };
-      // резерв: своих трат нет — операции перевалов других лимитов, в шапке — чьи и сколько покрыто
-      if (l.eaten) row.note = `перевалы ${h.limits.filter((x) => x.over > 0 && x !== l).map((x) => `«${x.name}»`).join(', ')}`
+      // резерв: операции перерасхода других лимитов, в шапке — чей перерасход и сколько покрыто (решение 51)
+      if (l.eaten) row.note = `перерасход ${h.limits.filter((x) => x.over > 0 && x !== l).map((x) => `«${x.name}»`).join(', ')}`
         + ` · резерв покрыл ${fmt(l.eaten)}`;
       return row;
     }),
     limitsShown: Math.min(TOP, h.limits.length),
+    legend: h.closed ? LEGEND_CLOSED : LEGEND,
     reserve: reserveNote(h.limits),
     // решение 40: скрытые лимиты (show: hot) — отдельной кнопкой; дошли до порога — уже в общем списке (сервер)
     hidden: h.hidden && h.hidden.length ? { label: `Скрытые лимиты · ${h.hidden.length}`,

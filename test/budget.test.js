@@ -58,8 +58,9 @@ test('лимиты месяца: сумма, евро, скрытые и вне 
 test('деньги на месяц (Алексею): есть, нужно, перевести с ПР; хватает — «сверху N»', () => {
   const p = budgetView(ALEKSEY).plan;
   assert.equal(p.title, 'Деньги на ноябрь');
-  assert.equal(p.have, sp('На счетах и в нале: 300 000 RSD'));
-  assert.equal(p.haveSub, sp('280 000 RSD · 170 €'));
+  // ревью: «1 752 566» и ниже «175 362 RSD» читались как опечатка — итог «≈», под ним слагаемые через «+»
+  assert.equal(p.have, sp('На счетах и в нале ≈ 300 000 RSD'));
+  assert.equal(p.haveSub, sp('280 000 RSD + 170 € по курсу НБС'));
   assert.equal(p.need, sp('Нужно на месяц: 420 000 RSD'));
   assert.deepEqual(p.parts, [sp('траты в лимитах (норма) 240 000'), sp('жильё 180 000')]);
   assert.deepEqual(p.verdict, { text: sp('Перевести себе с ПР: 120 000 RSD (≈ 1025 €)'), tone: 'warn' });
@@ -78,4 +79,19 @@ test('Ангелине: без дохода, ПР, «отложить», нор�
   assert.equal(v.free, null);
   assert.equal(v.sub, 'обязательные траты и лимиты месяца');
   assert.equal(budgetView(ALEKSEY).sub, 'куда идёт доход');
+});
+
+test('коммуналка: в «Обязательных» — средняя с долей ПР, в «Деньгах на месяц» — без неё (сервер: full); обе подписаны', () => {
+  const b = { ...ALEKSEY,
+    groups: [{ name: 'Обязательные', rsd: 99341, avg_months: null, rows: [{ name: 'жильё', rsd: 90000, note: '(770 €)' },
+      { name: 'коммуналка', rsd: 9341, note: '(в ср. с 05.2026)' }] }],
+    plan: { ...ALEKSEY.plan, parts: [{ name: 'жильё', rsd: 90000 }, { name: 'коммуналка', rsd: 8427, full: 9341 }] } };
+  const v = budgetView(b);
+  assert.deepEqual(v.groups[0].rows[1], { name: 'коммуналка', sum: '9 341', note: 'в ср. с 05.2026 · с долей ПР' });
+  assert.deepEqual(v.plan.parts, ['жильё 90 000', 'коммуналка без доли ПР 8 427']);
+  assert.equal(v.groups[0].rows[0].note, '770 €');               // жильё одно и то же — без пометки
+  const angelina = budgetView({ ...b, plan: null });
+  assert.equal(angelina.groups[0].rows[1].note, 'в ср. с 05.2026');   // плана нет — сравнивать не с чем
+  const old = budgetView({ ...b, plan: { ...b.plan, parts: [{ name: 'коммуналка', rsd: 8427 }] } });   // прежний сервер
+  assert.deepEqual([old.groups[0].rows[1].note, old.plan.parts[0]], ['в ср. с 05.2026', sp('коммуналка 8 427')]);
 });

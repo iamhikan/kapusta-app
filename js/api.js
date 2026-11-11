@@ -11,6 +11,18 @@ export function apiBase(search) {
   return TS_NET.test(base) ? base : null;
 }
 
+// Слова приложения (решение 51; Алексей 11–12.11): сервер и ответы бота говорят по-своему (names.py не трогаем),
+// страница подменяет только целое значение — описание, которое написал человек, не меняется
+const WORDS = { неразобранное: 'без категории', 'Raiffeisen Ангелина': 'Райффайзен Ангелины',
+  'Opening-Balances': 'начальный остаток' };
+
+export function words(x) {
+  if (typeof x === 'string') return Object.hasOwn(WORDS, x) ? WORDS[x] : x;
+  if (Array.isArray(x)) return x.map(words);
+  if (x && typeof x === 'object') return Object.fromEntries(Object.entries(x).map(([k, v]) => [k, words(v)]));
+  return x;
+}
+
 export const TIMEOUT = 8000;   // решение 31: Мак спит — запрос не висит, через 8 с снимок или «не отвечает»
 
 export async function get(path, { base, initData, fetch = globalThis.fetch, timeout = TIMEOUT }) {
@@ -30,7 +42,7 @@ export async function get(path, { base, initData, fetch = globalThis.fetch, time
   if (r.status === 401) return { error: 'stale' };
   if (r.status === 403) return { error: 'stranger' };
   if (!r.ok) return { error: 'down', detail: `HTTP ${r.status} · ${host}` };
-  return { data: await r.json() };
+  return { data: words(await r.json()) };
 }
 
 export async function post(path, body, { base, initData, fetch = globalThis.fetch, timeout = TIMEOUT }) {
@@ -48,10 +60,10 @@ export async function post(path, body, { base, initData, fetch = globalThis.fetc
   }
   if (r.status === 401) return { error: 'stale' };
   if (r.status === 403) return { error: 'stranger' };
-  if (r.status === 409) return { error: 'conflict', data: await r.json() };
+  if (r.status === 409) return { error: 'conflict', data: words(await r.json()) };
   if (r.status === 400 || r.status === 404) return { error: 'refused', detail: (await r.json()).error };
   if (!r.ok) return { error: 'down', detail: `HTTP ${r.status}` };
-  return { data: await r.json() };
+  return { data: words(await r.json()) };
 }
 
 const SCREENS = {

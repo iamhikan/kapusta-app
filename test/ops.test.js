@@ -33,12 +33,12 @@ const LIDL = { ref: 'sms:1', date: '2026-11-10', where: 'Lidl', what: 'чек', 
   cats: ['супермаркеты', 'алкоголь'], src: 'Freedom', amount: { number: 1500.5, currency: 'RSD' }, rsd: 1500.5,
   receipt: true, flag: false, by: 'Алексей' };
 
-test('трата: где, метки, категории и откуда; сумма в RSD', () => {
+test('трата: где, метки, категории и откуда; сумма — с RSD (ревью: без валюты не понять)', () => {
   const r = opRow(LIDL);
   assert.equal(r.where, 'Lidl');
   assert.deepEqual(r.marks, ['чек']);
   assert.equal(r.sub, 'супермаркеты, алкоголь · Freedom');
-  assert.equal(r.amount, sp('1 500,50'));
+  assert.equal(r.amount, sp('1 500,50 RSD'));
   assert.equal(r.amountSub, '');
   assert.equal(r.gray, false);
   assert.equal(r.ref, 'sms:1');
@@ -54,7 +54,7 @@ test('трата в валюте — валюта операции и RSD; «!»
 
 test('доля в категории — «из» всей операции (решение 23); найденная позиция чека — подписью', () => {
   const r = opRow({ ...LIDL, rsd: 400, total: 1500.5, hit: 'сыр твёрдый: SIR — 300' });
-  assert.equal(r.amount, '400');
+  assert.equal(r.amount, '400 RSD');
   assert.equal(r.amountSub, sp('из 1 500,50'));
   assert.equal(r.note, 'сыр твёрдый: SIR — 300');
 });
@@ -75,7 +75,24 @@ test('перелив — серым: откуда → куда', () => {
     legs: [{ name: 'нал Алексея', number: -1000, currency: 'RSD' }, { name: 'нал Ангелины', number: 1000, currency: 'RSD' }] });
   assert.equal(r.gray, true);
   assert.equal(r.sub, 'нал Алексея → нал Ангелины');
-  assert.equal(r.amount, sp('1 000'));
+  assert.equal(r.amount, sp('1 000 RSD'));
+});
+
+test('приход на счёт без «откуда» (начальный остаток) — «на счёт», сумма по НБС, а не «Freedom → Freedom 0,01 $»', () => {
+  const r = opRow({ ref: 'add:o', date: '2026-11-11', where: 'Freedom', what: 'остаток', kind: 'transfer', cats: [],
+    src: 'Freedom', rsd: 10814.4, receipt: false, flag: false,
+    legs: [{ name: 'Freedom', number: 0.01, currency: 'USD' }, { name: 'Freedom', number: 48.58, currency: 'EUR' },
+      { name: 'Freedom', number: 5098.86, currency: 'RSD' }] });
+  assert.equal(r.gray, true);
+  assert.equal(r.sub, 'на Freedom');
+  assert.equal(r.amount, sp('10 814,40 RSD'));
+  assert.equal(r.amountSub, '');
+});
+
+test('доход — плюсом и с валютой', () => {
+  const r = opRow({ ref: 'add:i', date: '2026-11-05', where: 'Клиент', what: 'маникюр', kind: 'income', cats: [],
+    src: 'счёт салона', amount: { number: 3000, currency: 'RSD' }, rsd: 3000, receipt: false, flag: false });
+  assert.equal(r.amount, sp('+3 000 RSD'));
 });
 
 test('обмен — отдали и получили, курс сделки и НБС, выигрыш или потеря к НБС (решение 10)', () => {
@@ -128,7 +145,8 @@ test('карточка: проводки, кто и когда, позиции �
   assert.equal(c.receipt.items[0].sub, 'алкоголь');
   assert.equal(c.receipt.url, 'https://suf.purs.gov.rs/v/?vl=X');
   assert.deepEqual(c.similar[0], { ref: 'sms:0', label: '3 ноября, вт', value: '900' });
-  assert.equal(c.refs, 'sms:1 · rcpt:9');
+  assert.equal(c.refs, undefined);                              // решение 51: ref в карточке не показываем
+  assert.equal(c.row.amount, sp('1 500,50 RSD'));
 });
 
 test('пустой месяц: «в ноябре трат … нет» (холст 6.3)', () => {

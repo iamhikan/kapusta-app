@@ -51,6 +51,16 @@ function days(entry) {
   return out;
 }
 
+// «1 500,50 RSD»: число и тихое «RSD» (ревью: у суммы нужна валюта, но не громче числа); прочие валюты — как есть
+export function splitSum(text) {
+  const m = /^(.*) RSD$/.exec(text || '');
+  return m ? [m[1], 'RSD'] : [text, ''];
+}
+function sum(text, cls = '') {
+  const [num, unit] = splitSum(text);
+  return h('span', { class: cls }, num, unit ? [' ', h('span', { class: 'unit' }, unit)] : null);
+}
+
 function opLine(r, nav, opts = {}) {
   const inner = [
     h('span', { class: 'grow' },
@@ -58,7 +68,7 @@ function opLine(r, nav, opts = {}) {
         ...r.marks.map((m) => h('span', { class: `mark${m === '!' ? ' bad' : m === 'секрет' ? ' secret' : ''}` }, m))),
       r.sub ? h('span', { class: 'op-sub muted small' }, r.sub) : null,
       r.note ? h('span', { class: `op-note small ${r.noteTone}` }, r.note) : null),
-    h('span', { class: 'op-amount' }, h('span', { class: r.income ? 'good' : '' }, r.amount),
+    h('span', { class: 'op-amount' }, sum(r.amount, r.income ? 'good' : ''),
       r.amountSub ? h('span', { class: 'muted small' }, r.amountSub) : null),
   ];
   const cls = `op${r.gray ? ' gray' : ''}${opts.nested ? ' nested' : ''}`;
@@ -127,7 +137,9 @@ function toolbar(entry, nav) {
         clearTimeout(entry.timer);
         entry.timer = setTimeout(() => { f.q = entry.typed; loadOps(entry, nav); }, 350);
       } } }));
-  return h('div', { class: 'toolbar' }, search,
+  // «Фильтры» — в строке поиска: месяц, «Фильтры» и «Переводы» в один ряд не помещались (ревью, 403 px из 358)
+  return h('div', { class: 'toolbar' }, h('div', { class: 'search-row' }, search,
+    chip('Фильтры', false, () => { entry.sheet = true; nav.render(); }, ICONS.filter)),
     h('div', { class: 'chips wrap' },
       h('span', { class: 'chip-month' },
         h('button', { type: 'button', class: 'arrow small-arrow', 'aria-label': 'Прошлый месяц',
@@ -136,7 +148,6 @@ function toolbar(entry, nav) {
         h('button', { type: 'button', class: 'arrow small-arrow', 'aria-label': 'Следующий месяц',
           disabled: entry.month >= nav.today().slice(0, 7),
           on: { click: () => { tap(); entry.month = shiftMonth(entry.month, 1); loadOps(entry, nav); } } }, icon(ICONS.right, 16))),
-      chip('Фильтры', false, () => { entry.sheet = true; nav.render(); }, ICONS.filter),
       chip('Переводы', f.transfers, () => { f.transfers = !f.transfers; loadOps(entry, nav); }, ICONS.transfer),
       ...active));
 }
@@ -324,6 +335,7 @@ export function cardScreen(entry, nav) {
   }
   const c = cardView(entry.data);
   const r = c.row;
+  const [bigNum, bigUnit] = splitSum(r.amount);
   const line = (name, value, sub) => h('div', { class: 'line' },
     h('span', { class: 'grow' }, h('span', {}, name), sub ? h('span', { class: 'muted small' }, sub) : null),
     h('span', { class: 'nowrap' }, value));
@@ -348,12 +360,12 @@ export function cardScreen(entry, nav) {
       h('div', { class: 'op-where' }, h('h1', { class: 'card-title' }, c.title),
         ...r.marks.map((m) => h('span', { class: `mark${m === '!' ? ' bad' : m === 'секрет' ? ' secret' : ''}` }, m))),
       c.what ? h('p', { class: 'muted' }, c.what) : null,
-      h('div', { class: 'big' }, h('span', { class: `big-num${r.gray ? ' muted' : ''}` }, r.amount),
-        r.amountSub ? h('span', { class: 'muted' }, r.amountSub) : null),
+      h('div', { class: 'big' }, h('span', { class: `big-num${r.gray ? ' muted' : ''}` }, bigNum),
+        bigUnit ? h('span', { class: 'muted' }, bigUnit) : null, r.amountSub ? h('span', { class: 'muted' }, r.amountSub) : null),
       r.note ? h('div', { class: `small ${r.noteTone}` }, r.note) : null,
       h('div', { class: 'muted small' }, `${r.sub ? `${r.sub} · ` : ''}${c.when} · ${c.by}`)),
     entry.data.kind === 'spend' ? categoryRow(entry, nav) : null,
-    h('div', { class: 'section-head' }, h('h2', {}, 'Проводки')),
+    h('div', { class: 'section-head' }, h('h2', {}, 'Откуда и куда')),   // решение 51: было «Проводки»
     h('section', { class: 'card list' }, ...c.postings.map((p) => line(p.name, p.value))),
     c.receipt ? [h('div', { class: 'section-head' }, h('h2', {}, `Чек · ${c.receipt.shop}`),
       h('span', { class: 'muted small' }, canItems ? 'тап — цена и категория позиции' : 'тап — история цены')),
@@ -366,6 +378,5 @@ export function cardScreen(entry, nav) {
       h('section', { class: 'card list' }, ...c.similar.map((s) => h('button', { type: 'button', class: 'line op',
         on: { click: () => { tap(); nav.push({ kind: 'card', ref: s.ref }); } } }, h('span', {}, s.label),
       h('span', {}, s.value))))] : null,
-    c.refs ? h('p', { class: 'fresh muted small' }, c.refs) : null,
     entry.picker ? pickerSheet(entry, nav) : null);
 }

@@ -54,7 +54,7 @@ export function daysView(b, mode) {
   }
   return {
     title: `Траты по дням · ${monthTitle(b.month)}`,
-    sub: `1–${last} ${OF_MONTH[m - 1]} · ${plan ? 'к плану на день' : b.scope === 'scale' ? 'шкала градусника' : 'все траты'}`,
+    sub: `1–${last} ${OF_MONTH[m - 1]} · ${plan ? 'к плану на день' : b.scope === 'scale' ? 'в лимитах' : 'все траты'}`,
     cells,
     legend: plan ? [{ text: 'в плане', tone: 'good' }, { text: 'выше', tone: 'warn' }, { text: 'вдвое выше', tone: 'bad' }]
       : [{ text: 'до 4 тыс.', level: 1 }, { text: 'до 8', level: 2 }, { text: 'до 15', level: 3 }, { text: 'больше 15 тыс.', level: 4 }],

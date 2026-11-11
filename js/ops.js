@@ -16,7 +16,7 @@ const KEYS = ['from', 'to', 'limit', 'cat', 'q', 'transfers', 'account', 'who', 
 // фильтры (холст «Операции» → «Фильтры»): значение — параметр /api/tx. Кошелёк или счёт — счета зрителя из остатков
 // «Здоровья» (решение 38); «Здоровье» ещё не грузилось — прежний список
 const ACCOUNTS = [['карта ALTA', 'Assets:Family:ALTA'], ['нал Алексея', 'Assets:Family:Cash:Aleksey'],
-  ['нал Ангелины', 'Assets:Family:Cash:Angelina'], ['Raiffeisen Ангелина', 'Assets:Family:Raiffeisen:RSD'],
+  ['нал Ангелины', 'Assets:Family:Cash:Angelina'], ['Райффайзен Ангелины', 'Assets:Family:Raiffeisen:RSD'],
   ['счёт салона', 'Assets:Angelina:PR:Bank']];
 
 export function filters(accounts = []) {
@@ -98,20 +98,23 @@ export function opRow(op, { inCategory = false, account = '' } = {}) {
   if (op.kind === 'transfer') {
     const from = op.legs.filter((l) => l.number < 0).map((l) => l.name);
     const to = op.legs.filter((l) => l.number > 0);
+    const into = [...new Set(to.map((l) => l.name))].join(', ');
+    // приход без «откуда» (начальный остаток, поправка): весь приход по курсу НБС, а не первая из валют (ревью)
+    if (!from.length) return { ...base, gray: true, sub: into ? `на ${into}` : '', amount: full(op.rsd, 'RSD'), amountSub: '' };
     const main = to[0] || { number: op.rsd, currency: 'RSD' };
-    return { ...base, gray: true, sub: [...new Set(from)].join(', ') + (to.length ? ` → ${[...new Set(to.map((l) => l.name))].join(', ')}` : ''),
-      amount: cur(main.number, main.currency), amountSub: '' };
+    return { ...base, gray: true, sub: [...new Set(from)].join(', ') + (to.length ? ` → ${into}` : ''),
+      amount: full(main.number, main.currency), amountSub: '' };
   }
   // операции счёта (решение 48): счёт — в шапке, под строкой его не повторяем
   const own = account && op.account && op.account.startsWith(account);
   const sub = [inCategory ? '' : op.cats.join(', '), own ? '' : op.src].filter(Boolean).join(' · ');
   if (op.kind === 'income') {
-    return { ...base, sub, amount: `+${cur(op.amount.number, op.amount.currency)}`, noteTone: 'good',
+    return { ...base, sub, amount: `+${full(op.amount.number, op.amount.currency)}`, noteTone: 'good',
       amountSub: op.amount.currency !== 'RSD' ? `${money(op.rsd)} RSD` : '', income: true };
   }
   const foreign = op.amount && op.amount.currency !== 'RSD' && op.total == null;
   return { ...base, sub, gray: op.kind === 'other',
-    amount: foreign ? cur(op.amount.number, op.amount.currency) : money(op.rsd),
+    amount: foreign ? cur(op.amount.number, op.amount.currency) : full(op.rsd, 'RSD'),   // RSD — у каждой суммы (ревью)
     amountSub: op.total != null ? `из ${money(op.total)}` : foreign ? `${money(op.rsd)} RSD` : '' };
 }
 
@@ -152,6 +155,5 @@ export function cardView(c) {
         value: money(it.total), sub: [it.kind, it.cat].filter(Boolean).join(' · ') })),
     },
     similar: (c.similar || []).map((s) => ({ ref: s.ref, label: dayLabel(s.date), value: money(s.rsd) })),
-    refs: (c.refs || []).join(' · '),
-  };
+  };   // ref в карточке не показываем (решение 51): он для бота, человеку ничего не говорит
 }

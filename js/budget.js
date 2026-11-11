@@ -1,6 +1,6 @@
 // «Бюджет» (этап 7) — продолжение «Все лимиты» на «Здоровье»: ответ /api/budget -> что видит человек. Куда идёт доход
 // (fin limits) и деньги на месяц (fin plan) — только Алексею: Ангелине сервер их не шлёт (решение 11).
-import { amounts, fmt } from './health.js';
+import { amountLines, fmt } from './health.js';
 import { monthTitle } from './ops.js';
 
 const FOR_MONTH = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь',
@@ -22,13 +22,18 @@ export function budgetView(b) {
       color: color || '#5ac8fa' }));
   }
   const lim = b.limits;
+  // коммуналка: в «Обязательных» — средняя вместе с долей ПР, в «Деньгах на месяц» — доля семьи (ревью: 9 341 и
+  // 8 427 без подписи). Часть плана с full — доля семьи; прежний сервер full не шлёт — без подписей
+  const shared = new Set(b.plan ? b.plan.parts.filter((x) => x.full != null).map((x) => x.name) : []);
+  const prShare = (r) => shared.has(r.name);
   return {
     title: `Бюджет · ${monthTitle(b.month)}`,
     sub: b.income ? 'куда идёт доход' : 'обязательные траты и лимиты месяца',
     income,
     alloc,
     groups: b.groups.map((g) => ({ name: g.name, sum: fmt(g.rsd), sub: g.avg_months ? `в среднем за ${g.avg_months} мес.` : '',
-      rows: g.rows.map((r) => ({ name: r.name, sum: fmt(r.rsd), note: strip(r.note) })) })),
+      rows: g.rows.map((r) => ({ name: r.name, sum: fmt(r.rsd),
+        note: [strip(r.note), prShare(r) ? 'с долей ПР' : ''].filter(Boolean).join(' · ') })) })),
     savings: b.savings ? { name: 'Отложить', sum: fmt(b.savings.rsd), note: b.savings.set || '' } : null,
     norm: b.norm == null ? null : { name: 'На переменные траты (норма)', sum: fmt(b.norm) },
     limits: {
@@ -46,12 +51,14 @@ export function budgetView(b) {
 
 function planView(p, word) {
   const have = Object.fromEntries(Object.entries(p.have).filter(([, v]) => v));   // динары первыми, как в остатках
+  const label = (x) => (x.full != null ? `${x.name} без доли ПР` : x.name);
   return {
     title: `Деньги на ${word}`,
-    have: `На счетах и в нале: ${fmt(p.have_rsd)} RSD`,
-    haveSub: amounts(have),
+    // итог «≈» по курсу НБС, под ним слагаемые через «+»: «1 752 566» над «175 362 RSD» читалось как опечатка (ревью)
+    have: `На счетах и в нале ≈ ${fmt(p.have_rsd)} RSD`,
+    haveSub: `${amountLines(have).join(' + ')} по курсу НБС`,
     need: `Нужно на месяц: ${fmt(p.need)} RSD`,
-    parts: p.parts.map((x) => `${x.name} ${fmt(x.rsd)}`),
+    parts: p.parts.map((x) => `${label(x)} ${fmt(x.rsd)}`),
     verdict: p.transfer
       ? { text: `Перевести себе с ПР: ${fmt(p.transfer)} RSD${p.transfer_eur ? ` (≈ ${p.transfer_eur})` : ''}`, tone: 'warn' }
       : { text: `Переводить с ПР не нужно: хватает, сверху ${fmt(p.spare)} RSD`, tone: 'good' },

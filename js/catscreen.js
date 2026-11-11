@@ -1,4 +1,4 @@
-// Экран «Категории» (DOM): период, кольцо 7 + «прочее», список, «Шкала градусника / Все траты», столбцы по месяцам;
+// Экран «Категории» (DOM): период, кольцо 7 + «прочее», список, «В лимитах / Все траты», столбцы по месяцам;
 // тап — подкатегории, затем операции категории за период. Данные — только из /api/categories и /api/series, в памяти.
 import { h, icon, tap, ICONS } from './dom.js';
 import { barsView, BARS, catsView, R } from './cats.js';
@@ -65,7 +65,7 @@ function scopeSwitch(entry, nav) {
       tap(); entry.scope = value; loadCats(entry, nav);
     } } }, label);
   return h('div', { class: 'segmented', role: 'radiogroup', 'aria-label': 'Что считать' },
-    opt('scale', 'Шкала градусника'), opt('all', 'Все траты'));
+    opt('scale', 'В лимитах'), opt('all', 'Все траты'));   // решение 51: было «Шкала градусника»
 }
 
 function donut(v) {
@@ -98,7 +98,7 @@ function list(entry, nav, v) {
       on: { click: () => open(r) } },
     h('span', { class: 'cat-name' }, h('span', { class: 'dot', style: { background: r.color } }),
       h('span', { class: 'grow' }, h('span', { class: 'ellipsis' }, r.name),
-        r.limit ? h('span', { class: 'muted small ellipsis' }, r.limit) : null)),
+        r.limit ? h('span', { class: 'muted small limit-of' }, r.limit) : null)),   // «лимит «дом и хозяйство»» переносится
     h('span', { class: 'num' }, r.sum), h('span', { class: 'num muted small' }, r.share),
     h('span', { class: `num small ${r.deltaTone}` }, r.delta))));
 }

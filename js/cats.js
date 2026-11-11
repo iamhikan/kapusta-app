@@ -11,7 +11,7 @@ const COLORS = {
   'Expenses:Family:Restaurants': '#e05a8a', 'Expenses:Family:Clothes': '#5e60ce', 'Expenses:Family:Rent': '#8d6e63',
   'Expenses:Family:CashSpent': '#607d8b', 'Expenses:Family:Outings': '#00a6c8', 'Expenses:Family:Delivery': '#c0392b',
   'Expenses:Family:Pharmacy': '#7cb342', 'Expenses:Family:Education': '#ad1457', 'Expenses:Family:FX': '#a1887f',
-  'Expenses:Family:Entertainment': '#f4511e', 'Expenses:Family:Beauty': '#ec407a', 'Expenses:Family:Transport': '#00897b',
+  'Expenses:Family:Entertainment': '#f4511e', 'Expenses:Family:Beauty': '#ec407a', 'Expenses:Family:Transport': '#827717',
   'Expenses:Family:Car': '#455a64', 'Expenses:Family:Home': '#6d4c41', 'Expenses:Family:Electronics': '#3949ab',
   'Expenses:Family:Sport': '#43a047', 'Expenses:Family:Subscriptions': '#8e24aa', 'Expenses:Family:Utilities': '#795548',
   'Expenses:Angelina:PR': '#c2185b', 'Expenses:Family:Other': OTHER,
@@ -36,9 +36,11 @@ const signed = (n) => (Math.round(n) > 0 ? `+${fmt(n)}` : fmt(n));
 const tone = (n) => (Math.round(n) > 0 ? 'warn' : Math.round(n) < 0 ? 'good' : '');   // больше трат — оранжевый
 const short = (iso) => `${iso.slice(8)}.${iso.slice(5, 7)}`.replace(/^0/, '');
 
-function limitText(l) {
-  // свой лимит — в строке; общий (рестораны в «еда вне дома») — в шапке подкатегорий: в строку не помещается
-  return l && l.own ? `лимит ${fmt(l.limit)}` : '';
+function limitText(l, name) {
+  // свой лимит (и общий с тем же именем: «транспорт» с машиной) — «лимит N»; общий под другим именем — чей он
+  // (Алексей 12.11: «хозяйство» на «Категориях» и «дом и хозяйство» на «Здоровье» — одна сумма, разные имена)
+  if (!l) return '';
+  return l.own || l.name === name ? `лимит ${fmt(l.limit)}` : `лимит «${l.name}»`;
 }
 
 function head(body) {
@@ -59,7 +61,7 @@ export function catsView(body) {
     key: c.key, name: c.name, sum: fmt(c.rsd), share: `${Math.round(c.share * 100)} %`,
     delta: c.prev == null ? '' : signed(c.rsd - c.prev), deltaTone: c.prev == null ? '' : tone(c.rsd - c.prev),
     color: sub ? `color-mix(in srgb, ${base} ${SHADES[Math.min(i, SHADES.length - 1)]}%, var(--track))` : colorOf(c.key),
-    limit: sub ? '' : limitText(c.limit), exact: !!c.exact,
+    limit: sub ? '' : limitText(c.limit, c.name), exact: !!c.exact,
   }));
   // кольцо: 7 самых больших и «прочее»; минусовые (возвраты больше трат) — только в списке
   const plus = body.cats.map((c, i) => ({ ...c, color: rows[i].color })).filter((c) => c.rsd > 0);
@@ -110,7 +112,7 @@ export function barsView(s) {
   const norm = pts.some((p) => p.norm != null);
   return {
     bars,
-    note: `${s.scope === 'scale' ? 'шкала градусника' : 'все траты'}, тыс. RSD${norm ? ' · черта — норма' : ''}`,
+    note: `${s.scope === 'scale' ? 'в лимитах' : 'все траты'}, тыс. RSD${norm ? ' · черта — норма' : ''}`,
     aria: `Траты по месяцам, тысяч RSD: ${pts.map((p, i) => `${NAMES[Number(p.from.slice(5, 7)) - 1]} ${bars[i].v}`
       + (p.partial ? ' на сегодня' : '')).join(', ')}`,
   };

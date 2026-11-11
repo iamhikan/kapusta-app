@@ -24,7 +24,7 @@ test('календарь: недели с понедельника, пустые
   assert.equal(sixth.date, null);
   assert.equal(v.title, 'Траты по дням · Ноябрь 2026');
   assert.equal(v.sub, '1–5 ноября · все траты');
-  assert.equal(daysView({ ...NOV, scope: 'scale' }, 'sum').sub, '1–5 ноября · шкала градусника');
+  assert.equal(daysView({ ...NOV, scope: 'scale' }, 'sum').sub, '1–5 ноября · в лимитах');   // решение 51
 });
 
 test('по сумме: тысячи в клетке, четыре оттенка (до 4, 8, 15 тыс. и больше), тап — операции дня', () => {
