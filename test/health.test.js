@@ -52,16 +52,17 @@ test('месяцы листаются через год', () => {
   assert.equal(shiftMonth('2025-12', 1), '2026-01');
 });
 
-test('текущий месяц: осталось, зона, черта плана на сегодня, можно в день, весь доход', () => {
+test('текущий месяц: крупно — потрачено из нормы (решение 26); ниже — осталось, можно в день, весь доход', () => {
   const v = view(NOW);
   assert.equal(v.title, 'Ноябрь 2026');
   assert.equal(v.sub, 'на 11 ноября, день 11 из 30');
   assert.deepEqual(v.zone, { word: 'в норме', tone: 'good' });
-  assert.deepEqual(v.big, { label: 'Осталось из нормы', value: '120 000', tone: '' });
+  assert.deepEqual(v.big, { label: 'Потрачено', value: '80 000', of: 'из 200 000', tone: '' });
   assert.equal(v.bar.fill, 0.4);
   assert.equal(v.bar.plan, 73333 / 200000);
-  assert.deepEqual(v.scale, ['потрачено 80 000', 'план на сегодня 73 333', 'норма 200 000']);
+  assert.deepEqual(v.scale, ['40 % нормы', 'план на сегодня 73 333', 'норма 200 000']);
   assert.deepEqual(v.stats, [
+    { label: 'Осталось из нормы', value: '120 000', tone: '' },
     { label: 'Можно в день', value: '~6 000', tone: '' },
     { label: 'Весь доход, осталось', value: '170 000', tone: '' },
   ]);
@@ -70,7 +71,7 @@ test('текущий месяц: осталось, зона, черта план
 
 test('Ангелине — без «Весь доход» (сервер его не шлёт): вместо него лимиты сверх', () => {
   const v = view(ANGELINA);
-  assert.deepEqual(v.stats[1], { label: 'Лимитов сверх', value: '1 из 7', tone: 'bad' });
+  assert.deepEqual(v.stats[2], { label: 'Лимитов сверх', value: '1 из 7', tone: 'bad' });
   assert.ok(!JSON.stringify(v).includes('Весь доход'));
 });
 
@@ -78,6 +79,7 @@ test('лимиты: горячие сверху, «+N» сверх лимита;
   const v = view(NOW);
   const [pets, travel, food] = v.limits;
   assert.equal(pets.name, 'питомцы');
+  assert.deepEqual(pets.ops, { limit: 'питомцы' });               // тап — операции лимита за месяц (решение 3)
   assert.equal(pets.over, '+2 000');
   assert.equal(pets.color, 'var(--bad)');
   assert.equal(pets.fill, 1);                                    // полоска не вылезает за край
@@ -92,7 +94,8 @@ test('лимиты: горячие сверху, «+N» сверх лимита;
 
 test('вне лимитов — строкой, остатки — все счета, Freedom «остаток — позже», пустые одной строкой', () => {
   const v = view(NOW);
-  assert.deepEqual(v.outside, [{ name: 'салон', value: '100' }]);
+  assert.deepEqual(v.outside, [{ name: 'салон', value: '100', ops: { outside: 'салон' } }]);
+  assert.deepEqual(v.outsideAll, { outside: '*' });                 // решение 25: строка «Вне лимитов» нажимается
   assert.deepEqual(v.balances[0], { name: 'Нал Алексея', value: '150 000 RSD · 1 000 €', later: false });
   assert.deepEqual(v.balances[1], { name: 'Freedom', value: 'остаток — позже', later: true });
   assert.equal(v.empty, 'Пустые счета: другая карта, Walt.');
@@ -111,11 +114,12 @@ test('прошлый месяц — итог: без плана на сегод�
   const v = view(OCT);
   assert.equal(v.sub, 'итог месяца');
   assert.deepEqual(v.zone, { word: 'сверх дохода', tone: 'bad' });
-  assert.deepEqual(v.big, { label: 'Сверх нормы', value: '300 000', tone: 'bad' });
+  assert.deepEqual(v.big, { label: 'Потрачено', value: '500 000', of: 'из 200 000', tone: 'bad' });
   assert.equal(v.bar.plan, null);
   assert.equal(v.bar.fill, 1);
-  assert.deepEqual(v.scale, ['потрачено 500 000', '250 % нормы', 'норма 200 000']);
+  assert.deepEqual(v.scale, ['250 % нормы', '', 'норма 200 000']);
   assert.deepEqual(v.stats, [
+    { label: 'Сверх нормы', value: '300 000', tone: 'bad' },
     { label: 'Вне лимитов', value: '8 000', tone: '' },
     { label: 'Сверх дохода', value: '240 000', tone: 'bad' },
   ]);
@@ -128,7 +132,18 @@ test('прошлый месяц — итог: без плана на сегод�
 
 test('норма исчерпана в текущем месяце — «можно в день» нет', () => {
   const v = view({ ...NOW, spent: 230000, left: -30000, per_day: null, zone: { status: 'savings', word: 'тратим отложенное' } });
-  assert.deepEqual(v.big, { label: 'Сверх нормы', value: '30 000', tone: 'bad' });
-  assert.deepEqual(v.stats[0], { label: 'Можно в день', value: 'норма исчерпана', tone: 'bad' });
+  assert.deepEqual(v.big, { label: 'Потрачено', value: '230 000', of: 'из 200 000', tone: 'bad' });
+  assert.deepEqual(v.stats[0], { label: 'Сверх нормы', value: '30 000', tone: 'bad' });
+  assert.deepEqual(v.stats[1], { label: 'Можно в день', value: 'норма исчерпана', tone: 'bad' });
   assert.deepEqual(v.zone, { word: 'тратим отложенное', tone: 'warn' });
+});
+
+test('резерв: под лимитами — из чего он (свои + перевалы других) и чей перерасход покрыт', () => {
+  assert.equal(view(NOW).reserve, 'Резерв: свои 0 + перевалы других 2 000 — перерасход «питомцы» покрыт резервом.');
+  const short = { ...NOW, limits: [...NOW.limits.slice(0, 3), { name: 'резерв', spent: 3000, limit: 3000, over: 0, eaten: 3000 },
+    { name: 'одежда', spent: 15000, limit: 12000, over: 3000 }] };
+  assert.equal(view(short).reserve,
+    'Резерв: свои 0 + перевалы других 3 000 — перерасход «питомцы», «одежда» покрыт резервом частично.');
+  const calm = { ...NOW, limits: NOW.limits.filter((l) => !l.eaten && !l.over) };
+  assert.equal(view(calm).reserve, '');
 });

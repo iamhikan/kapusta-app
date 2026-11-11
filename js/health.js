@@ -42,6 +42,16 @@ function limitColor(share, plan) {
   return `color-mix(in oklch, var(--bar-orange) ${warm}%, var(--bar-yellow))`;
 }
 
+function reserveNote(limits) {
+  // резерв сжимается на перевалы других лимитов (fin budget): из чего он и чей перерасход покрыт
+  const res = limits.find((l) => l.eaten);
+  if (!res) return '';
+  const over = limits.filter((l) => l.over > 0 && l !== res);
+  const sum = over.reduce((s, l) => s + l.over, 0);
+  return `Резерв: свои ${fmt(res.spent - res.eaten)} + перевалы других ${fmt(res.eaten)} — перерасход `
+    + `${over.map((l) => `«${l.name}»`).join(', ')} покрыт резервом${sum > res.eaten ? ' частично' : ''}.`;
+}
+
 function curveNote(h) {
   if (h.closed) {
     const crossed = h.curve.find(([, total]) => total > h.norm);
@@ -60,6 +70,9 @@ export function view(h) {
   const over = h.left < 0;
   const overCount = h.limits.filter((l) => l.spent > l.limit).length;
 
+  // решение 26: крупно — потрачено; осталось (или сверх нормы) — первым в строке чисел
+  const left = over ? { label: 'Сверх нормы', value: fmt(-h.left), tone: 'bad' }
+    : { label: 'Осталось из нормы', value: fmt(h.left), tone: '' };
   const first = h.closed
     ? { label: 'Вне лимитов', value: fmt(h.outside.reduce((s, o) => s + o.rsd, 0)), tone: '' }
     : { label: 'Можно в день', value: h.per_day == null ? 'норма исчерпана' : `~${fmt(h.per_day)}`,
@@ -75,23 +88,24 @@ export function view(h) {
     title: `${MONTHS[m - 1]} ${y}`,
     sub: h.closed ? 'итог месяца' : `на ${h.day} ${OF_MONTH[m - 1]}, день ${h.day} из ${h.days}`,
     zone: { word: h.zone.word, tone: ZONE[h.zone.status] },
-    big: over ? { label: 'Сверх нормы', value: fmt(-h.left), tone: 'bad' }
-      : { label: 'Осталось из нормы', value: fmt(h.left), tone: '' },
+    big: { label: 'Потрачено', value: fmt(h.spent), of: `из ${fmt(h.norm)}`, tone: over ? 'bad' : '' },
     bar: { fill: h.norm > 0 ? Math.max(0, Math.min(1, h.spent / h.norm)) : 1,
       plan: h.closed || !h.norm ? null : h.plan_today / h.norm },
-    scale: [`потрачено ${fmt(h.spent)}`,
-      h.closed ? `${Math.round((h.spent / h.norm) * 100)} % нормы` : `план на сегодня ${fmt(h.plan_today)}`,
+    scale: [`${Math.round((h.spent / h.norm) * 100)} % нормы`, h.closed ? '' : `план на сегодня ${fmt(h.plan_today)}`,
       `норма ${fmt(h.norm)}`],
-    stats: [first, second],
+    stats: [left, first, second],
     curve: { note: curveNote(h) },
     plan,
     limits: h.limits.map((l) => {
       const share = l.limit ? l.spent / l.limit : 0;
-      return { name: l.name, spent: fmt(l.spent), limit: fmt(l.limit), over: l.over ? `+${fmt(l.over)}` : '',
+      return { name: l.name, ops: { limit: l.name }, spent: fmt(l.spent), limit: fmt(l.limit), over: l.over ? `+${fmt(l.over)}` : '',
         fill: Math.max(0, Math.min(1, share)), color: limitColor(share, plan) };
     }),
     limitsShown: Math.min(TOP, h.limits.length),
-    outside: h.outside.map((o) => ({ name: o.name, value: fmt(o.rsd) })),
+    reserve: reserveNote(h.limits),
+    // решение 25: «Вне лимитов» и каждая позиция открывают операции этих трат за месяц
+    outside: h.outside.map((o) => ({ name: o.name, value: fmt(o.rsd), ops: { outside: o.name } })),
+    outsideAll: { outside: '*' },
     balances: h.balances.map((b) => ({ name: upper(b.name), value: b.later ? 'остаток — позже' : amounts(b.amounts),
       later: !!b.later })),
     empty: h.empty.length ? `Пустые счета: ${h.empty.join(', ')}.` : '',
