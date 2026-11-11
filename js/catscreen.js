@@ -70,7 +70,7 @@ function scopeSwitch(entry, nav) {
 
 function donut(v) {
   return h('div', { class: 'donut-row' },
-    h('svg:svg', { width: 150, height: 150, viewBox: '0 0 150 150', role: 'img', 'aria-label': v.aria, class: 'donut' },
+    h('svg:svg', { width: 150, height: 150, viewBox: '0 0 150 150', role: 'img', 'aria-label': v.aria, class: 'chart donut' },
       h('svg:g', { transform: 'rotate(-90 75 75)' }, h('svg:circle', { cx: 75, cy: 75, r: R, class: 'donut-track' }),
         ...v.segments.map((s) => h('svg:circle', { cx: 75, cy: 75, r: R, fill: 'none', stroke: s.color,
           'stroke-width': 22, 'stroke-dasharray': s.dash, 'stroke-dashoffset': s.offset }))),
