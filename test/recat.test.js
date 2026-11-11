@@ -32,7 +32,7 @@ test('выбор категории: «Часто» — 5 первых, теку
   assert.equal(v.title, 'Категория для Сушилка');
   assert.deepEqual(v.often.map((c) => c.name), ['хозяйство', 'продукты', 'техника', 'дом', 'одежда']);
   assert.deepEqual(v.often[0], { name: 'хозяйство', account: H, hint: 'сейчас', on: false, current: true });
-  assert.equal(v.allLabel, 'Все категории — 7');
+  assert.equal(v.allLabel, 'Все категории — 6');                              // верхние (решение 39)
   assert.deepEqual(v.button, { label: 'Выберите категорию', disabled: true });
   const chosen = picker(CARD, { chosen: E });
   assert.equal(chosen.often[2].on, true);
@@ -126,4 +126,20 @@ test('при открытии очередь уходит по порядку: �
   assert.deepEqual((await queue.load(cs)).map((x) => x.id), ['d']);
   const again = await flush(cs, async () => ({ error: 'down' }));
   assert.deepEqual(again, { done: 0, conflicts: 0, left: 1 });
+});
+
+test('все категории — в два уровня (решение 39): верхние; у категории с подкатегориями — они, первой — она сама', () => {
+  const v = picker(CARD, {});
+  assert.deepEqual(v.groups.map((g) => [g.name, g.subs]), [['хозяйство', 0], ['продукты', 1], ['техника', 0], ['дом', 0],
+    ['одежда', 0], ['подарки', 0]]);
+  assert.equal(v.groups[0].hint, 'сейчас');
+  const food = picker(RCPT, { group: F, chosen: F, item: 1 });
+  assert.equal(food.groupTitle, 'Продукты');
+  assert.deepEqual(food.subs.map((c) => [c.name, c.hint, c.on]), [['продукты — без подкатегории', '', true],
+    ['алкоголь', 'сейчас', false]]);
+  assert.deepEqual(food.button, { label: 'Сменить на «продукты»', disabled: false });
+  assert.equal(picker(RCPT, { item: 1 }).groups.find((g) => g.account === F).hint, 'сейчас: алкоголь');
+  assert.equal(picker(RCPT, { item: 1, chosen: ALC }).groups.find((g) => g.account === F).on, true);
+  assert.deepEqual(picker(CARD, { q: 'алк' }).all.map((c) => c.name), ['алкоголь']);   // поиск — и по подкатегориям
+  assert.equal(picker(CARD, { q: 'алк' }).groups, null);
 });

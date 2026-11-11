@@ -6,6 +6,8 @@ const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', '�
 const OF_MONTH = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября',
   'ноября', 'декабря'];
 const SYMBOL = { EUR: '€', RUB: '₽' };
+const FOR_MONTH = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь',
+  'ноябрь', 'декабрь'];
 const ZONE = { ok: 'good', savings: 'warn', over: 'bad' };
 export const TOP = 6;   // лимитов сразу; остальные — по «Все N»
 
@@ -114,8 +116,16 @@ export function view(h) {
     // решение 25: «Вне лимитов» и каждая позиция открывают операции этих трат за месяц
     outside: h.outside.map((o) => ({ name: o.name, value: fmt(o.rsd), ops: { outside: o.name } })),
     outsideAll: { outside: '*' },
+    // решение 40: скрытые лимиты (show: hot) — отдельной кнопкой; дошли до порога — уже в общем списке (сервер)
+    hidden: h.hidden && h.hidden.length ? { label: `Скрытые лимиты · ${h.hidden.length}`,
+      rows: h.hidden.map((l) => ({ name: l.name, spent: fmt(l.spent), limit: fmt(l.limit), ops: { limit: l.name },
+        fill: l.limit ? Math.max(0, Math.min(1, l.spent / l.limit)) : 0, hint: `в градуснике — от ${l.hot} % лимита` })) }
+      : null,
+    budgetLabel: `Весь бюджет на ${FOR_MONTH[m - 1]}`,
+    // решение 38: строка остатка открывает операции этого счёта за месяц; счета — в фильтр «Операций»
     balances: h.balances.map((b) => ({ name: upper(b.name), value: b.later ? 'остаток — позже' : amounts(b.amounts),
-      later: !!b.later })),
+      later: !!b.later, ops: { account: b.account } })),
+    accounts: h.balances.map((b) => [b.name, b.account]),
     empty: h.empty.length ? `Пустые счета: ${h.empty.join(', ')}.` : '',
     balTitle: h.closed ? `Остатки на ${when(h.date)}` : 'Остатки',
     fresh: h.closed ? `месяц закрыт · последняя запись ${when(h.fresh.last)}`

@@ -13,6 +13,21 @@ const WEEKDAY = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
 const SYMBOL = { RSD: '', EUR: ' €', RUB: ' ₽', USD: ' $' };
 const KEYS = ['from', 'to', 'limit', 'outside', 'cat', 'q', 'transfers', 'account', 'who', 'source', 'flag', 'cursor'];
 
+// фильтры (холст «Операции» → «Фильтры»): значение — параметр /api/tx. Кошелёк или счёт — счета зрителя из остатков
+// «Здоровья» (решение 38); «Здоровье» ещё не грузилось — прежний список
+const ACCOUNTS = [['карта ALTA', 'Assets:Family:ALTA'], ['нал Алексея', 'Assets:Family:Cash:Aleksey'],
+  ['нал Ангелины', 'Assets:Family:Cash:Angelina'], ['Raiffeisen Ангелина', 'Assets:Family:Raiffeisen:RSD'],
+  ['счёт салона', 'Assets:Angelina:PR:Bank']];
+
+export function filters(accounts = []) {
+  return [
+    { key: 'account', label: 'Кошелёк или счёт', chips: [['все', ''], ...(accounts.length ? accounts : ACCOUNTS)] },
+    { key: 'who', label: 'Кто записал', chips: [['все', ''], ['Алексей', 'aleksey'], ['Ангелина', 'angelina']] },
+    { key: 'source', label: 'Источник', chips: [['все', ''], ['чек', 'receipt'], ['словами', 'words'],
+      ['выписка', 'bank'], ['Райф CSV', 'raif']] },
+  ];
+}
+
 export function money(n) {
   // «3 098,86», «6 220», «−500»: копейки — только если есть
   const cents = Math.round(Math.abs(n) * 100) % 100;

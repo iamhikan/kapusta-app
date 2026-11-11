@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fmt, amounts, shiftMonth, view } from '../js/health.js';
 
+const sp = (s) => s.replace(/(\d) (\d{3})/g, '$1\u00a0$2');
+
 const NOW = {
   month: '2026-11', date: '2026-11-11', day: 11, days: 30, closed: false,
   zone: { status: 'ok', word: 'в норме' }, norm: 200000, spent: 80000, left: 120000, plan_today: 73333, per_day: 6000,
@@ -96,8 +98,10 @@ test('вне лимитов — строкой, остатки — все сче
   const v = view(NOW);
   assert.deepEqual(v.outside, [{ name: 'салон', value: '100', ops: { outside: 'салон' } }]);
   assert.deepEqual(v.outsideAll, { outside: '*' });                 // решение 25: строка «Вне лимитов» нажимается
-  assert.deepEqual(v.balances[0], { name: 'Нал Алексея', value: '150 000 RSD · 1 000 €', later: false });
-  assert.deepEqual(v.balances[1], { name: 'Freedom', value: 'остаток — позже', later: true });
+  assert.deepEqual(v.balances[0], { name: 'Нал Алексея', value: '150 000 RSD · 1 000 €', later: false,
+    ops: { account: 'Assets:Family:Cash:Aleksey' } });
+  assert.deepEqual(v.balances[1], { name: 'Freedom', value: 'остаток — позже', later: true,
+    ops: { account: 'Assets:Family:Freedom' } });
   assert.equal(v.empty, 'Пустые счета: другая карта, Walt.');
   assert.equal(v.balTitle, 'Остатки');
   assert.equal(v.fresh, 'последняя запись 11.11 в 08:11 · обновлено в 11:13');
@@ -162,4 +166,26 @@ test('кривая отрезана в снимке (решение 32): гра�
   assert.deepEqual(view({ ...OCT, curve: [] }).curve.note, { text: 'итог 500 000 · сверх нормы на 300 000', tone: 'bad' });
   assert.deepEqual(view({ ...OCT, spent: 150000, left: 50000, curve: [] }).curve.note,
     { text: 'итог 150 000 · в пределах нормы', tone: 'good' });
+});
+
+test('остатки нажимаются: операции этого счёта за месяц (решение 38); счета — в фильтр «Кошелёк или счёт»', () => {
+  const v = view(NOW);
+  assert.deepEqual(v.balances[0].ops, { account: 'Assets:Family:Cash:Aleksey' });
+  assert.equal(v.balances[0].name, 'Нал Алексея');
+  assert.deepEqual(v.accounts, [['нал Алексея', 'Assets:Family:Cash:Aleksey'], ['Freedom', 'Assets:Family:Freedom'],
+    ['P2P', 'Assets:Family:P2P']]);
+});
+
+test('скрытые лимиты — отдельной кнопкой (решение 40): сколько, полоски, «виден от N %»; нет — кнопки нет', () => {
+  const v = view({ ...NOW, hidden: [{ name: 'образование', spent: 5000, limit: 20000, hot: 90 }] });
+  assert.equal(v.hidden.label, 'Скрытые лимиты · 1');
+  assert.deepEqual(v.hidden.rows.map((r) => [r.name, r.spent, r.limit, r.fill, r.hint, r.ops.limit]),
+    [['образование', sp('5 000'), sp('20 000'), 0.25, 'в градуснике — от 90 % лимита', 'образование']]);
+  assert.equal(view(NOW).hidden, null);                         // старый ответ без hidden
+  assert.equal(view({ ...NOW, hidden: [] }).hidden, null);
+});
+
+test('под лимитами — «Весь бюджет месяца»: у обоих (Ангелине — без дохода, это решает сервер)', () => {
+  assert.equal(view(NOW).budgetLabel, 'Весь бюджет на ноябрь');
+  assert.equal(view(OCT).budgetLabel, 'Весь бюджет на октябрь');
 });

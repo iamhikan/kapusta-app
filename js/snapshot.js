@@ -75,7 +75,7 @@ export function snapView(h) {
     fresh: `снимок из Telegram от ${at} · операций и категорий в снимке нет` };
 }
 
-const WHAT = { ops: 'Операции', cats: 'Категории' };
+const WHAT = { ops: 'Операции', cats: 'Категории', price: 'Цены', basket: 'Покупки', budget: 'Бюджет', days: 'Траты по дням' };
 
 export function offline(kind, hasSnap) {
   // холст 6.2: экран без Мака на «Операциях» и «Категориях» — «Повторить» и, если есть снимок, ссылка на него

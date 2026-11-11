@@ -20,20 +20,36 @@ export function category(card, waiting = null) {
   return { text: now, can: !!card.change, queued: false };
 }
 
-export function picker(card, { q = '', chosen = null, item = null } = {}) {
+const parentOf = (account) => account.split(':').slice(0, -1).join(':');
+
+export function picker(card, { q = '', chosen = null, item = null, group = null } = {}) {
   // лист выбора (холст card-picker): «Часто» — первые 5 (сервер ставит частые сверху), «сейчас» — текущая;
-  // поиск — по всем категориям ветки
+  // «Все категории» — в два уровня (решение 39): верхние, у категории — её подкатегории, первой — она сама;
+  // поиск — по всем категориям ветки, и по подкатегориям
   const current = item == null ? card.change.accounts : [card.receipt.items[item].account];
   const mark = (c) => ({ ...c, hint: current.includes(c.account) ? 'сейчас' : '', on: c.account === chosen,
     current: current.includes(c.account) });
   const all = card.change.choices.map(mark);
+  const known = new Set(all.map((c) => c.account));
+  const subsOf = (a) => all.filter((c) => parentOf(c.account) === a);
+  const tops = all.filter((c) => !known.has(parentOf(c.account)));
   const needle = q.trim().toLowerCase();
   const pick = all.find((c) => c.on);
+  const groups = needle ? null : tops.map((c) => {
+    const subs = subsOf(c.account);
+    const cur = subs.find((x) => x.current);
+    return { ...c, subs: subs.length, hint: c.current ? 'сейчас' : cur ? `сейчас: ${cur.name}` : '',
+      on: c.on || subs.some((x) => x.on) };
+  });
+  const top = group && all.find((c) => c.account === group);
   return {
     title: item == null ? `Категория для ${card.where}` : card.receipt.items[item].name,
     often: needle ? null : [...all.filter((c) => c.current), ...all.filter((c) => !c.current)].slice(0, OFTEN),
     all: needle ? all.filter((c) => c.name.toLowerCase().includes(needle)) : all,
-    allLabel: `Все категории — ${all.length}`,
+    groups,
+    groupTitle: top ? top.name.charAt(0).toUpperCase() + top.name.slice(1) : '',
+    subs: top ? [{ ...top, name: `${top.name} — без подкатегории` }, ...subsOf(top.account)] : null,
+    allLabel: `Все категории — ${tops.length}`,
     button: pick && !pick.current ? { label: `Сменить на «${pick.name}»`, disabled: false }
       : { label: 'Выберите категорию', disabled: true },
   };

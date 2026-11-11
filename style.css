@@ -64,6 +64,7 @@ h1, h2, p { margin: 0; }
 
 .month { display: flex; align-items: center; justify-content: space-between; }
 .month-title { text-align: center; }
+.month.solo { justify-content: center; padding: 6px 0; }
 .month h1 { font-size: 20px; letter-spacing: -0.01em; }
 .arrow { min-width: 44px; min-height: 44px; display: flex; align-items: center; color: var(--accent); }
 .arrow:last-child { justify-content: flex-end; }
@@ -237,3 +238,29 @@ section .title { font-size: 17px; font-weight: 600; }
 .line.op.changed { background: color-mix(in srgb, var(--good) 10%, transparent); }
 .line .link { padding: 8px 0 8px 8px; flex-shrink: 0; }
 .line.choice > .grow { text-align: left; }
+
+/* этап 7: история цены, по товарам, бюджет, по дням, скрытые лимиты */
+.chart .price-line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; }
+.chart .price-dot { fill: var(--accent); stroke: var(--card); stroke-width: 2; }
+.chip-static { font-size: 13px; background: var(--card); border-radius: 99px; padding: 4px 10px; }
+.alloc { display: flex; height: 14px; border-radius: 7px; overflow: hidden; gap: 2px; }
+.alloc > span { display: block; min-width: 2px; }
+.line.flush { padding: 6px 0; min-height: 36px; }
+.swatch-box { flex-shrink: 0; width: 12px; height: 12px; border-radius: 3px; }
+.back-link { display: inline-flex; align-items: center; gap: 2px; align-self: flex-start; }
+.price-row { margin: 2px 0; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; text-align: center; }
+.day-cell { aspect-ratio: 1; border-radius: 8px; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; font-size: 13px; line-height: 1.1; color: var(--fg); background: var(--track); }
+.day-cell.blank { background: transparent; }
+.day-cell.future { color: var(--muted); }
+.day-k { font-size: 10px; }
+.heat-0 { background: color-mix(in srgb, var(--accent) 6%, var(--card)); }
+.heat-1 { background: color-mix(in srgb, var(--accent) 22%, var(--card)); }
+.heat-2 { background: color-mix(in srgb, var(--accent) 45%, var(--card)); }
+.heat-3 { background: color-mix(in srgb, var(--accent) 70%, var(--card)); color: #ffffff; }
+.heat-4 { background: var(--accent); color: #ffffff; }
+.tone-good { background: color-mix(in srgb, var(--good) 35%, var(--card)); }
+.tone-warn { background: var(--bar-orange); color: #ffffff; }
+.tone-bad { background: var(--bad); color: #ffffff; }
+.legend { flex-wrap: wrap; row-gap: 6px; }

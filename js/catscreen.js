@@ -116,6 +116,24 @@ function bars(entry) {
     v.bars.some((b) => b.partial) ? h('p', { class: 'muted small' }, 'Текущий месяц — по сегодня, светлее.') : null);
 }
 
+const FOOD = 'Expenses:Family:Food';
+// месяц для «По дням» и «По товарам»: месяц периода, у недели, квартала, года — месяц его конца (по сегодня)
+const monthOf = (entry, today) => periodEnd(entry.period, today).slice(0, 7);
+
+function extra(entry, nav) {
+  // этап 7 (решение 13): «По дням» — под столбцами; «По товарам» — в подкатегориях продуктов
+  const today = nav.today();
+  const row = (label, sub, next) => h('button', { type: 'button', class: 'line op', on: { click: () => { tap(); nav.push(next); } } },
+    h('span', { class: 'grow' }, h('span', {}, label), h('span', { class: 'muted small' }, sub)), icon(ICONS.right, 16));
+  if (entry.cat === FOOD) {
+    return h('section', { class: 'card list' }, row('По товарам', 'что в корзине по чекам — и как менялась цена',
+      { kind: 'basket', month: monthOf(entry, today) }));
+  }
+  if (entry.cat) return null;
+  return h('section', { class: 'card list' }, row('По дням', 'тепловая карта месяца — по сумме и к плану на день',
+    { kind: 'days', month: monthOf(entry, today), scope: entry.scope, mode: 'sum' }));
+}
+
 function subHead(entry, nav, v) {
   const hd = v.head;
   return h('section', { class: 'card pad stack' },
@@ -170,9 +188,9 @@ export function catsScreen(entry, nav) {
     body = h('div', { class: 'empty' }, h('h2', {}, `За ${periodTitle(entry.period)} ${entry.cat ? `трат «${entry.title}»` : 'трат'} нет`),
       h('button', { type: 'button', class: 'button', on: { click: () => move(entry, nav, prev) } }, `‹ ${periodTitle(prev)}`));
   } else if (entry.cat) {
-    body = [subHead(entry, nav, v), list(entry, nav, v), ...top(nav, v)];
+    body = [subHead(entry, nav, v), extra(entry, nav), list(entry, nav, v), ...top(nav, v)];
   } else {
-    body = [h('section', { class: 'card pad' }, donut(v)), list(entry, nav, v), bars(entry)];
+    body = [h('section', { class: 'card pad' }, donut(v)), list(entry, nav, v), bars(entry), extra(entry, nav)];
   }
   return h('div', { class: 'screen with-tabs' },
     entry.cat ? null : chips(entry, nav), periodHead(entry, nav, sub), entry.cat ? null : scopeSwitch(entry, nav),

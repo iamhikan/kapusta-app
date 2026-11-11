@@ -8,6 +8,7 @@ import { cardScreen, loadCard, loadOps, newOps, opsScreen } from './screens.js';
 import { catsScreen, loadCats, newCats } from './catscreen.js';
 import { isPeriod, periodOf } from './period.js';
 import { restore, save, snapView } from './snapshot.js';
+import { isMore, loadMore, moreScreen } from './more.js';
 import { body as jobBody, flush, path as jobPath, queue } from './recat.js';
 
 const root = document.getElementById('app');
@@ -26,6 +27,7 @@ let hasSnap = false;                   // снимок есть в CloudStorage 
 let retrying = false;                  // «Повторить» на снимке: снимок остаётся на экране, пока ждём Мак
 let pending = [];                      // смены категории в очереди CloudStorage: Мак молчал (решение 18)
 let flushing = false;
+let accounts = [];                     // счета зрителя из остатков «Здоровья» — в фильтр «Операций» (решение 38)
 
 const today = () => {
   const d = new Date();
@@ -60,6 +62,11 @@ const nav = {
     pending = await queue.load(cloud);
   },
   changed: () => stale(),
+  accounts: () => accounts,
+  healthView(m) {
+    const d = cache.get(m) || (snap && snap.month === m ? snap : null);
+    return d ? view(d) : null;
+  },
   render: () => render(),
   problem: (kind, detail) => problem(kind, detail),
   get hasSnap() { return hasSnap; },
@@ -93,6 +100,7 @@ const nav = {
 function open(entry) {
   if (entry.kind === 'card') { render(); loadCard(entry, nav); } else if (entry.kind === 'ops') loadOps(entry, nav);
   else if (entry.kind === 'cats') loadCats(entry, nav);
+  else if (isMore(entry.kind)) loadMore(entry, nav);
   else render();
 }
 
@@ -100,12 +108,14 @@ function back() {
   if (stack.length < 2) return;
   const top = stack[stack.length - 1];
   if (top.sheet) { top.sheet = false; top.draft = null; return render(); }
+  if (top.picker && top.picker.group && !top.picker.saving) { top.picker.group = null; return render(); }
   if (top.picker && !top.picker.saving) { top.picker = null; return render(); }
   stack.pop();
   const under = stack[stack.length - 1];
   // категорию сменили — данные под карточкой сброшены (stale): загрузить заново, а не оставить скелет
   if (under.kind === 'ops' && !under.pages.length) loadOps(under, nav);
   else if (under.kind === 'cats' && !under.data) loadCats(under, nav);
+  else if (isMore(under.kind) && under.kind !== 'hidden' && !under.data) loadMore(under, nav);
   else if (under.kind === 'health' && !cache.has(month) && !snap) load(month);
   else render();
   window.scrollTo(0, under.scroll || 0);
@@ -292,7 +302,17 @@ function limits(v, data) {
     h('p', { class: 'note-text muted small' }, data.closed
       ? 'Итог месяца: без плана на сегодня и без прогноза. «+N» — сверх лимита.'
       : 'Черта — план на сегодня. Зелёный — в плане, от жёлтого к оранжевому — выше плана, красный и «+N» — сверх лимита.'),
+    budgetLinks(v, data),
   ];
+}
+
+function budgetLinks(v, data) {
+  // решение 40: скрытые лимиты — своей кнопкой; «Бюджет» — продолжение «Все лимиты» (этап 7)
+  const row = (label, entry) => h('button', { type: 'button', class: 'line op', on: { click: () => { tap(); nav.push(entry); } } },
+    h('span', { class: 'grow' }, label), icon(ICONS.right, 16));
+  return h('section', { class: 'card list' },
+    v.hidden ? row(v.hidden.label, { kind: 'hidden', month: data.month }) : null,
+    row(v.budgetLabel, { kind: 'budget', month: data.month }));
 }
 
 function outside(v, data) {
@@ -306,10 +326,19 @@ function outside(v, data) {
       v.outsideAll, 'strong'), ...v.outside.map((o) => row(o.name, o.value, o.ops)))];
 }
 
-function balances(v) {
+function balances(v, data) {
+  // решение 38: остаток открывает «Операции» этого счёта за месяц «Здоровья» (фильтр «Кошелёк или счёт»)
+  const opsOfAccount = (b) => {
+    tap();
+    const entry = newOps(data.month);
+    entry.f.account = b.ops.account;
+    nav.push(entry);
+  };
   return [h('div', { class: 'section-head' }, h('h2', {}, v.balTitle)),
-    h('section', { class: 'card list' }, ...v.balances.map((b) => h('div', { class: 'line' },
-      h('span', {}, b.name), h('span', { class: b.later ? 'muted small' : 'nowrap' }, b.value)))),
+    h('section', { class: 'card list' }, ...v.balances.map((b) => h('button', { type: 'button', class: 'line op',
+      'aria-label': `Операции: ${b.name}`, on: { click: () => opsOfAccount(b) } },
+    h('span', { class: 'grow' }, b.name), h('span', { class: b.later ? 'muted small' : 'nowrap' }, b.value),
+    icon(ICONS.right, 16)))),
     v.empty ? h('p', { class: 'note-text muted small' }, v.empty) : null];
 }
 
@@ -317,7 +346,7 @@ function healthScreen(data, snapped = false) {
   const v = view(data);
   const s = snapped ? snapView(data) : null;
   return h('div', { class: 'screen with-tabs' }, s ? banner(s) : null, monthNav(v, snapped), summary(v), pace(v, data),
-    ...limits(v, data), ...outside(v, data), ...balances(v), h('p', { class: 'fresh muted small' }, s ? s.fresh : v.fresh));
+    ...limits(v, data), ...outside(v, data), ...balances(v, data), h('p', { class: 'fresh muted small' }, s ? s.fresh : v.fresh));
 }
 
 function render() {
@@ -339,6 +368,7 @@ function draw() {
   }
   if (top.kind === 'ops') return show(opsScreen(top, nav), tabs());
   if (top.kind === 'cats') return show(catsScreen(top, nav), tabs());
+  if (isMore(top.kind)) return show(moreScreen(top, nav), tabs());
   return show(cardScreen(top, nav));
 }
 
@@ -357,6 +387,7 @@ async function load(next) {
   if (r.error) return problem(r.error, r.detail);
   month = r.data.month;
   cache.set(month, r.data);
+  accounts = view(r.data).accounts;
   snap = null;
   // после каждого удачного ответа — снимок в CloudStorage (ключ на месяц, до 4096 знаков, решение 32)
   save(cloud, r.data).then((ok) => { if (ok) hasSnap = true; });
@@ -370,6 +401,7 @@ function stale() {
   for (const e of new Set([opsTab, catsTab, ...stack])) {
     if (e && e.kind === 'ops') e.pages = [];
     if (e && e.kind === 'cats') e.data = null;
+    if (e && isMore(e.kind) && e.kind !== 'hidden') e.data = null;
   }
 }
 

@@ -1,20 +1,11 @@
 // Экраны «Операции» и карточка операции (DOM). Данные — только из /api/tx и /api/tx/{ref}, в памяти страницы.
 import { h, icon, tap, ICONS, tg } from './dom.js';
-import { cardView, dayLabel, emptyText, headView, money, monthRange, monthTitle, opRow, txPath } from './ops.js';
+import { cardView, dayLabel, emptyText, filters, headView, money, monthRange, monthTitle, opRow, txPath } from './ops.js';
 import { shiftMonth } from './health.js';
 import { canNext, periodEnd, shiftPeriod } from './period.js';
 import { offline } from './snapshot.js';
 import { body as jobBody, category, job, path as jobPath, picker, result } from './recat.js';
-
-// фильтры (холст «Операции» → «Фильтры»): значение — параметр /api/tx
-export const FILTERS = [
-  { key: 'account', label: 'Кошелёк или счёт', chips: [['все', ''], ['карта ALTA', 'Assets:Family:ALTA'],
-    ['нал Алексея', 'Assets:Family:Cash:Aleksey'], ['нал Ангелины', 'Assets:Family:Cash:Angelina'],
-    ['Raiffeisen Ангелина', 'Assets:Family:Raiffeisen:RSD'], ['счёт салона', 'Assets:Angelina:PR:Bank']] },
-  { key: 'who', label: 'Кто записал', chips: [['все', ''], ['Алексей', 'aleksey'], ['Ангелина', 'angelina']] },
-  { key: 'source', label: 'Источник', chips: [['все', ''], ['чек', 'receipt'], ['словами', 'words'],
-    ['выписка', 'bank'], ['Райф CSV', 'raif']] },
-];
+import { itemPrice } from './shop.js';
 
 export function newOps(month, ctx = null) {
   return { kind: 'ops', month, ctx, f: { q: '', transfers: false, account: '', who: '', source: '', flag: false },
@@ -109,7 +100,7 @@ function toolbar(entry, nav) {
   const f = entry.f;
   const chip = (label, on, click, d) => h('button', { type: 'button', class: `chip-btn${on ? ' on' : ''}`,
     'aria-pressed': String(!!on), on: { click: () => { tap(); click(); } } }, d ? icon(d, 14) : null, label);
-  const active = FILTERS.flatMap((g) => g.chips.filter(([, v]) => v && f[g.key] === v)
+  const active = filters(nav.accounts()).flatMap((g) => g.chips.filter(([, v]) => v && f[g.key] === v)
     .map(([label]) => chip(label, true, () => { f[g.key] = ''; loadOps(entry, nav); }, ICONS.close)));
   if (f.flag) active.push(chip('«!»', true, () => { f.flag = false; loadOps(entry, nav); }, ICONS.close));
   const search = h('label', { class: 'search' }, icon(ICONS.search, 18),
@@ -142,7 +133,7 @@ function sheet(entry, nav) {
       h('div', { class: 'row' }, h('h2', {}, 'Фильтры'),
         h('button', { type: 'button', class: 'link', on: { click: () => {
           tap(); Object.assign(draft, { account: '', who: '', source: '', flag: false }); nav.render(); } } }, 'Сбросить')),
-      ...FILTERS.map((g) => h('div', { class: 'stack-s' }, h('span', { class: 'muted small' }, g.label),
+      ...filters(nav.accounts()).map((g) => h('div', { class: 'stack-s' }, h('span', { class: 'muted small' }, g.label),
         h('div', { class: 'chips wrap' }, ...g.chips.map(([label, v]) => h('button', { type: 'button',
           class: `chip-btn${draft[g.key] === v ? ' on' : ''}`, 'aria-pressed': String(draft[g.key] === v),
           on: { click: () => { tap(); draft[g.key] = v; nav.render(); } } }, label))))),
@@ -252,7 +243,7 @@ function categoryRow(entry, nav) {
       h('span', { class: c.queued ? 'muted' : '' }, c.text)),
     c.queued ? h('span', { class: 'mark secret' }, 'в очереди') : null,
     c.can ? h('button', { type: 'button', class: 'link', on: { click: () => {
-      tap(); entry.picker = { item: null, q: '', chosen: null, all: false }; nav.render(); } } }, 'Сменить') : null));
+      tap(); entry.picker = { item: null, q: '', chosen: null, all: false, group: null }; nav.render(); } } }, 'Сменить') : null));
 }
 
 function pickerSheet(entry, nav) {
@@ -265,19 +256,37 @@ function pickerSheet(entry, nav) {
     'aria-pressed': String(c.on), on: { click: () => { tap(); p.chosen = c.account; nav.render(); } } },
   h('span', { class: 'grow' }, h('span', {}, c.name)), c.hint ? h('span', { class: 'muted small' }, c.hint) : null);
   const it = p.item == null ? null : card.receipt.items[p.item];
-  const lists = v.often
-    ? [h('div', { class: 'muted small' }, 'Часто'), h('section', { class: 'card list' }, ...v.often.map(choice)),
+  // решение 39: «Все категории» — верхние; категория с подкатегориями открывает их, первой — она сама
+  const group = (g) => (g.subs ? h('button', { type: 'button', class: `line op choice${g.on ? ' on' : ''}`,
+    'aria-label': `${g.name}: подкатегории`, on: { click: () => { tap(); p.group = g.account; nav.render(); } } },
+  h('span', { class: 'grow' }, h('span', {}, g.name), g.hint ? h('span', { class: 'muted small' }, g.hint) : null),
+  h('span', { class: 'muted small' }, String(g.subs + 1)), icon(ICONS.right, 16)) : choice(g));
+  let lists;
+  if (p.group && v.subs) {
+    lists = [h('button', { type: 'button', class: 'link back-link', on: { click: () => { tap(); p.group = null; nav.render(); } } },
+      icon(ICONS.left, 16), 'Все категории'), h('div', { class: 'muted small' }, v.groupTitle),
+    h('section', { class: 'card list' }, ...v.subs.map(choice))];
+  } else if (v.often) {
+    lists = [h('div', { class: 'muted small' }, 'Часто'), h('section', { class: 'card list' }, ...v.often.map(choice)),
       h('button', { type: 'button', class: 'link', 'aria-expanded': String(p.all),
         on: { click: () => { tap(); p.all = !p.all; nav.render(); } } }, v.allLabel),
-      p.all ? h('section', { class: 'card list' }, ...v.all.map(choice)) : null]
-    : [v.all.length ? h('section', { class: 'card list' }, ...v.all.map(choice))
+      p.all ? h('section', { class: 'card list' }, ...v.groups.map(group)) : null];
+  } else {
+    lists = [v.all.length ? h('section', { class: 'card list' }, ...v.all.map(choice))
       : h('p', { class: 'muted small' }, 'Такой категории нет')];
+  }
+  // решение 37: в листе позиции сверху — «История цены» (холст card-item)
+  const price = it ? h('button', { type: 'button', class: 'line op card price-row', on: { click: () => {
+    tap(); entry.picker = null; nav.push({ kind: 'price', q: itemPrice(card, p.item) }); } } },
+  h('span', { class: 'grow' }, h('span', {}, 'История цены'), h('span', { class: 'muted small' }, 'по чекам всех сетей')),
+  icon(ICONS.right, 16)) : null;
   return h('div', { class: 'sheet-back', on: { click: (e) => { if (e.target === e.currentTarget) close(); } } },
     h('div', { class: 'sheet', role: 'dialog', 'aria-label': v.title },
       h('div', { class: 'row' }, h('h2', {}, v.title),
         h('button', { type: 'button', class: 'link', on: { click: () => { tap(); close(); } } }, 'Отмена')),
       it ? h('p', { class: 'muted small' }, [`${money(it.total)} RSD`, card.where, it.kind ? `вид «${it.kind}»` : '']
         .filter(Boolean).join(' · ')) : null,
+      price,
       h('label', { class: 'search' }, icon(ICONS.search, 18),
         h('input', { type: 'search', id: 'cat-q', placeholder: 'Найти категорию', value: p.q, 'aria-label': 'Найти категорию',
           on: { input: (e) => { p.q = e.target.value; nav.render(); } } })),
@@ -307,9 +316,12 @@ export function cardScreen(entry, nav) {
       : [it.line, it.sub].filter(Boolean).join(' · ');
     const kids = [h('span', { class: 'grow' }, h('span', {}, it.name),
       h('span', { class: `small ${changed ? 'good' : 'muted'}` }, sub)), h('span', { class: 'nowrap' }, it.value)];
-    if (!canItems) return h('div', { class: 'line' }, ...kids);
-    return h('button', { type: 'button', class: `line op${changed ? ' changed' : ''}`, 'aria-label': `${it.name}: категория`,
-      on: { click: () => { tap(); entry.picker = { item: n, q: '', chosen: null, all: false }; nav.render(); } } }, ...kids);
+    if (!canItems) {   // сменить нельзя — тап сразу открывает историю цены (решение 37)
+      return h('button', { type: 'button', class: 'line op', 'aria-label': `${it.name}: история цены`,
+        on: { click: () => { tap(); nav.push({ kind: 'price', q: itemPrice(entry.data, n) }); } } }, ...kids);
+    }
+    return h('button', { type: 'button', class: `line op${changed ? ' changed' : ''}`, 'aria-label': `${it.name}: цена и категория`,
+      on: { click: () => { tap(); entry.picker = { item: n, q: '', chosen: null, all: false, group: null }; nav.render(); } } }, ...kids);
   };
   return h('div', { class: 'screen' },
     notice(entry, nav),
@@ -325,7 +337,7 @@ export function cardScreen(entry, nav) {
     h('div', { class: 'section-head' }, h('h2', {}, 'Проводки')),
     h('section', { class: 'card list' }, ...c.postings.map((p) => line(p.name, p.value))),
     c.receipt ? [h('div', { class: 'section-head' }, h('h2', {}, `Чек · ${c.receipt.shop}`),
-      canItems ? h('span', { class: 'muted small' }, 'тап — категория позиции') : null),
+      h('span', { class: 'muted small' }, canItems ? 'тап — цена и категория позиции' : 'тап — история цены')),
     h('section', { class: 'card list' }, ...c.receipt.items.map(item),
       h('div', { class: 'line' }, h('b', {}, 'Итого'), h('b', {}, c.receipt.total)),
       c.receipt.url ? h('button', { type: 'button', class: 'more', on: { click: () => {

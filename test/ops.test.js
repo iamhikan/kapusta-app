@@ -1,7 +1,7 @@
 // Вид «Операций» и карточки из ответов /api/tx и /api/tx/{ref}. Числа в тестах придуманы.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cardView, dayLabel, emptyText, headView, money, monthRange, opRow, txPath } from '../js/ops.js';
+import { cardView, dayLabel, emptyText, filters, headView, money, monthRange, opRow, txPath } from '../js/ops.js';
 
 const sp = (s) => s.replace(/(\d) (\d{3})/g, '$1 $2');   // разделитель тысяч — неразрывный пробел
 
@@ -154,4 +154,11 @@ test('шапка категории за любой период: названи
   assert.equal(h.sub, sp('Лимит 12 000 · 4 записи · 1 октября — 11 ноября'));
   assert.equal(emptyText(null, 'Одежда', { kind: 'week', from: '2026-11-09', to: '2026-11-15' }),
     'За 9–15 ноября 2026 трат «одежда» нет');
+});
+
+test('фильтр «Кошелёк или счёт» — счета зрителя из остатков «Здоровья» (решение 38); нет остатков — прежний список', () => {
+  const f = filters([['нал Алексея', 'Assets:Family:Cash:Aleksey'], ['Freedom', 'Assets:Family:Freedom']]);
+  assert.deepEqual(f.map((g) => g.key), ['account', 'who', 'source']);
+  assert.deepEqual(f[0].chips, [['все', ''], ['нал Алексея', 'Assets:Family:Cash:Aleksey'], ['Freedom', 'Assets:Family:Freedom']]);
+  assert.ok(filters([])[0].chips.length > 2 && filters()[0].chips[0][0] === 'все');
 });
