@@ -1,7 +1,7 @@
 // Вход и ошибки: страница без данных; API — только из подписанного Telegram, адрес API — из ссылки кнопки.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { apiBase, get, screen, TIMEOUT } from '../js/api.js';
+import { apiBase, get, post, screen, TIMEOUT } from '../js/api.js';
 
 test('адрес API — только https на ts.net из параметра ?api=, иначе нет', () => {
   assert.equal(apiBase('?api=https://mac.tail0.ts.net'), 'https://mac.tail0.ts.net');
@@ -78,4 +78,28 @@ test('тайм-аут по умолчанию — 8 секунд', async () => {
   await get('/api/me', { base: 'https://mac.tail0.ts.net', initData: 'x', fetch: f });
   assert.ok(seen[0] instanceof AbortSignal);
   assert.equal(TIMEOUT, 8000);
+});
+
+// ---- POST: смена категории из карточки (этап 6)
+
+test('POST — JSON с initData; 409 — конфликт с тем, что стоит сейчас; 400/404 — отказ словами', async () => {
+  const base = 'https://mac.tail0.ts.net';
+  const f = fake(200, { card: { ref: 'add:1' } });
+  const ok = await post('/api/tx/add%3A1/category', { was: ['A'], to: 'B', id: 'c1' }, { base, initData: 'q', fetch: f });
+  assert.deepEqual(ok, { data: { card: { ref: 'add:1' } } });
+  const [call] = f.calls;
+  assert.equal(call.url, `${base}/api/tx/add%3A1/category`);
+  assert.equal(call.opts.method, 'POST');
+  assert.equal(call.opts.headers.Authorization, 'tma q');
+  assert.equal(call.opts.headers['Content-Type'], 'application/json');
+  assert.deepEqual(JSON.parse(call.opts.body), { was: ['A'], to: 'B', id: 'c1' });
+  const conflict = await post('/x', {}, { base, initData: 'q', fetch: fake(409, { error: 'e', now: ['C'], asked: 7 }) });
+  assert.deepEqual(conflict, { error: 'conflict', data: { error: 'e', now: ['C'], asked: 7 } });
+  for (const status of [400, 404]) {
+    const r = await post('/x', {}, { base, initData: 'q', fetch: fake(status, { error: 'нельзя' }) });
+    assert.deepEqual(r, { error: 'refused', detail: 'нельзя' });
+  }
+  for (const [status, kind] of [[401, 'stale'], [403, 'stranger'], [503, 'down'], ['down', 'down']]) {
+    assert.equal((await post('/x', {}, { base, initData: 'q', fetch: fake(status, {}) })).error, kind, String(status));
+  }
 });

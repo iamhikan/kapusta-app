@@ -1,0 +1,116 @@
+// Смена категории из карточки (этап 6, решения 12, 18, 33–36): вся операция или одна позиция чека. Страница шлёт
+// прежнюю категорию, которую видела, новую и id нажатия: сервер (fin api) сверяет прежнюю, правит ledger от зрителя и
+// пишет обоим в чат. Мак молчит — смена ждёт в очереди CloudStorage и уходит при следующем открытии (решение 18).
+
+export const QUEUE = 'recat_queue';   // не health_*: снимок «Здоровья» ищет свои ключи по префиксу
+const LIMIT = 4096;
+const OFTEN = 5;
+
+const nameOf = (card) => {
+  const names = new Map((card.change ? card.change.choices : []).map((c) => [c.account, c.name]));
+  return (a) => names.get(a) || a.split(':').pop().toLowerCase();
+};
+
+const words = (card, accounts) => [...new Set(accounts.map(nameOf(card)))].join(', ');
+
+export function category(card, waiting = null) {
+  // строка «Категория» карточки: сейчас словами; смена в очереди — «было → стало», серым
+  const now = card.change ? words(card, card.change.accounts) : card.cats.join(', ');
+  if (waiting && waiting.n == null) return { text: `${now} → ${waiting.toName}`, can: true, queued: true };
+  return { text: now, can: !!card.change, queued: false };
+}
+
+export function picker(card, { q = '', chosen = null, item = null } = {}) {
+  // лист выбора (холст card-picker): «Часто» — первые 5 (сервер ставит частые сверху), «сейчас» — текущая;
+  // поиск — по всем категориям ветки
+  const current = item == null ? card.change.accounts : [card.receipt.items[item].account];
+  const mark = (c) => ({ ...c, hint: current.includes(c.account) ? 'сейчас' : '', on: c.account === chosen,
+    current: current.includes(c.account) });
+  const all = card.change.choices.map(mark);
+  const needle = q.trim().toLowerCase();
+  const pick = all.find((c) => c.on);
+  return {
+    title: item == null ? `Категория для ${card.where}` : card.receipt.items[item].name,
+    often: needle ? null : [...all.filter((c) => c.current), ...all.filter((c) => !c.current)].slice(0, OFTEN),
+    all: needle ? all.filter((c) => c.name.toLowerCase().includes(needle)) : all,
+    allLabel: `Все категории — ${all.length}`,
+    button: pick && !pick.current ? { label: `Сменить на «${pick.name}»`, disabled: false }
+      : { label: 'Выберите категорию', disabled: true },
+  };
+}
+
+const newId = () => (globalThis.crypto && crypto.randomUUID ? crypto.randomUUID()
+  : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
+
+export function job(card, to, { id = newId(), n = null, now = new Date().toISOString().slice(0, 19) } = {}) {
+  // одна смена: прежние — что видели в карточке (сервер сверит), новая, id нажатия (повтор не применится дважды)
+  const name = nameOf(card);
+  const it = n == null ? null : card.receipt.items[n];
+  return { id, ref: card.ref, n, was: it ? it.account : card.change.accounts, to,
+    from: it ? name(it.account) : words(card, card.change.accounts), toName: name(to),
+    what: it ? it.name : card.where, at: now };
+}
+
+export const path = (j) => `/api/tx/${encodeURIComponent(j.ref)}${j.n == null ? '' : `/items/${j.n}`}/category`;
+export const body = (j) => ({ was: j.was, to: j.to, id: j.id });
+
+export function result(r, j, names = (a) => a.split(':').pop().toLowerCase()) {
+  // ответ сервера -> что сказать на карточке (холст card-done, card-item-done, card-error)
+  if (r.data && !r.error) {
+    return { kind: 'done', text: j.n == null ? `Сменили на «${j.toName}». Капуста написала в чат.`
+      : `${j.what} → «${j.toName}». Остальной чек не тронут, следующие такие чеки — тоже «${j.toName}». Капуста написала в чат.` };
+  }
+  if (r.error === 'conflict') {
+    const now = [].concat(r.data.now).map(names).join(', ');
+    return { kind: 'conflict', text: `Запись уже изменили: сейчас «${now}». Капуста спросила вас в чате, что оставить.` };
+  }
+  if (r.error === 'down') {
+    return { kind: 'queued',
+      text: 'Капуста не отвечает. Смена в очереди: уйдёт, когда вы откроете приложение и Капуста ответит.' };
+  }
+  if (r.error === 'refused') return { kind: 'refused', text: `Не сменили: ${r.detail}.` };
+  return { kind: r.error, text: '' };
+}
+
+const call = (fn) => new Promise((resolve) => {
+  try { fn((err, value) => resolve(err ? null : value)); } catch { resolve(null); }
+});
+
+export const queue = {
+  async load(cs) {
+    if (!cs) return [];
+    try { return JSON.parse((await call((cb) => cs.getItem(QUEUE, cb))) || '[]'); } catch { return []; }
+  },
+  async store(cs, jobs) {
+    const raw = JSON.stringify(jobs);
+    if (!cs || raw.length > LIMIT) return false;
+    return (await call((cb) => cs.setItem(QUEUE, raw, cb))) === true;
+  },
+  async add(cs, j) {
+    // та же запись (и позиция) — остаётся последняя смена: сервер получит одну
+    const rest = (await queue.load(cs)).filter((x) => !(x.ref === j.ref && x.n === j.n));
+    return queue.store(cs, [...rest, j]);
+  },
+  async drop(cs, id) {
+    return queue.store(cs, (await queue.load(cs)).filter((x) => x.id !== id));
+  },
+};
+
+export async function flush(cs, send) {
+  // при открытии: очередь по порядку; ответил — из очереди (конфликт Капуста спросит в чате); Мак молчит — ждём
+  const out = { done: 0, conflicts: 0, left: 0 };
+  const jobs = await queue.load(cs);
+  for (let i = 0; i < jobs.length; i += 1) {
+    const r = await send(jobs[i]);
+    const kind = result(r, jobs[i]).kind;
+    if (kind === 'queued' || kind === 'stale' || kind === 'stranger') {
+      out.left = jobs.length - i;
+      await queue.store(cs, jobs.slice(i));
+      return out;
+    }
+    if (kind === 'done') out.done += 1;
+    if (kind === 'conflict') out.conflicts += 1;
+  }
+  if (jobs.length) await queue.store(cs, []);
+  return out;
+}

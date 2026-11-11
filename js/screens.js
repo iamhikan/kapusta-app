@@ -4,6 +4,7 @@ import { cardView, dayLabel, emptyText, headView, money, monthRange, monthTitle,
 import { shiftMonth } from './health.js';
 import { canNext, periodEnd, shiftPeriod } from './period.js';
 import { offline } from './snapshot.js';
+import { body as jobBody, category, job, path as jobPath, picker, result } from './recat.js';
 
 // фильтры (холст «Операции» → «Фильтры»): значение — параметр /api/tx
 export const FILTERS = [
@@ -195,7 +196,96 @@ export async function loadCard(entry, nav) {
   if (r.error === 'stale' || r.error === 'stranger') return nav.problem(r.error);
   entry.data = r.data || null;
   entry.error = r.error ? (r.detail || 'нет такой операции') : null;
+  const waiting = nav.queued(entry.ref);          // смена ждёт в очереди с прошлого раза (холст card-error)
+  if (waiting.length && !entry.notice) entry.notice = { tone: 'warn', text: result({ error: 'down' }, waiting[0]).text };
   nav.render();
+}
+
+const names = (card) => {
+  const m = new Map((card.change ? card.change.choices : []).map((c) => [c.account, c.name]));
+  return (a) => m.get(a) || a.split(':').pop().toLowerCase();
+};
+
+async function submit(entry, nav, to) {
+  // одно нажатие — одна смена: кнопка «Меняем…» не нажимается, id нажатия защищает и от повтора из очереди
+  const p = entry.picker;
+  if (!p || p.saving) return;
+  p.saving = true;
+  nav.render();
+  const j = job(entry.data, to, { n: p.item });
+  const r = await nav.post(jobPath(j), jobBody(j));
+  if (r.error === 'stale' || r.error === 'stranger') return nav.problem(r.error);
+  const res = result(r, j, names(entry.data));
+  entry.picker = null;
+  if (res.kind === 'done') {
+    entry.data = r.data.card;
+    entry.notice = { tone: 'good', text: res.text };
+    if (j.n != null) entry.changed = { n: j.n, text: `${j.from} → ${j.toName}` };
+    nav.changed();
+  } else if (res.kind === 'queued') {
+    const ok = await nav.enqueue(j);
+    entry.notice = ok ? { tone: 'warn', text: res.text, cancel: j.id }
+      : { tone: 'bad', text: 'Капуста не отвечает, а очередь смен заполнена. Смените, когда Мак проснётся.' };
+  } else {
+    entry.notice = { tone: res.kind === 'conflict' ? 'warn' : 'bad', text: res.text };
+    if (res.kind === 'conflict') return loadCard(entry, nav);
+  }
+  nav.render();
+}
+
+function notice(entry, nav) {
+  // холст card-done / card-item-done / card-error: итог смены над карточкой
+  const n = entry.notice;
+  if (!n) return null;
+  const cancel = n.cancel ? h('button', { type: 'button', class: 'link', on: { click: async () => {
+    tap(); await nav.unqueue(n.cancel); entry.notice = null; nav.render(); } } }, 'Отменить') : null;
+  return h('div', { class: `offline notice ${n.tone}`, role: 'status' }, h('span', { class: 'offline-text' }, n.text),
+    cancel);
+}
+
+function categoryRow(entry, nav) {
+  const card = entry.data;
+  const waiting = nav.queued(card.ref).find((j) => j.n == null);
+  const c = category(card, waiting);
+  return h('section', { class: 'card list' }, h('div', { class: 'line' },
+    h('span', { class: 'grow' }, h('span', { class: 'muted small' }, 'Категория'),
+      h('span', { class: c.queued ? 'muted' : '' }, c.text)),
+    c.queued ? h('span', { class: 'mark secret' }, 'в очереди') : null,
+    c.can ? h('button', { type: 'button', class: 'link', on: { click: () => {
+      tap(); entry.picker = { item: null, q: '', chosen: null, all: false }; nav.render(); } } }, 'Сменить') : null));
+}
+
+function pickerSheet(entry, nav) {
+  // холст card-picker / card-item: «Часто», поиск, «Все категории», «Сменить на …»; позиция — только она
+  const p = entry.picker;
+  const card = entry.data;
+  const v = picker(card, p);
+  const close = () => { entry.picker = null; nav.render(); };
+  const choice = (c) => h('button', { type: 'button', class: `line op choice${c.on ? ' on' : ''}`,
+    'aria-pressed': String(c.on), on: { click: () => { tap(); p.chosen = c.account; nav.render(); } } },
+  h('span', { class: 'grow' }, h('span', {}, c.name)), c.hint ? h('span', { class: 'muted small' }, c.hint) : null);
+  const it = p.item == null ? null : card.receipt.items[p.item];
+  const lists = v.often
+    ? [h('div', { class: 'muted small' }, 'Часто'), h('section', { class: 'card list' }, ...v.often.map(choice)),
+      h('button', { type: 'button', class: 'link', 'aria-expanded': String(p.all),
+        on: { click: () => { tap(); p.all = !p.all; nav.render(); } } }, v.allLabel),
+      p.all ? h('section', { class: 'card list' }, ...v.all.map(choice)) : null]
+    : [v.all.length ? h('section', { class: 'card list' }, ...v.all.map(choice))
+      : h('p', { class: 'muted small' }, 'Такой категории нет')];
+  return h('div', { class: 'sheet-back', on: { click: (e) => { if (e.target === e.currentTarget) close(); } } },
+    h('div', { class: 'sheet', role: 'dialog', 'aria-label': v.title },
+      h('div', { class: 'row' }, h('h2', {}, v.title),
+        h('button', { type: 'button', class: 'link', on: { click: () => { tap(); close(); } } }, 'Отмена')),
+      it ? h('p', { class: 'muted small' }, [`${money(it.total)} RSD`, card.where, it.kind ? `вид «${it.kind}»` : '']
+        .filter(Boolean).join(' · ')) : null,
+      h('label', { class: 'search' }, icon(ICONS.search, 18),
+        h('input', { type: 'search', id: 'cat-q', placeholder: 'Найти категорию', value: p.q, 'aria-label': 'Найти категорию',
+          on: { input: (e) => { p.q = e.target.value; nav.render(); } } })),
+      ...lists,
+      it ? h('p', { class: 'muted small' },
+        'Меняется только эта позиция — и в следующих чеках с ней. Весь чек — «Сменить» в строке «Категория».') : null,
+      h('button', { type: 'button', class: 'button', disabled: v.button.disabled || p.saving,
+        on: { click: () => { tap(); submit(entry, nav, p.chosen); } } }, p.saving ? 'Меняем…' : v.button.label)));
 }
 
 export function cardScreen(entry, nav) {
@@ -209,7 +299,20 @@ export function cardScreen(entry, nav) {
   const line = (name, value, sub) => h('div', { class: 'line' },
     h('span', { class: 'grow' }, h('span', {}, name), sub ? h('span', { class: 'muted small' }, sub) : null),
     h('span', { class: 'nowrap' }, value));
+  const canItems = !!entry.data.change;
+  const waitingItems = new Set(nav.queued(entry.data.ref).filter((j) => j.n != null).map((j) => j.n));
+  const item = (it, n) => {
+    const changed = entry.changed && entry.changed.n === n;
+    const sub = changed ? entry.changed.text : waitingItems.has(n) ? `${it.sub} · в очереди`
+      : [it.line, it.sub].filter(Boolean).join(' · ');
+    const kids = [h('span', { class: 'grow' }, h('span', {}, it.name),
+      h('span', { class: `small ${changed ? 'good' : 'muted'}` }, sub)), h('span', { class: 'nowrap' }, it.value)];
+    if (!canItems) return h('div', { class: 'line' }, ...kids);
+    return h('button', { type: 'button', class: `line op${changed ? ' changed' : ''}`, 'aria-label': `${it.name}: категория`,
+      on: { click: () => { tap(); entry.picker = { item: n, q: '', chosen: null, all: false }; nav.render(); } } }, ...kids);
+  };
   return h('div', { class: 'screen' },
+    notice(entry, nav),
     h('section', { class: 'card pad stack' },
       h('div', { class: 'op-where' }, h('h1', { class: 'card-title' }, c.title),
         ...r.marks.map((m) => h('span', { class: `mark${m === '!' ? ' bad' : m === 'секрет' ? ' secret' : ''}` }, m))),
@@ -218,11 +321,12 @@ export function cardScreen(entry, nav) {
         r.amountSub ? h('span', { class: 'muted' }, r.amountSub) : null),
       r.note ? h('div', { class: `small ${r.noteTone}` }, r.note) : null,
       h('div', { class: 'muted small' }, `${r.sub ? `${r.sub} · ` : ''}${c.when} · ${c.by}`)),
+    entry.data.kind === 'spend' ? categoryRow(entry, nav) : null,
     h('div', { class: 'section-head' }, h('h2', {}, 'Проводки')),
     h('section', { class: 'card list' }, ...c.postings.map((p) => line(p.name, p.value))),
-    c.receipt ? [h('div', { class: 'section-head' }, h('h2', {}, `Чек · ${c.receipt.shop}`)),
-      h('section', { class: 'card list' }, ...c.receipt.items.map((it) => line(it.name, it.value,
-        [it.line, it.sub].filter(Boolean).join(' · '))),
+    c.receipt ? [h('div', { class: 'section-head' }, h('h2', {}, `Чек · ${c.receipt.shop}`),
+      canItems ? h('span', { class: 'muted small' }, 'тап — категория позиции') : null),
+    h('section', { class: 'card list' }, ...c.receipt.items.map(item),
       h('div', { class: 'line' }, h('b', {}, 'Итого'), h('b', {}, c.receipt.total)),
       c.receipt.url ? h('button', { type: 'button', class: 'more', on: { click: () => {
         tap(); try { tg.openLink(c.receipt.url); } catch { window.open(c.receipt.url, '_blank', 'noopener'); } } } },
@@ -231,5 +335,6 @@ export function cardScreen(entry, nav) {
       h('section', { class: 'card list' }, ...c.similar.map((s) => h('button', { type: 'button', class: 'line op',
         on: { click: () => { tap(); nav.push({ kind: 'card', ref: s.ref }); } } }, h('span', {}, s.label),
       h('span', {}, s.value))))] : null,
-    c.refs ? h('p', { class: 'fresh muted small' }, c.refs) : null);
+    c.refs ? h('p', { class: 'fresh muted small' }, c.refs) : null,
+    entry.picker ? pickerSheet(entry, nav) : null);
 }

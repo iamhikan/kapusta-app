@@ -33,6 +33,27 @@ export async function get(path, { base, initData, fetch = globalThis.fetch, time
   return { data: await r.json() };
 }
 
+export async function post(path, body, { base, initData, fetch = globalThis.fetch, timeout = TIMEOUT }) {
+  // смена категории (этап 6): 409 — запись уже изменили (в ответе — что стоит сейчас), 400/404 — отказ словами
+  const stop = new AbortController();
+  const timer = setTimeout(() => stop.abort(), timeout);
+  let r;
+  try {
+    r = await fetch(base + path, { method: 'POST', body: JSON.stringify(body), cache: 'no-store', signal: stop.signal,
+      headers: { Authorization: `tma ${initData}`, 'Content-Type': 'application/json' } });
+  } catch (e) {
+    return { error: 'down', detail: stop.signal.aborted ? `сеть: нет ответа за ${timeout / 1000} с` : `сеть: ${e.name}` };
+  } finally {
+    clearTimeout(timer);
+  }
+  if (r.status === 401) return { error: 'stale' };
+  if (r.status === 403) return { error: 'stranger' };
+  if (r.status === 409) return { error: 'conflict', data: await r.json() };
+  if (r.status === 400 || r.status === 404) return { error: 'refused', detail: (await r.json()).error };
+  if (!r.ok) return { error: 'down', detail: `HTTP ${r.status}` };
+  return { data: await r.json() };
+}
+
 const SCREENS = {
   outside: { title: 'Капуста открывается из Telegram', icon: 'logo', link: BOT, linkText: 'Открыть в Telegram',
     text: 'Это страница бота семейных финансов. Цифры видны только внутри Telegram, у Алексея и Ангелины.' },

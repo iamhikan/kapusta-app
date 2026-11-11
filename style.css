@@ -228,3 +228,12 @@ section .title { font-size: 17px; font-weight: 600; }
 .offline-text { flex-grow: 1; min-width: 0; }
 .offline .link { font-weight: 600; padding: 10px 0; background: none; border: 0; font-size: 15px; white-space: nowrap; }
 .offline .link:disabled { color: var(--muted); }
+/* смена категории из карточки (этап 6): итог над карточкой, выбор в листе */
+.notice { padding: 10px 14px; }
+.notice.good { background: color-mix(in srgb, var(--good) 14%, var(--bg)); }
+.notice.bad { background: color-mix(in srgb, var(--bad) 14%, var(--bg)); }
+.choice.on { color: var(--accent); font-weight: 600; }
+.choice.on::after { content: '✓'; color: var(--accent); }
+.line.op.changed { background: color-mix(in srgb, var(--good) 10%, transparent); }
+.line .link { padding: 8px 0 8px 8px; flex-shrink: 0; }
+.line.choice > .grow { text-align: left; }

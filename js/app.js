@@ -1,6 +1,6 @@
 // Mini App «Капуста»: вкладки «Здоровье», «Операции» и «Категории», карточка операции. Тема — themeParams Telegram (CSS-переменные
 // --tg-theme-*), отступы — safeAreaInset. «Назад» — системная BackButton. Данные — только в памяти страницы.
-import { apiBase, get, screen } from './api.js';
+import { apiBase, get, post, screen } from './api.js';
 import { fmt, shiftMonth, view } from './health.js';
 import { BOX, curve } from './chart.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
@@ -8,6 +8,7 @@ import { cardScreen, loadCard, loadOps, newOps, opsScreen } from './screens.js';
 import { catsScreen, loadCats, newCats } from './catscreen.js';
 import { isPeriod, periodOf } from './period.js';
 import { restore, save, snapView } from './snapshot.js';
+import { body as jobBody, flush, path as jobPath, queue } from './recat.js';
 
 const root = document.getElementById('app');
 const cache = new Map();
@@ -23,6 +24,8 @@ const cloud = tg && tg.CloudStorage;   // снимок «Здоровья» (э�
 let snap = null;                       // показанный снимок: Мак молчит
 let hasSnap = false;                   // снимок есть в CloudStorage — ссылка на него с «Операций» и «Категорий»
 let retrying = false;                  // «Повторить» на снимке: снимок остаётся на экране, пока ждём Мак
+let pending = [];                      // смены категории в очереди CloudStorage: Мак молчал (решение 18)
+let flushing = false;
 
 const today = () => {
   const d = new Date();
@@ -45,6 +48,18 @@ function show(...nodes) {
 const nav = {
   today,
   get: (path) => get(path, { base: apiBase(location.search), initData: tg.initData }),
+  post: (path, body) => post(path, body, { base: apiBase(location.search), initData: tg.initData }),
+  queued: (ref) => pending.filter((j) => j.ref === ref),
+  async enqueue(j) {
+    const ok = await queue.add(cloud, j);
+    pending = await queue.load(cloud);
+    return ok;
+  },
+  async unqueue(id) {
+    await queue.drop(cloud, id);
+    pending = await queue.load(cloud);
+  },
+  changed: () => stale(),
   render: () => render(),
   problem: (kind, detail) => problem(kind, detail),
   get hasSnap() { return hasSnap; },
@@ -85,15 +100,21 @@ function back() {
   if (stack.length < 2) return;
   const top = stack[stack.length - 1];
   if (top.sheet) { top.sheet = false; top.draft = null; return render(); }
+  if (top.picker && !top.picker.saving) { top.picker = null; return render(); }
   stack.pop();
-  render();
-  window.scrollTo(0, stack[stack.length - 1].scroll || 0);
+  const under = stack[stack.length - 1];
+  // категорию сменили — данные под карточкой сброшены (stale): загрузить заново, а не оставить скелет
+  if (under.kind === 'ops' && !under.pages.length) loadOps(under, nav);
+  else if (under.kind === 'cats' && !under.data) loadCats(under, nav);
+  else if (under.kind === 'health' && !cache.has(month) && !snap) load(month);
+  else render();
+  window.scrollTo(0, under.scroll || 0);
 }
 
 function backButton() {
   const top = stack[stack.length - 1];
   try {
-    if (stack.length > 1 || top.sheet) tg.BackButton.show(); else tg.BackButton.hide();
+    if (stack.length > 1 || top.sheet || top.picker) tg.BackButton.show(); else tg.BackButton.hide();
   } catch { /* вне Telegram — без кнопки */ }
 }
 
@@ -301,9 +322,10 @@ function healthScreen(data, snapped = false) {
 
 function render() {
   // поиск отвечает, пока человек печатает: перерисовка не должна убирать фокус (и клавиатуру) из поля
-  const typing = document.activeElement && document.activeElement.id === 'ops-q';
+  const typing = document.activeElement && ['ops-q', 'cat-q'].includes(document.activeElement.id)
+    && document.activeElement.id;
   draw();
-  const q = typing && document.getElementById('ops-q');
+  const q = typing && document.getElementById(typing);
   if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
 }
 
@@ -339,6 +361,31 @@ async function load(next) {
   // после каждого удачного ответа — снимок в CloudStorage (ключ на месяц, до 4096 знаков, решение 32)
   save(cloud, r.data).then((ok) => { if (ok) hasSnap = true; });
   if (stack[stack.length - 1].kind === 'health') render();
+  sendQueue();
+}
+
+function stale() {
+  // категория сменилась: цифры «Здоровья», списки и категории — заново при следующем показе
+  cache.clear();
+  for (const e of new Set([opsTab, catsTab, ...stack])) {
+    if (e && e.kind === 'ops') e.pages = [];
+    if (e && e.kind === 'cats') e.data = null;
+  }
+}
+
+async function sendQueue() {
+  // решение 18: смены, ждавшие Мак, уходят при открытии, как только Капуста ответила; конфликт — вопрос в чате
+  if (flushing || !pending.length) return;
+  flushing = true;
+  const out = await flush(cloud, (j) => nav.post(jobPath(j), jobBody(j)));
+  pending = await queue.load(cloud);
+  flushing = false;
+  if (!out.done) return;
+  const m = month;
+  stale();
+  const r = await nav.get(`/api/health?month=${m}`);
+  if (r.data) cache.set(m, r.data);
+  if (stack[stack.length - 1].kind === 'health') render();
 }
 
 async function offlineHealth(mine, detail) {
@@ -360,5 +407,6 @@ if (!tg || !tg.initData) {
   theme();
   tg.onEvent('themeChanged', theme);
   try { tg.BackButton.onClick(back); } catch { /* старый клиент */ }
+  queue.load(cloud).then((jobs) => { pending = jobs; sendQueue(); });
   load(null);
 }
