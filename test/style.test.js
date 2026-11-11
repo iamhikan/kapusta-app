@@ -198,3 +198,7 @@ test('подсказка в поле поиска — серый темы, а н
   assert.equal(decls('.search input::placeholder').color, 'var(--muted)');
   assert.equal(decls('.search input::placeholder').opacity, '1');
 });
+
+test('подписи под списками переносятся без висячего слова в последней строке (детектор: «должны.» одно)', () => {
+  assert.equal(decls('.note-text')['text-wrap'], 'pretty');
+});

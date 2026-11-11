@@ -138,7 +138,7 @@ h1, h2, p { margin: 0; }
 .line { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 16px; min-height: 48px; }
 .line > :first-child { min-width: 0; }
 .line > :last-child { text-align: right; }
-.note-text { padding: 0 4px; margin-top: -6px; }
+.note-text { padding: 0 4px; margin-top: -6px; text-wrap: pretty; }
 .fresh { text-align: center; padding-top: 6px; }
 
 .skel { display: block; border-radius: 6px; background: var(--skel); }
