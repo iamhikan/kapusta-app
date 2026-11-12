@@ -14,6 +14,7 @@ import { isMore, loadMore, moreScreen } from './more.js';
 import { body as jobBody, flush, path as jobPath, queue } from './recat.js';
 import { backStep, escapes, returnTo, showBack } from './back.js';
 import { painter } from './a11y.js';
+import { startAt } from './start.js';
 
 const root = document.getElementById('app');
 // фаза 15: фокус после перерисовки — по ключу data-focus, листы модальные, диктор — только сообщения из #say
@@ -41,6 +42,7 @@ const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 const upper = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const onHealth = () => stack[stack.length - 1].kind === 'health';
 
 function theme() {
   document.documentElement.dataset.scheme = (tg && tg.colorScheme) || 'light';
@@ -376,12 +378,14 @@ async function load(next) {
   month = next;
   if (cache.has(month)) return render();
   retrying = !!(snap && snap.month === month);
-  if (retrying) render(); else skeleton();
+  // открыли не «Здоровье» (кнопка «Открыть в Капусте», решение 74) — грузим его в фоне: остатки нужны фильтру
+  // «Операций»; скелет и ошибка «Здоровья» открытый экран не закрывают (кроме входа: 401, 403)
+  if (retrying) render(); else if (onHealth()) skeleton();
   const r = await get(`/api/health${month ? `?month=${month}` : ''}`, { base, initData: tg.initData });
   if (mine !== seq) return;
   retrying = false;
   if (r.error === 'down') return offlineHealth(mine, r.detail);
-  if (r.error) return problem(r.error, r.detail);
+  if (r.error) return onHealth() || r.error === 'stale' || r.error === 'stranger' ? problem(r.error, r.detail) : null;
   month = r.data.month;
   cache.set(month, r.data);
   const fresh = view(r.data);
@@ -423,7 +427,7 @@ async function offlineHealth(mine, detail) {
   // Мак молчит: снимок этого месяца (или самый поздний) с пометкой «данные на …»; снимка нет — «не отвечает»
   const s = await restore(cloud, month || today().slice(0, 7));
   if (mine !== seq) return;
-  if (!s) return problem('down', detail);
+  if (!s) return onHealth() ? problem('down', detail) : null;
   snap = s;
   hasSnap = true;
   month = s.month;
@@ -446,5 +450,10 @@ if (!tg || !tg.initData) {
     back();
   });
   queue.load(cloud).then((jobs) => { pending = jobs; sendQueue(); });
-  load(null);
+  const start = startAt(location.search, today());
+  stack = start.stack;
+  if (stack[0].kind === 'ops') opsTab = stack[0];
+  if (stack[0].kind === 'cats') catsTab = stack[0];
+  if (!onHealth()) open(stack[stack.length - 1]);
+  load(start.month);
 }

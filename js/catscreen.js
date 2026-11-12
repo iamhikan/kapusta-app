@@ -26,6 +26,8 @@ export async function loadCats(entry, nav) {
   if (r.error === 'stale' || r.error === 'stranger') return nav.problem(r.error);
   if (r.error) entry.error = r.detail || r.error;
   else entry.data = r.data;
+  // подкатегории по ссылке «Открыть в Капусте» (решение 74): имени строки нет — имя категории из ответа
+  if (entry.cat && !entry.title && entry.data && entry.data.name) entry.title = entry.data.name;
   entry.bars = s && s.data ? s.data : null;
   nav.render();
 }
