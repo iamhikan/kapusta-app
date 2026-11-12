@@ -78,9 +78,10 @@ function reserveNote(limits) {
   const res = limits.find((l) => l.eaten);
   if (!res) return '';
   const over = limits.filter((l) => l.over > 0 && l !== res);
-  const sum = over.reduce((s, l) => s + l.over, 0);
+  // частично — только когда резерв кончился: суммы с сервера округлены по одной и могут разойтись на 1 (critique 12.11)
+  const partial = res.spent >= res.limit && over.reduce((s, l) => s + l.over, 0) > res.eaten;
   return `Резерв: свои ${fmt(res.spent - res.eaten)} + перерасход других ${fmt(res.eaten)} — покрыл `
-    + `${over.map((l) => `«${l.name}»`).join(', ')}${sum > res.eaten ? ' частично' : ''}.`;
+    + `${over.map((l) => `«${l.name}»`).join(', ')}${partial ? ' частично' : ''}.`;
 }
 
 function curveNote(h) {

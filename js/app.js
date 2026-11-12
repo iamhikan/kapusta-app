@@ -12,6 +12,7 @@ import { isPeriod, periodOf } from './period.js';
 import { restore, save, snapView } from './snapshot.js';
 import { isMore, loadMore, moreScreen } from './more.js';
 import { body as jobBody, flush, path as jobPath, queue } from './recat.js';
+import { backStep, showBack } from './back.js';
 
 const root = document.getElementById('app');
 const cache = new Map();
@@ -109,11 +110,12 @@ function open(entry) {
 }
 
 function back() {
-  if (stack.length < 2) return;
+  const step = backStep(stack);
   const top = stack[stack.length - 1];
-  if (top.sheet) { top.sheet = false; top.draft = null; return render(); }
-  if (top.picker && top.picker.group && !top.picker.saving) { top.picker.group = null; return render(); }
-  if (top.picker && !top.picker.saving) { top.picker = null; return render(); }
+  if (step === 'sheet') { top.sheet = false; top.draft = null; return render(); }
+  if (step === 'group') { top.picker.group = null; return render(); }
+  if (step === 'picker') { top.picker = null; return render(); }
+  if (step !== 'pop') return;
   stack.pop();
   const under = stack[stack.length - 1];
   // категорию сменили — данные под карточкой сброшены (stale): загрузить заново, а не оставить скелет
@@ -126,9 +128,8 @@ function back() {
 }
 
 function backButton() {
-  const top = stack[stack.length - 1];
   try {
-    if (stack.length > 1 || top.sheet || top.picker) tg.BackButton.show(); else tg.BackButton.hide();
+    if (showBack(stack)) tg.BackButton.show(); else tg.BackButton.hide();
   } catch { /* вне Telegram — без кнопки */ }
 }
 
