@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { cardScreen } from '../js/screens.js';
 import { catsScreen } from '../js/catscreen.js';
+import { emptyText } from '../js/ops.js';
 
 class El {
   constructor(tag) { this.tag = tag; this.attrs = {}; this.kids = []; this.style = {}; }
@@ -64,4 +65,27 @@ test('«Ещё в …»: сумма и подпись — как в списке
   assert.match(said, /сверка остатка/);
   assert.doesNotMatch(said, /начальный остаток/);
   assert.match(said, /\+1\s000 USDT 104\s500 RSD/);
+});
+
+test('пустой период: «За ноябрь 2026 трат «салон» нет» — месяц строчной буквой; у недели, квартала, года и своего — как в названии (долг 12.11)', () => {
+  const empty = (period, cat, title) => {
+    const entry = { kind: 'cats', period, cat, title, scope: 'all', bars: null,
+      data: { from: period.from, to: period.to, end: '2026-11-11', scope: 'all', cat, total: 0, cats: [] } };
+    return text(catsScreen(entry, nav)).replace(/\s+/g, ' ');
+  };
+  const month = { kind: 'month', from: '2026-11-01', to: '2026-11-30' };
+  assert.match(empty(month, 'Income:Angelina:PR', 'салон'), /За ноябрь 2026 трат «салон» нет/);
+  assert.match(empty(month, null, ''), /За ноябрь 2026 трат нет/);
+  assert.match(empty(month, null, ''), /‹ Октябрь 2026/);
+  assert.match(empty({ kind: 'week', from: '2026-11-09', to: '2026-11-15' }, null, ''), /За 9–15 ноября 2026 трат нет/);
+  assert.match(empty({ kind: 'quarter', from: '2026-10-01', to: '2026-12-31' }, null, ''), /За IV квартал 2026 трат нет/);
+  assert.match(empty({ kind: 'year', from: '2026-01-01', to: '2026-12-31' }, null, ''), /За 2026 год трат нет/);
+  assert.match(empty({ kind: 'custom', from: '2026-11-03', to: '2026-11-07' }, null, ''), /За 3–7 ноября 2026 трат нет/);
+});
+
+test('«Операции» категории за пустой месяц: «За октябрь 2026 трат «одежда» нет» (долг 12.11)', () => {
+  assert.equal(emptyText(null, 'Одежда', { kind: 'month', from: '2026-10-01', to: '2026-10-31' }),
+    'За октябрь 2026 трат «одежда» нет');
+  assert.equal(emptyText(null, 'Одежда', { kind: 'quarter', from: '2026-10-01', to: '2026-12-31' }),
+    'За IV квартал 2026 трат «одежда» нет');
 });

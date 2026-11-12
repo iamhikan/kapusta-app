@@ -2,7 +2,7 @@
 // тап — подкатегории, затем операции категории за период. Данные — только из /api/categories и /api/series, в памяти.
 import { h, icon, tap, ICONS } from './dom.js';
 import { barsView, BARS, catsView, R } from './cats.js';
-import { barsRange, canNext, KINDS, periodEnd, periodOf, periodSub, periodTitle, shiftPeriod } from './period.js';
+import { barsRange, canNext, KINDS, periodEnd, periodInText, periodOf, periodSub, periodTitle, shiftPeriod } from './period.js';
 import { DIALOG, newOps, offlineBody, stepKey, TITLE } from './screens.js';
 
 const upper = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -194,7 +194,7 @@ export function catsScreen(entry, nav) {
   } else if (v.empty) {
     // холст 6.3: пустой период — «трат нет» и переход к прошлому периоду
     const prev = shiftPeriod(entry.period, -1);
-    body = h('div', { class: 'empty' }, h('h2', {}, `За ${periodTitle(entry.period)} ${entry.cat ? `трат «${entry.title}»` : 'трат'} нет`),
+    body = h('div', { class: 'empty' }, h('h2', {}, `За ${periodInText(entry.period)} ${entry.cat ? `трат «${entry.title}»` : 'трат'} нет`),
       h('button', { type: 'button', class: 'button', 'data-focus': 'month:prev', on: { click: () => move(entry, nav, prev) } },
         `‹ ${periodTitle(prev)}`));
   } else if (entry.cat) {

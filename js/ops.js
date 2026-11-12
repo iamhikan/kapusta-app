@@ -1,7 +1,7 @@
 // «Операции» и карточка: ответы /api/tx и /api/tx/{ref} -> что видит человек. Свёртку, доли, переводы и вид зрителя
 // считает сервер (fin api); страница только подписывает и раскладывает строки.
 import { fmt } from './health.js';
-import { periodTitle, rangeText } from './period.js';
+import { periodInText, periodTitle, rangeText } from './period.js';
 
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь',
   'Ноябрь', 'Декабрь'];
@@ -72,7 +72,7 @@ export function monthTitle(month) {
 
 export function emptyText(month, title, period = null) {
   const what = title ? `трат «${title.toLowerCase()}»` : 'операций';
-  if (period) return `За ${periodTitle(period)} ${what} нет`;
+  if (period) return `За ${periodInText(period)} ${what} нет`;
   return `В ${IN_MONTH[Number(month.slice(5)) - 1]} ${what} нет`;
 }
 

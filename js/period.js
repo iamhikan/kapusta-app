@@ -62,6 +62,12 @@ export function periodTitle(p) {
   return p.from.slice(0, 4) === p.to.slice(0, 4) ? `${text} ${y}` : text;
 }
 
+// Название периода в середине фразы («За ноябрь 2026 трат нет»): месяц — строчной буквой, остальное — как в названии
+export function periodInText(p) {
+  const title = periodTitle(p);
+  return p.kind === 'month' ? title.toLowerCase() : title;
+}
+
 export function periodSub(p, today, prev) {
   const days = rangeText(p.from, periodEnd(p, today));
   return prev ? `${days}, к ${rangeText(prev.from, prev.to)}` : days;
