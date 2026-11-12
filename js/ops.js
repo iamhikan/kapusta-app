@@ -24,7 +24,7 @@ export function filters(accounts = []) {
     { key: 'account', label: 'Кошелёк или счёт', chips: [['все', ''], ...(accounts.length ? accounts : ACCOUNTS)] },
     { key: 'who', label: 'Кто записал', chips: [['все', ''], ['Алексей', 'aleksey'], ['Ангелина', 'angelina']] },
     { key: 'source', label: 'Источник', chips: [['все', ''], ['чек', 'receipt'], ['словами', 'words'],
-      ['из банка', 'bank'], ['Райффайзен РФ', 'raif']] },   // решение 61: было «выписка», «Райф CSV»
+      ['из банка', 'bank'], ['выписка РФ', 'raif']] },   // решения 61, 64: было «выписка», «Райф CSV»
   ];
 }
 

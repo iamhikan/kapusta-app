@@ -50,7 +50,7 @@ test('решение 60: итог денег — одно имя с датой: 
 test('решение 61: слова ledger — словами человека: источник, «!», «в среднем», группа регулярных, план дня', () => {
   const source = filters()[2];
   assert.deepEqual(source.chips, [['все', ''], ['чек', 'receipt'], ['словами', 'words'], ['из банка', 'bank'],
-    ['Райффайзен РФ', 'raif']]);
+    ['выписка РФ', 'raif']]);   // решение 64: не как имя счёта «Райффайзен РФ»
   assert.equal(FLAG, 'Только с «!» — надо уточнить');
   const v = budgetView({ ...BUDGET, groups: words(BUDGET.groups) });
   assert.deepEqual(v.groups.map((g) => g.name), ['Обязательные', 'Регулярные платежи', 'ПР']);

@@ -114,6 +114,15 @@ test('строка лимита: диктор слышит имя, потрач�
     return heard(row).replace(/\s+/g, ' ');
   });
   assert.match(said[0], /питомцы.*\+2 000.*6 000.*4 000.*сверх лимита/);
+  // решение 63: перерасход покрыл резерв — без красного: «+N» и сумма спокойным цветом, подпись видна глазами
+  const res = view({ ...NOW, limits: [...NOW.limits, { name: 'резерв', spent: 2000, limit: 30000, over: 0, eaten: 2000 }] });
+  const pets = limitRow(res.limits[0], { plan: res.plan, open() {} });
+  const all = [];
+  walk(pets, (e) => all.push((e.attrs.class || '').split(' ')));
+  assert.ok(!all.some((c) => c.includes('bad')));
+  assert.ok(all.some((c) => c.includes('calm')));
+  assert.match(heard(pets).replace(/\s+/g, ' '), /питомцы.*сверх лимита, покрыто резервом/);
+  assert.match(pets.textContent, /покрыто резервом/);
   assert.match(said[1], /путешествия.*14 000.*16 000.*выше плана/);
   assert.match(said[2], /еда вне дома.*5 000.*25 000.*в плане/);
   assertHeard(list, 3);

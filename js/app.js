@@ -295,9 +295,9 @@ function opsOf(title, params, data, reserve = false) {
 
 function limits(v, data) {
   if (!v.limits.length) return [];
-  const shown = allLimits ? v.limits : v.limits.slice(0, v.limitsShown);
+  const shown = allLimits ? v.limits : v.top;
   // раскрыть — последней строкой под уже открытыми лимитами, там же и свернуть (Алексей 11.11.2026)
-  const more = v.limits.length > v.limitsShown
+  const more = v.limits.length > v.top.length
     ? h('button', { class: 'more', type: 'button', 'aria-expanded': String(allLimits), 'data-focus': 'limits-more',
       on: { click: () => { tap(); allLimits = !allLimits; render(); } } },
     allLimits ? 'Свернуть' : `Показать все ${v.limits.length}`, icon(allLimits ? ICONS.up : ICONS.down, 16))
@@ -309,7 +309,6 @@ function limits(v, data) {
         h('span', { class: 'swatch-bar', style: { background: l.color } }), l.text)))),
     h('section', { class: 'card list' }, ...shown.map((l) => limitRow(l, { plan: data.closed ? null : v.plan,
       open: () => opsOf(l.name, l.ops, data, !!l.note) })), more),
-    v.reserve ? h('p', { class: 'note-text muted small' }, v.reserve) : null,
     budgetLinks(v, data),
   ];
 }

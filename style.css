@@ -144,6 +144,8 @@ h1, h2, p { margin: 0; }
 .ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge { flex-shrink: 0; font-size: 12px; font-weight: 600; line-height: 18px; color: var(--bad-ink);
   background: color-mix(in srgb, var(--bad) 16%, transparent); border-radius: 6px; padding: 0 6px; }
+/* решение 63: перерасход покрыл резерв — спокойный оранжевый, не красный */
+.badge.calm { color: var(--warn); background: color-mix(in srgb, var(--bar-orange) 16%, transparent); }
 .limit b { font-weight: 600; }
 .more { width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 6px;
   color: var(--accent); font-size: 15px; }

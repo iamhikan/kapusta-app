@@ -23,7 +23,7 @@ test('календарь: недели с понедельника, пустые
   assert.equal(sixth.future, true);
   assert.equal(sixth.date, null);
   assert.equal(v.title, 'Траты по дням · Ноябрь 2026');
-  assert.equal(v.sub, '1–5 ноября · все траты');
+  assert.equal(v.sub, '1–5 ноября · без аренды и регулярных');   // решение 64: «все траты» — у «Категорий», с жильём
   assert.equal(daysView({ ...NOV, scope: 'scale' }, 'sum').sub, '1–5 ноября · в лимитах');   // решение 51
 });
 
@@ -60,6 +60,6 @@ test('прошлый месяц — все дни; трат нет — пуст�
     points: Array.from({ length: 31 }, (_, i) => ({ date: `2026-10-${String(i + 1).padStart(2, '0')}`, rsd: 0, scale: 0, plan: 6000 })) };
   const v = daysView(oct, 'sum');
   assert.equal(v.cells.filter((c) => c.future).length, 0);
-  assert.equal(v.sub, '1–31 октября · все траты');
+  assert.equal(v.sub, '1–31 октября · без аренды и регулярных');
   assert.equal(v.note, 'Трат нет. Тап по дню — операции дня.');
 });
