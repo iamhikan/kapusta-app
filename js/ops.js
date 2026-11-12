@@ -111,6 +111,15 @@ export function opRow(op, { inCategory = false, account = '' } = {}) {
       return { ...base, gray: true, sub: 'сверка остатка', amount: first ? full(first.number, first.currency) : full(0, 'RSD'),
         amountSub: 'остаток' };
     }
+    // начальный остаток в одной валюте (решение 73) — в валюте счёта, как на экране банка, рядом ≈ RSD по курсу НБС;
+    // у долга (кредит) нога с минусом — сумма без знака; курса нет (rsd 0) — без «≈ 0 RSD»
+    const curs = new Set(op.legs.map((l) => l.currency));
+    if (op.opening === 'start' && curs.size === 1) {
+      const [c] = curs;
+      const n = Math.abs(op.legs.reduce((s, l) => s + l.number, 0));
+      const sub = from.length ? [...new Set(from)].join(', ') : into ? `на ${into}` : '';
+      return { ...base, gray: true, sub, amount: full(n, c), amountSub: c !== 'RSD' && op.rsd ? `≈ ${fmt(op.rsd)} RSD` : '' };
+    }
     // приход без «откуда» (начальный остаток, поправка, сверка нала): весь приход по курсу НБС, а не первая из валют
     // (ревью); у сверки без остатка (нал — экрана банка нет, решение 68) — подпись «сверка остатка»
     if (!from.length) {

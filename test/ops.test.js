@@ -249,7 +249,7 @@ test('«Ещё в …» — сумма как в списке «Операций
     { ...LIDL, ref: 'sms:0', date: '2026-11-03', rsd: 900 }] });
   assert.deepEqual(c.similar.map((s) => [s.ref, s.label, s.value, s.sub]), [
     ['walt:2', '6 ноября, пт', sp('+1 000 USDT'), sp('104 500 RSD')],
-    ['walt:1', '2 ноября, пн', sp('2 090,50 RSD'), ''],
+    ['walt:1', '2 ноября, пн', '20 USDT', sp('≈ 2 091 RSD')],   // начальный остаток — в валюте счёта (решение 73)
     ['sms:0', '3 ноября, вт', '900 RSD', '']]);
 });
 
@@ -290,6 +290,24 @@ test('начальный остаток — как был: «на счёт», с
   assert.equal(c.row.sub, 'на Freedom');
   assert.equal(c.row.amount, sp('9 000 RSD'));
   assert.equal(c.flow[0].lines[0].name, 'начальный остаток');
+});
+
+test('начальный остаток в одной валюте — в валюте счёта, рядом ≈ RSD по курсу НБС (решение 73)', () => {
+  const START = { ref: 'line:s', date: '2025-11-30', where: 'Начальный остаток', what: 'по факту 1 234,50 EUR',
+    kind: 'transfer', cats: [], src: 'карта, евро', rsd: 144914.6, receipt: false, flag: false, opening: 'start',
+    legs: [{ name: 'карта, евро', number: 1234.5, currency: 'EUR' }] };
+  const eur = opRow(START);
+  assert.deepEqual([eur.sub, eur.amount, eur.amountSub], ['на карта, евро', sp('1 234,50 €'), sp('≈ 144 915 RSD')]);
+  const card = cardView({ ...START, postings: [] }).row;
+  assert.deepEqual([card.amount, card.amountSub], [sp('1 234,50 €'), sp('≈ 144 915 RSD')]);
+  // долг (кредит): нога с минусом — «Откуда» кредит, сумма без знака
+  const debt = opRow({ ...START, src: 'кредит', rsd: 6500, legs: [{ name: 'кредит', number: -5000, currency: 'RUB' }] });
+  assert.deepEqual([debt.sub, debt.amount, debt.amountSub], ['кредит', sp('5 000 ₽'), sp('≈ 6 500 RSD')]);
+  // динары — без «≈»; курса нет (rsd 0) — только валюта, без «≈ 0 RSD»
+  const rsd = opRow({ ...START, rsd: 700.5, legs: [{ name: 'карта, динары', number: 700.5, currency: 'RSD' }] });
+  assert.deepEqual([rsd.amount, rsd.amountSub], ['700,50 RSD', '']);
+  const norate = opRow({ ...START, rsd: 0 });
+  assert.deepEqual([norate.amount, norate.amountSub], [sp('1 234,50 €'), '']);
 });
 
 test('сверка нала (нет экрана банка, сервер без after) — «сверка остатка» и найденное по курсу (решение 68)', () => {

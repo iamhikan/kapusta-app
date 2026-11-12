@@ -260,3 +260,8 @@ test('подписи вкладок — не мельче 12 px; стрелки 
   assert.ok(px(decls('.tab')['font-size']) >= 12, decls('.tab')['font-size']);
   assert.ok(px(decls('.small-arrow')['min-width']) >= 40, decls('.small-arrow')['min-width']);
 });
+
+test('крупная сумма в шапке карточки не рвётся: «≈ RSD» уходит строкой ниже, а не делит «36 956,10 €» (решение 73)', () => {
+  assert.equal(decls('.big')['flex-wrap'], 'wrap');
+  assert.equal(decls('.big > span')['white-space'], 'nowrap');
+});
