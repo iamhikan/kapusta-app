@@ -96,6 +96,23 @@ function exchange(op) {
     amountSub: into.length ? `→ ${full(into[0].number, into[0].currency)}` : '', note: note[0], noteTone: note[1] };
 }
 
+// начальный остаток в одной валюте (решение 73) -> [сумма, валюта]; у долга (кредит) нога с минусом — сумма без знака
+function startSum(op) {
+  if (op.opening !== 'start' || op.kind !== 'transfer' || !op.legs) return null;
+  const curs = new Set(op.legs.map((l) => l.currency));
+  if (curs.size !== 1) return null;
+  return [Math.abs(op.legs.reduce((s, l) => s + l.number, 0)), [...curs][0]];
+}
+
+// «по факту 36 956,10 EUR» (решение 72) у начального остатка — та же сумма, что крупно в карточке (решение 73)
+function repeatsStart(c) {
+  const start = startSum(c);
+  const m = /^по факту (.+) ([A-Z]+)$/.exec(c.what || '');
+  if (!start || !m || m[2] !== start[1]) return false;
+  const n = Number(m[1].replace(/[\s−-]/g, '').replace(',', '.'));
+  return Math.abs(n - start[0]) < 0.005;
+}
+
 export function opRow(op, { inCategory = false, account = '' } = {}) {
   const marks = [op.receipt && 'чек', op.flag && '!', op.secret && 'секрет'].filter(Boolean);
   const base = { ref: op.ref, where: op.count > 1 ? `${op.where} · ${records(op.count)}` : op.where, marks, note: op.hit || '', noteTone: '', gray: false,
@@ -112,11 +129,10 @@ export function opRow(op, { inCategory = false, account = '' } = {}) {
         amountSub: 'остаток' };
     }
     // начальный остаток в одной валюте (решение 73) — в валюте счёта, как на экране банка, рядом ≈ RSD по курсу НБС;
-    // у долга (кредит) нога с минусом — сумма без знака; курса нет (rsd 0) — без «≈ 0 RSD»
-    const curs = new Set(op.legs.map((l) => l.currency));
-    if (op.opening === 'start' && curs.size === 1) {
-      const [c] = curs;
-      const n = Math.abs(op.legs.reduce((s, l) => s + l.number, 0));
+    // курса нет (rsd 0) — без «≈ 0 RSD»
+    const start = startSum(op);
+    if (start) {
+      const [n, c] = start;
       const sub = from.length ? [...new Set(from)].join(', ') : into ? `на ${into}` : '';
       return { ...base, gray: true, sub, amount: full(n, c), amountSub: c !== 'RSD' && op.rsd ? `≈ ${fmt(op.rsd)} RSD` : '' };
     }
@@ -211,7 +227,7 @@ export function cardView(c) {
   const postings = (c.postings || []).map((p) => (check && p.account === OPENING ? { ...p, name: 'сверка остатка' } : p));
   const time = clock(c.at);
   return {
-    title: c.where, what: c.what && c.what !== c.where ? c.what : '',
+    title: c.where, what: c.what && c.what !== c.where && !repeatsStart(c) ? c.what : '',
     when: dayLabel(c.date) + (time ? ` · ${time}` : ''),
     by: c.by ? `записал${c.by === 'Ангелина' ? 'а' : ''} ${c.by}` : FROM[c.origin || c.source] || 'из выписки банка',   // origin — без учёта чека (решение 71)
     row: check && c.after ? checkHead(opRow(c), c.after) : opRow(c),

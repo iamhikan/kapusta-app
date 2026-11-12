@@ -310,6 +310,20 @@ test('начальный остаток в одной валюте — в вал
   assert.deepEqual([norate.amount, norate.amountSub], [sp('1 234,50 €'), '']);
 });
 
+test('«по факту N» у начального остатка не повторяет крупную сумму карточки; другое «по факту» — видно (решение 73)', () => {
+  const START = { ref: 'line:s', date: '2025-11-30', where: 'Начальный остаток', what: 'по факту 1 234,50 EUR',
+    kind: 'transfer', cats: [], src: 'карта, евро', rsd: 144914.6, receipt: false, flag: false, opening: 'start',
+    legs: [{ name: 'карта, евро', number: 1234.5, currency: 'EUR' }], postings: [] };
+  assert.equal(cardView(START).what, '');
+  const debt = { ...START, what: 'по факту 5 000 RUB', legs: [{ name: 'кредит', number: -5000, currency: 'RUB' }] };
+  assert.equal(cardView(debt).what, '');                                   // долг: крупно без знака — тоже повтор
+  assert.equal(cardView({ ...START, what: 'по факту 2 000 EUR' }).what, 'по факту 2 000 EUR');   // сумма другая
+  assert.equal(cardView({ ...START, what: 'по факту 1 234,50 USD' }).what, 'по факту 1 234,50 USD');   // валюта другая
+  // сверка нала (решение 72): крупно — найденное, «по факту» — весь нал после сверки, не повтор
+  const pad = { ...START, kind: 'other', opening: 'check', what: 'по факту 6 160 RSD', legs: undefined, rsd: 1398000 };
+  assert.equal(cardView(pad).what, 'по факту 6 160 RSD');
+});
+
 test('сверка нала (нет экрана банка, сервер без after) — «сверка остатка» и найденное по курсу (решение 68)', () => {
   const found = { ...CHECK, after: undefined };
   assert.deepEqual([opRow(found).sub, opRow(found).amount], ['сверка остатка', sp('9 000 RSD')]);
