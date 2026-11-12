@@ -6,7 +6,7 @@ const pct = (x) => `${(x * 100).toFixed(1)}%`;
 
 // l — строка view().limits или скрытого лимита; plan — доля месяца для черты (null — без черты); open — по тапу
 export function limitRow(l, { plan = null, open }) {
-  return h('button', { type: 'button', class: 'limit', on: { click: open } },
+  return h('button', { type: 'button', class: 'limit', 'data-focus': `limit:${l.name}`, on: { click: open } },
     h('span', { class: 'limit-body' },
       h('span', { class: 'row' },
         h('span', { class: 'limit-name' }, h('span', { class: 'ellipsis' }, l.name),

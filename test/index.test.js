@@ -23,3 +23,14 @@ test('у каждого графика SVG — класс chart: подписи 
     }
   }
 });
+
+test('живая зона — маленькая, своя: не весь экран (critique 12.11: диктор перечитывал всё при каждой перерисовке)', () => {
+  const main = html.match(/<main[^>]*>/)[0];
+  assert.ok(!/aria-live/.test(main), main);
+  const say = html.match(/<div id="say"[^>]*><\/div>/);
+  assert.ok(say, 'есть #say');
+  assert.match(say[0], /role="status"/);
+  assert.match(say[0], /aria-live="polite"/);
+  assert.match(say[0], /class="sr"/);
+  assert.ok(html.indexOf(say[0]) > html.indexOf('</main>'), '#say — вне main: перерисовка его не трогает');
+});

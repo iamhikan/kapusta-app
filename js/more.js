@@ -5,7 +5,7 @@ import { h, icon, tap, ICONS } from './dom.js';
 import { basketView, PRICE_BOX, pricePath, priceView } from './shop.js';
 import { budgetView } from './budget.js';
 import { daysView } from './days.js';
-import { newOps, offlineBody } from './screens.js';
+import { newOps, offlineBody, TITLE } from './screens.js';
 import { limitRow } from './limitrow.js';
 
 const PATHS = {
@@ -33,7 +33,7 @@ export async function loadMore(entry, nav) {
 }
 
 const open = (nav, entry) => { tap(); nav.push(entry); };
-const head = (title, sub) => h('header', { class: 'month solo' }, h('div', { class: 'month-title' }, h('h1', {}, title),
+const head = (title, sub) => h('header', { class: 'month solo' }, h('div', { class: 'month-title' }, h('h1', TITLE, title),
   sub ? h('p', { class: 'muted small' }, sub) : null));
 const busy = () => h('div', { class: 'stack', 'aria-busy': 'true', 'aria-label': 'Загрузка' },
   h('section', { class: 'card', style: { height: '200px' } }), h('section', { class: 'card', style: { height: '160px' } }));
@@ -55,7 +55,7 @@ function priceBody(entry, nav) {
     const kids = [h('span', { class: 'grow' }, h('span', {}, s.store, s.mine ? h('span', { class: 'mark' }, 'этот') : null),
       h('span', { class: 'muted small ellipsis' }, s.sub)),
     h('span', { class: 'op-amount' }, h('span', {}, s.price), s.per ? h('span', { class: 'muted small' }, s.per) : null)];
-    return s.open ? h('button', { type: 'button', class: 'line op',
+    return s.open ? h('button', { type: 'button', class: 'line op', 'data-focus': `store:${s.store}`,
       on: { click: () => open(nav, { kind: 'price', q: s.open }) } }, ...kids, icon(ICONS.right, 16))
       : h('div', { class: 'line' }, ...kids);
   };
@@ -78,7 +78,7 @@ function basketBody(entry, nav) {
     h('div', { class: 'chips wrap' }, ...v.shares.map((s) => h('span', { class: 'chip-static' }, s))),
     h('div', { class: 'section-head' }, h('h2', {}, 'Больше всего')),
     h('section', { class: 'card list' }, ...v.rows.map((r) => h('button', { type: 'button', class: 'line op',
-      on: { click: () => open(nav, { kind: 'price', q: r.open }) } },
+      'data-focus': `goods:${r.name}`, on: { click: () => open(nav, { kind: 'price', q: r.open }) } },
     h('span', { class: 'grow' }, h('span', { class: 'ellipsis' }, r.name), r.qty ? h('span', { class: 'muted small' }, r.qty) : null),
     h('span', { class: 'nowrap' }, r.sum), icon(ICONS.right, 16)))),
     v.note ? h('p', { class: 'note-text muted small' }, v.note) : null];
@@ -111,7 +111,7 @@ function budgetBody(entry, nav) {
       v.norm ? row(v.norm.name, v.norm.sum, '', 'strong') : null) : null,
     h('div', { class: 'section-head' }, h('h2', {}, v.limits.title), h('span', { class: 'muted small' }, v.limits.sub)),
     h('section', { class: 'card list' }, ...v.limits.rows.map((r) => h('button', { type: 'button', class: 'line op',
-      on: { click: () => open(nav, newOps(entry.month, { title: r.name.charAt(0).toUpperCase()
+      'data-focus': `limit:${r.name}`, on: { click: () => open(nav, newOps(entry.month, { title: r.name.charAt(0).toUpperCase()
         + r.name.slice(1), params: { limit: r.name } })) } },
     h('span', { class: 'grow' }, h('span', {}, r.name), r.note ? h('span', { class: 'muted small' }, r.note) : null),
     h('span', { class: 'nowrap' }, r.sum), icon(ICONS.right, 16)))),
@@ -121,7 +121,7 @@ function budgetBody(entry, nav) {
 function daysBody(entry, nav) {
   const v = daysView(entry.data, entry.mode);
   const opt = (value, label) => h('button', { type: 'button', role: 'radio', 'aria-checked': String(entry.mode === value),
-    class: `seg${entry.mode === value ? ' on' : ''}`, on: { click: () => {
+    'data-focus': `mode:${value}`, class: `seg${entry.mode === value ? ' on' : ''}`, on: { click: () => {
       if (entry.mode === value) return;
       tap(); entry.mode = value; nav.render();
     } } }, label);
@@ -129,7 +129,7 @@ function daysBody(entry, nav) {
     if (c.blank) return h('span', { class: 'day-cell blank', 'aria-hidden': 'true' });
     if (c.future) return h('span', { class: 'day-cell future', 'aria-label': `${c.d}: ещё не прошёл` }, h('span', {}, c.d));
     const cls = entry.mode === 'plan' ? `tone-${c.tone}` : `heat-${c.level}`;
-    return h('button', { type: 'button', class: `day-cell ${cls}`, 'aria-label': c.aria, on: { click: () => open(nav,
+    return h('button', { type: 'button', class: `day-cell ${cls}`, 'aria-label': c.aria, 'data-focus': `day:${c.date}`, on: { click: () => open(nav,
       newOps(c.date.slice(0, 7), { title: c.aria.split(':')[0], period: { kind: 'custom', from: c.date, to: c.date },
         params: v.scale ? { scale: true } : {} })) } }, h('span', {}, c.d), h('span', { class: 'day-k' }, c.k));
   };

@@ -6,15 +6,18 @@ import { BOX, curve } from './chart.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
 import { tile } from './tiles.js';
 import { limitRow } from './limitrow.js';
-import { cardScreen, loadCard, loadOps, newOps, opsScreen } from './screens.js';
+import { cardScreen, loadCard, loadOps, newOps, opsScreen, stepKey } from './screens.js';
 import { catsScreen, loadCats, newCats } from './catscreen.js';
 import { isPeriod, periodOf } from './period.js';
 import { restore, save, snapView } from './snapshot.js';
 import { isMore, loadMore, moreScreen } from './more.js';
 import { body as jobBody, flush, path as jobPath, queue } from './recat.js';
-import { backStep, showBack } from './back.js';
+import { backStep, escapes, returnTo, showBack } from './back.js';
+import { painter } from './a11y.js';
 
 const root = document.getElementById('app');
+// фаза 15: фокус после перерисовки — по ключу data-focus, листы модальные, диктор — только сообщения из #say
+const paint = painter(root, document, document.getElementById('say'));
 const cache = new Map();
 let month = null;
 let curveOpen = false;   // решение 14: свёрнута у обоих
@@ -48,7 +51,7 @@ function theme() {
 }
 
 function show(...nodes) {
-  root.replaceChildren(...nodes);
+  paint.show(...nodes);
 }
 
 const nav = {
@@ -73,11 +76,16 @@ const nav = {
     return d ? view(d) : null;
   },
   render: () => render(),
+  focus: (key) => paint.focus(key),
   problem: (kind, detail) => problem(kind, detail),
   get hasSnap() { return hasSnap; },
   snapshot: () => openSnapshot(),
-  push(entry) {
-    stack[stack.length - 1].scroll = window.scrollY;
+  push(entry, from) {
+    // «Назад» вернёт фокус на то, что открыло экран; на новом экране фокус — на заголовок
+    const under = stack[stack.length - 1];
+    under.scroll = window.scrollY;
+    under.focus = from || paint.current();
+    paint.focus('title');
     stack.push(entry);
     open(entry);
     window.scrollTo(0, 0);
@@ -112,6 +120,7 @@ function open(entry) {
 function back() {
   const step = backStep(stack);
   const top = stack[stack.length - 1];
+  paint.focus(returnTo(stack));
   if (step === 'sheet') { top.sheet = false; top.draft = null; return render(); }
   if (step === 'group') { top.picker.group = null; return render(); }
   if (step === 'picker') { top.picker = null; return render(); }
@@ -174,7 +183,7 @@ function savedPeriod() {
 function tabs() {
   const current = stack[0].kind;
   const tab = (kind, label, d) => h('button', { type: 'button', class: `tab${current === kind ? ' on' : ''}`,
-    'aria-current': current === kind ? 'page' : null, on: { click: () => switchTab(kind) } }, icon(d, 24), label);
+    'data-focus': `tab:${kind}`, 'aria-current': current === kind ? 'page' : null, on: { click: () => switchTab(kind) } }, icon(d, 24), label);
   return h('nav', { class: 'tabs', 'aria-label': 'Разделы' }, tab('health', 'Здоровье', ICONS.health),
     tab('ops', 'Операции', ICONS.list), tab('cats', 'Категории', ICONS.pie));
 }
@@ -194,17 +203,18 @@ function problem(kind, detail) {
   const pic = s.icon === 'logo' ? h('div', { class: 'logo' }, 'К')
     : icon(s.icon === 'lock' ? ['M7 11V7a5 5 0 0 1 10 0v4', 'M5 11h14v10H5z'] : ['M12 9v4', 'M12 17h.01',
       'M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'], 56);
-  const act = s.link ? h('a', { class: 'button', href: s.link }, s.linkText)
-    : s.retry ? h('button', { class: 'button', type: 'button', on: { click: () => { tap(); load(month); } } }, 'Повторить')
-      : h('button', { class: 'button', type: 'button', on: { click: () => tg && tg.close() } }, 'Закрыть');
-  show(h('div', { class: 'problem' }, h('div', { class: 'problem-icon' }, pic), h('h1', {}, s.title),
+  const act = s.link ? h('a', { class: 'button', href: s.link, 'data-focus': 'problem' }, s.linkText)
+    : s.retry ? h('button', { class: 'button', type: 'button', 'data-focus': 'problem', on: { click: () => { tap(); load(month); } } },
+      'Повторить')
+      : h('button', { class: 'button', type: 'button', 'data-focus': 'problem', on: { click: () => tg && tg.close() } }, 'Закрыть');
+  show(h('div', { class: 'problem', 'data-say': `${s.title}. ${s.text}` }, h('div', { class: 'problem-icon' }, pic), h('h1', {}, s.title),
     h('p', {}, s.text), act, detail ? h('p', { class: 'small detail' }, detail) : null));
 }
 
 function monthNav(v, snapped) {
   // в снимке — один месяц: листать нечего (холст 6.1)
   const arrow = (dir, label, enabled, d) => h('button', { class: 'arrow', type: 'button', 'aria-label': label,
-    disabled: !enabled || snapped, on: { click: () => { tap(); load(shiftMonth(month, dir)); } } }, icon(d));
+    disabled: !enabled || snapped, ...stepKey(dir), on: { click: () => { tap(); load(shiftMonth(month, dir)); } } }, icon(d));
   return h('header', { class: 'month' },
     arrow(-1, 'Прошлый месяц', true, ICONS.left),
     h('div', { class: 'month-title' }, h('h1', {}, v.title), h('p', { class: 'muted small' }, v.sub)),
@@ -213,10 +223,11 @@ function monthNav(v, snapped) {
 
 function banner(s) {
   // холст 6.1: Мак молчит — плашка над снимком: «Капуста не отвечает. Данные на …» и «Повторить»
-  return h('div', { class: 'offline', role: 'status' },
+  // диктор: «Капуста не отвечает…» — один раз, «Повторить» — «Проверяю…», потом снова итог
+  return h('div', { class: 'offline', 'data-say': retrying ? 'Проверяю, отвечает ли Капуста' : `${s.banner} ${s.when}` },
     icon(['M12 9v4', 'M12 17h.01', 'M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'], 20),
     h('span', { class: 'offline-text' }, h('b', {}, s.banner), ` ${s.when}`),
-    h('button', { type: 'button', class: 'link', disabled: retrying,
+    h('button', { type: 'button', class: 'link', disabled: retrying, 'data-focus': 'retry',
       on: { click: () => { tap(); load(month); } } }, retrying ? 'Проверяю…' : 'Повторить'));
 }
 
@@ -263,7 +274,7 @@ function pace(v, data) {
     return h('section', { class: 'card' }, h('div', { class: 'curve-head' }, h('span', { class: 'grow' },
       h('span', { class: 'title' }, 'Темп месяца'), h('span', { class: `note ${v.curve.note.tone}` }, v.curve.note.text))));
   }
-  const head = h('button', { class: 'curve-head', type: 'button', 'aria-expanded': String(curveOpen),
+  const head = h('button', { class: 'curve-head', type: 'button', 'aria-expanded': String(curveOpen), 'data-focus': 'pace',
     'aria-label': `Темп месяца: ${v.curve.note.text}. ${curveOpen ? 'Свернуть' : 'Показать'} кривую`,
     on: { click: () => { tap(); curveOpen = !curveOpen; render(); } } },
   h('span', { class: 'grow' }, h('span', { class: 'title' }, 'Темп месяца'),
@@ -287,7 +298,7 @@ function limits(v, data) {
   const shown = allLimits ? v.limits : v.limits.slice(0, v.limitsShown);
   // раскрыть — последней строкой под уже открытыми лимитами, там же и свернуть (Алексей 11.11.2026)
   const more = v.limits.length > v.limitsShown
-    ? h('button', { class: 'more', type: 'button', 'aria-expanded': String(allLimits),
+    ? h('button', { class: 'more', type: 'button', 'aria-expanded': String(allLimits), 'data-focus': 'limits-more',
       on: { click: () => { tap(); allLimits = !allLimits; render(); } } },
     allLimits ? 'Свернуть' : `Показать все ${v.limits.length}`, icon(allLimits ? ICONS.up : ICONS.down, 16))
     : null;
@@ -305,7 +316,8 @@ function limits(v, data) {
 
 function budgetLinks(v, data) {
   // решение 40: скрытые лимиты — своей кнопкой; «Бюджет» — продолжение «Все лимиты» (этап 7)
-  const row = (label, entry) => h('button', { type: 'button', class: 'line op', on: { click: () => { tap(); nav.push(entry); } } },
+  const row = (label, entry) => h('button', { type: 'button', class: 'line op', 'data-focus': entry.kind,
+    on: { click: () => { tap(); nav.push(entry); } } },
     h('span', { class: 'grow' }, label), icon(ICONS.right, 16));
   return h('section', { class: 'card list' },
     v.hidden ? row(v.hidden.label, { kind: 'hidden', month: data.month }) : null,
@@ -321,7 +333,8 @@ function balances(v, data) {
     entry.f.account = b.ops.account;
     nav.push(entry);
   };
-  const row = (b) => h('button', { type: 'button', class: 'line op bal', on: { click: () => opsOfAccount(b) } },
+  const row = (b) => h('button', { type: 'button', class: 'line op bal', 'data-focus': `bal:${b.ops.account}`,
+    on: { click: () => opsOfAccount(b) } },
     tile(b.tile), h('span', { class: 'grow' }, b.name),
     h('span', { class: 'bal-amounts' }, ...b.lines.map((l, i) => h('span', { class: i ? 'muted small' : 'num' }, l))),
     icon(ICONS.right, 16));
@@ -339,12 +352,8 @@ function healthScreen(data, snapped = false) {
 }
 
 function render() {
-  // поиск отвечает, пока человек печатает: перерисовка не должна убирать фокус (и клавиатуру) из поля
-  const typing = document.activeElement && ['ops-q', 'cat-q'].includes(document.activeElement.id)
-    && document.activeElement.id;
+  // фокус (и курсор в поле поиска, пока человек печатает) возвращает show — по ключу data-focus (js/a11y.js)
   draw();
-  const q = typing && document.getElementById(typing);
-  if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
 }
 
 function draw() {
@@ -430,6 +439,13 @@ if (!tg || !tg.initData) {
   theme();
   tg.onEvent('themeChanged', theme);
   try { tg.BackButton.onClick(back); } catch { /* старый клиент */ }
+  document.addEventListener('keydown', (e) => {
+    // Escape закрывает лист, как «Назад» (фаза 15); в поле поиска с текстом Escape сначала очищает поле
+    if (e.key !== 'Escape' || !escapes(stack)) return;
+    if (e.target && e.target.type === 'search' && e.target.value) return;
+    e.preventDefault();
+    back();
+  });
   queue.load(cloud).then((jobs) => { pending = jobs; sendQueue(); });
   load(null);
 }

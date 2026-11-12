@@ -220,3 +220,25 @@ test('три числа под «Потрачено» — на одной лин
   // «Осталось из нормы» и «Весь доход, осталось» на 390 px — в две строки, «Можно в день» — в одну (Алексей 12.11)
   assert.equal(decls('.stats')['align-items'], 'end');
 });
+
+// фаза 15 (critique 12.11): неактивная основная кнопка — серая; ссылки листа — на его фоне (--bg), не ниже 4,5:1
+test('неактивная основная кнопка («Выберите категорию») выглядит неактивной: серая подложка и серый текст', () => {
+  const off = decls('.button:disabled');
+  assert.ok(off.background && off.background !== decls('.button').background, `подложка ${off.background}`);
+  assert.equal(off.color, 'var(--muted)');
+  assert.equal(off.cursor, 'default');
+});
+
+test('ссылки на листе («Сбросить», «Отмена», «Все категории») — не ниже 4,5:1 на фоне листа в обеих темах', () => {
+  for (const theme of ['light', 'dark']) {
+    const vars = THEMES[theme];
+    const sheet = color(resolve(decls('.sheet').background, vars));
+    const ink = color(resolve(decls('.sheet .link').color || decls('.link').color, vars));
+    const r = ratio(over(ink, sheet), sheet);
+    assert.ok(r >= 4.5, `${theme}: ${r.toFixed(2)}:1`);
+  }
+});
+
+test('заголовок экрана и лист, куда фокус ставит скрипт, — без кольца (они не кнопки)', () => {
+  assert.equal(decls('[tabindex="-1"]:focus').outline, 'none');
+});

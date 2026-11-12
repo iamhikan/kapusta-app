@@ -2,7 +2,7 @@
 // «Фильтры» показывал кнопку, а нажатие ничего не делало — лист закрывался только тапом по фону).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { backStep, showBack } from '../js/back.js';
+import { backStep, escapes, returnTo, showBack } from '../js/back.js';
 
 test('лист «Фильтры» на корневой вкладке «Операции» закрывается кнопкой «Назад»', () => {
   const stack = [{ kind: 'ops', sheet: true }];
@@ -33,4 +33,28 @@ test('кнопка видна — нажатие что-то закрывает 
       if (showBack(stack)) assert.notEqual(backStep(stack), null, JSON.stringify(stack));
     }
   }
+});
+
+// фаза 15 (critique 12.11, P1 № 2): Escape закрывает то же, что «Назад», но только листы; фокус — туда, откуда открыли
+test('Escape закрывает лист, группу и выбор категории — но не экран (экран закрывает «Назад» Telegram)', () => {
+  const card = { kind: 'card' };
+  assert.equal(escapes([{ kind: 'ops', sheet: true }]), true);
+  assert.equal(escapes([{ kind: 'cats', sheet: true }]), true);
+  assert.equal(escapes([{ kind: 'ops' }, { ...card, picker: { group: 'Expenses:Family:Food' } }]), true);
+  assert.equal(escapes([{ kind: 'ops' }, { ...card, picker: {} }]), true);
+  assert.equal(escapes([{ kind: 'ops' }, card]), false);
+  assert.equal(escapes([{ kind: 'ops' }, { ...card, picker: { saving: true } }]), false);   // смена уже ушла
+  assert.equal(escapes([{ kind: 'health' }]), false);
+});
+
+test('после «Назад» и Escape фокус — на кнопку, которая открыла закрытое', () => {
+  assert.equal(returnTo([{ kind: 'ops', sheet: true }]), 'filters');
+  assert.equal(returnTo([{ kind: 'cats', sheet: true }]), 'period:custom');
+  const card = { kind: 'card' };
+  assert.equal(returnTo([{ kind: 'ops' }, { ...card, picker: { group: 'Expenses:Family:Food', from: 'recat' } }]),
+    'catg:Expenses:Family:Food');
+  assert.equal(returnTo([{ kind: 'ops' }, { ...card, picker: { from: 'item:2' } }]), 'item:2');
+  assert.equal(returnTo([{ kind: 'ops', focus: 'op:sms:1' }, card]), 'op:sms:1');
+  assert.equal(returnTo([{ kind: 'ops' }, card]), null);
+  assert.equal(returnTo([{ kind: 'health' }]), null);
 });

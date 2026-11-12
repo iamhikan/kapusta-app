@@ -3,7 +3,7 @@
 import { h, icon, tap, ICONS } from './dom.js';
 import { barsView, BARS, catsView, R } from './cats.js';
 import { barsRange, canNext, KINDS, periodEnd, periodOf, periodSub, periodTitle, shiftPeriod } from './period.js';
-import { newOps, offlineBody } from './screens.js';
+import { DIALOG, newOps, offlineBody, stepKey, TITLE } from './screens.js';
 
 const upper = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -40,9 +40,9 @@ function move(entry, nav, p) {
 function periodHead(entry, nav, sub) {
   const today = nav.today();
   const arrow = (dir, label, d, enabled = true) => h('button', { class: 'arrow', type: 'button', 'aria-label': label,
-    disabled: !enabled, on: { click: () => move(entry, nav, shiftPeriod(entry.period, dir)) } }, icon(d));
+    disabled: !enabled, ...stepKey(dir), on: { click: () => move(entry, nav, shiftPeriod(entry.period, dir)) } }, icon(d));
   return h('header', { class: 'month' }, arrow(-1, 'Прошлый период', ICONS.left),
-    h('div', { class: 'month-title' }, h('h1', {}, entry.cat ? upper(entry.title) : periodTitle(entry.period)),
+    h('div', { class: 'month-title' }, h('h1', TITLE, entry.cat ? upper(entry.title) : periodTitle(entry.period)),
       h('p', { class: 'muted small' }, entry.cat ? `${periodTitle(entry.period)} · ${sub}` : sub)),
     arrow(1, 'Следующий период', ICONS.right, canNext(entry.period, today)));
 }
@@ -52,15 +52,19 @@ function chips(entry, nav) {
   const anchor = entry.period.from <= today && today <= entry.period.to ? today : periodEnd(entry.period, today);
   return h('div', { class: 'chips periods' }, ...KINDS.map(([kind, label]) => h('button', { type: 'button',
     class: `chip-btn${entry.period.kind === kind ? ' on' : ''}`, 'aria-pressed': String(entry.period.kind === kind),
-    on: { click: () => {
-      if (kind === 'custom') { tap(); entry.sheet = true; entry.draft = { from: entry.period.from, to: periodEnd(entry.period, today) }; return nav.render(); }
+    'data-focus': `period:${kind}`, on: { click: () => {
+      if (kind === 'custom') {
+        tap(); entry.sheet = true; entry.draft = { from: entry.period.from, to: periodEnd(entry.period, today) };
+        nav.focus('sheet');
+        return nav.render();
+      }
       move(entry, nav, periodOf(kind, anchor));
     } } }, label)));
 }
 
 function scopeSwitch(entry, nav) {
   const opt = (value, label) => h('button', { type: 'button', role: 'radio', 'aria-checked': String(entry.scope === value),
-    class: `seg${entry.scope === value ? ' on' : ''}`, on: { click: () => {
+    'data-focus': `scope:${value}`, class: `seg${entry.scope === value ? ' on' : ''}`, on: { click: () => {
       if (entry.scope === value) return;
       tap(); entry.scope = value; loadCats(entry, nav);
     } } }, label);
@@ -95,7 +99,7 @@ function list(entry, nav, v) {
       h('span', {}, 'сумма'), h('span', {}, 'доля'), h('span', {}, v.cmpHead)),
     ...v.rows.map((r) => h('button', { type: 'button', class: 'cat-row', 'aria-label': [`${r.name}${r.limit ? `, ${r.limit}` : ''}: `
       + `${r.sum} RSD`, `доля ${r.share}`, r.delta ? `${v.cmpHead} ${r.delta}` : ''].filter(Boolean).join(', '),
-      on: { click: () => open(r) } },
+      'data-focus': `cat:${r.key}`, on: { click: () => open(r) } },
     h('span', { class: 'cat-name' }, h('span', { class: 'dot', style: { background: r.color } }),
       h('span', { class: 'grow' }, h('span', { class: 'ellipsis' }, r.name),
         r.limit ? h('span', { class: 'muted small limit-of' }, r.limit) : null)),   // «лимит «дом и хозяйство»» переносится
@@ -124,7 +128,8 @@ const monthOf = (entry, today) => periodEnd(entry.period, today).slice(0, 7);
 function extra(entry, nav) {
   // этап 7 (решение 13): «По дням» — под столбцами; «По товарам» — в подкатегориях продуктов
   const today = nav.today();
-  const row = (label, sub, next) => h('button', { type: 'button', class: 'line op', on: { click: () => { tap(); nav.push(next); } } },
+  const row = (label, sub, next) => h('button', { type: 'button', class: 'line op', 'data-focus': next.kind,
+    on: { click: () => { tap(); nav.push(next); } } },
     h('span', { class: 'grow' }, h('span', {}, label), h('span', { class: 'muted small' }, sub)), icon(ICONS.right, 16));
   if (entry.cat === FOOD) {
     return h('section', { class: 'card list' }, row('По товарам', 'что в корзине по чекам — и как менялась цена',
@@ -142,7 +147,7 @@ function subHead(entry, nav, v) {
       h('span', { class: `muted ${hd.tone}` }, hd.note || 'RSD')),
     hd.fill == null ? null : h('span', { class: 'bar thin' },
       h('span', { class: `fill ${hd.tone}`, style: { width: `${(hd.fill * 100).toFixed(1)}%` } })),
-    h('button', { type: 'button', class: 'link', on: { click: () => { tap(); nav.push(newOps(entry.period.from.slice(0, 7),
+    h('button', { type: 'button', class: 'link', 'data-focus': 'cat-ops', on: { click: () => { tap(); nav.push(newOps(entry.period.from.slice(0, 7),
       { title: upper(entry.title), period: entry.period, limitValue: entry.data.limit && entry.data.limit.own ? entry.data.limit.limit : null,
         params: { cat: entry.cat, scale: entry.scope === 'scale' } })); } } }, `Все операции «${entry.title}»`));
 }
@@ -150,7 +155,7 @@ function subHead(entry, nav, v) {
 function top(nav, v) {
   if (!v.top.length) return [];
   return [h('div', { class: 'section-head' }, h('h2', {}, 'Самые дорогие')),
-    h('section', { class: 'card list' }, ...v.top.map((o) => h('button', { type: 'button', class: 'op',
+    h('section', { class: 'card list' }, ...v.top.map((o) => h('button', { type: 'button', class: 'op', 'data-focus': `op:${o.ref}`,
       on: { click: () => { tap(); nav.push({ kind: 'card', ref: o.ref }); } } },
     h('span', { class: 'grow' }, h('span', { class: 'ellipsis' }, o.where), h('span', { class: 'op-sub muted small' }, o.sub)),
     h('span', { class: 'op-amount' }, o.amount))))];
@@ -158,16 +163,17 @@ function top(nav, v) {
 
 function sheet(entry, nav) {
   const d = entry.draft;
-  const close = () => { entry.sheet = false; nav.render(); };
+  const close = () => { entry.sheet = false; nav.focus('period:custom'); nav.render(); };
   const field = (key, label) => h('label', { class: 'toggle' }, h('span', {}, label),
-    h('input', { type: 'date', value: d[key], max: nav.today(), class: 'date', on: { change: (e) => { d[key] = e.target.value; } } }));
+    h('input', { type: 'date', value: d[key], max: nav.today(), class: 'date', 'data-focus': `sheet:${key}`, on: { change: (e) => { d[key] = e.target.value; } } }));
   return h('div', { class: 'sheet-back', on: { click: (e) => { if (e.target === e.currentTarget) close(); } } },
-    h('div', { class: 'sheet', role: 'dialog', 'aria-label': 'Свой период' }, h('h2', {}, 'Свой период'),
+    h('div', { class: 'sheet', ...DIALOG, 'aria-label': 'Свой период' }, h('h2', {}, 'Свой период'),
       field('from', 'С'), field('to', 'По'),
-      h('button', { type: 'button', class: 'button', on: { click: () => {
+      h('button', { type: 'button', class: 'button', 'data-focus': 'sheet:show', on: { click: () => {
         if (!d.from || !d.to) return;
         const [from, to] = d.from <= d.to ? [d.from, d.to] : [d.to, d.from];
         entry.sheet = false;
+        nav.focus('period:custom');
         move(entry, nav, periodOf('custom', from, to));
       } } }, 'Показать')));
 }
@@ -187,7 +193,8 @@ export function catsScreen(entry, nav) {
     // холст 6.3: пустой период — «трат нет» и переход к прошлому периоду
     const prev = shiftPeriod(entry.period, -1);
     body = h('div', { class: 'empty' }, h('h2', {}, `За ${periodTitle(entry.period)} ${entry.cat ? `трат «${entry.title}»` : 'трат'} нет`),
-      h('button', { type: 'button', class: 'button', on: { click: () => move(entry, nav, prev) } }, `‹ ${periodTitle(prev)}`));
+      h('button', { type: 'button', class: 'button', 'data-focus': 'month:prev', on: { click: () => move(entry, nav, prev) } },
+        `‹ ${periodTitle(prev)}`));
   } else if (entry.cat) {
     body = [subHead(entry, nav, v), extra(entry, nav), list(entry, nav, v), ...top(nav, v)];
   } else {
