@@ -33,8 +33,9 @@ export const FLAG = 'Только с «!» — надо уточнить';   // 
 export function money(n) {
   // «3 098,86», «6 220», «−500»: копейки — только если есть
   const cents = Math.round(Math.abs(n) * 100) % 100;
-  const whole = fmt(n < 0 ? -Math.trunc(Math.abs(n)) : Math.trunc(n));
-  return cents ? `${whole},${String(cents).padStart(2, '0')}` : whole;
+  const whole = fmt(Math.trunc(Math.abs(n)));
+  const sign = n < 0 && (whole !== '0' || cents) ? '−' : '';   // −0,29: у нуля целых минус терялся
+  return `${sign}${whole}${cents ? `,${String(cents).padStart(2, '0')}` : ''}`;
 }
 
 const cur = (number, currency) => `${money(number)}${currency in SYMBOL ? SYMBOL[currency] : ` ${currency}`}`;

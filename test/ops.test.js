@@ -9,6 +9,8 @@ test('суммы — с копейками через запятую, целые
   assert.equal(money(2471.35), sp('2 471,35'));
   assert.equal(money(5180), sp('5 180'));
   assert.equal(money(-500), '−500');
+  assert.equal(money(-0.29), '−0,29');   // меньше единицы — минус не теряется (critique 12.11: «0,29 KZT»)
+  assert.equal(money(-1.5), '−1,50');
 });
 
 test('день — число, месяц и день недели', () => {

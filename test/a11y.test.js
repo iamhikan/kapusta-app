@@ -221,6 +221,16 @@ test('поле поиска: фокус и курсор возвращаются
   assert.equal(focusKey(), 'BODY');
 });
 
+test('поиск, затем тап по строке (на iPhone фокус остаётся в поле): «Назад» вернёт фокус на строку, не в BODY', () => {
+  const { root, p } = setup();
+  const row = h('button', { type: 'button', 'data-focus': 'op:add:1', on: { click: () => {} } }, 'Lidl');
+  p.show(h('input', { type: 'search', 'data-focus': 'ops-q', value: 'лидл' }), row);
+  byKey(root, 'ops-q').focus();
+  byKey(root, 'op:add:1').click();          // тап: кнопка фокус не берёт, поле остаётся в фокусе
+  assert.equal(focusKey(), 'ops-q');
+  assert.equal(p.current(), 'op:add:1');     // это запомнит «Назад» (nav.push)
+});
+
 test('тап на телефоне кнопку не фокусирует: ни перерисовка, ни лист фокус не двигают (кольцо само не появится)', () => {
   const { p } = setup();
   p.show(btn('filters'));

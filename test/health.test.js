@@ -154,6 +154,7 @@ test('прошлый месяц — итог: без плана на сегод�
   assert.deepEqual(v.curve.note, { text: 'итог 500 000 · норма кончилась 2 октября', tone: 'bad' });
   assert.equal(v.plan, 1);
   assert.equal(v.balTitle, 'Остатки на 31.10');
+  assert.equal(view({ ...OCT, balances_total: 293200 }).balTotal, sp('наличные и карты ≈ 293 200 RSD'));   // дата — в заголовке, не «сейчас»
   assert.equal(v.fresh, 'месяц закрыт · последняя запись 11.11 в 08:11');
   assert.equal(v.canNext, true);
 });

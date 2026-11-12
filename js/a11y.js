@@ -6,6 +6,8 @@
 // Фокус двигаем, только если он уже «в игре» — стоит на элементе экрана (клавиатура, Android, диктор). Тап на iPhone
 // кнопку не фокусирует: там скрипт фокус не трогает, и кольцо само не появляется.
 
+import { pressed } from './dom.js';
+
 const KEY = 'data-focus';
 const ALT = 'data-focus-alt';   // кнопка стала неактивной — фокус на соседнюю (стрелка «вперёд» у текущего месяца)
 
@@ -69,6 +71,11 @@ export function painter(root, doc, live) {
   return {
     show,
     focus(key) { if (key && inPlay()) next = key; },
-    current: () => (inPlay() ? keyOf(doc.activeElement) : memo),
+    // фокус в поле, а нажали строку (тап на iPhone фокус не переносит) — запоминаем нажатую строку
+    current: () => {
+      if (!inPlay()) return memo;
+      const a = doc.activeElement;
+      return a.tagName === 'INPUT' && pressed() ? pressed() : keyOf(a);
+    },
   };
 }

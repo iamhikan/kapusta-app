@@ -3,11 +3,20 @@ const SVG = 'http://www.w3.org/2000/svg';
 
 export const tg = globalThis.Telegram && globalThis.Telegram.WebApp;
 
+// ключ data-focus последней нажатой кнопки: тап на iPhone кнопку не фокусирует, фокус остаётся в поле поиска —
+// «Назад» должен вернуть фокус на нажатую строку, а не на поле (critique 12.11, фаза 16)
+let last = null;
+export const pressed = () => last;
+
 export function h(tag, attrs = {}, ...kids) {
   const el = tag.startsWith('svg:') ? document.createElementNS(SVG, tag.slice(4)) : document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (v == null || v === false) continue;
-    if (k === 'on') for (const [ev, fn] of Object.entries(v)) el.addEventListener(ev, fn);
+    if (k === 'on') {
+      for (const [ev, fn] of Object.entries(v)) {
+        el.addEventListener(ev, ev === 'click' ? (e) => { last = attrs['data-focus'] ?? null; fn(e); } : fn);
+      }
+    }
     else if (k === 'style') Object.assign(el.style, v);
     else if (k === 'value') el.value = v;
     else el.setAttribute(k, v === true ? '' : v);

@@ -159,7 +159,8 @@ export function view(h) {
     budgetLabel: `Весь бюджет на ${FOR_MONTH[m - 1]}`,
     // решение 38: строка остатка открывает операции этого счёта за месяц; счета — в фильтр «Операций»
     groups: balanceGroups(h.balances),
-    balTotal: h.balances_total == null ? '' : `наличные и карты сейчас ≈ ${fmt(h.balances_total)} RSD`,   // решение 60
+    // решение 60: «сейчас» — у текущего месяца; у закрытого дата — в заголовке «Остатки на 31.10»
+    balTotal: h.balances_total == null ? '' : `наличные и карты${h.closed ? '' : ' сейчас'} ≈ ${fmt(h.balances_total)} RSD`,
     accounts: h.balances.map((b) => [b.name, b.account]),
     empty: h.empty.length ? `Пустые счета: ${h.empty.join(', ')}.` : '',
     balTitle: h.closed ? `Остатки на ${when(h.date)}` : 'Остатки',
