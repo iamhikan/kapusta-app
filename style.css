@@ -101,8 +101,10 @@ h1, h2, p { margin: 0; }
 /* план на сегодня — подписью у черты (решение 49): подпись сдвинута на ту же долю своей ширины — не вылезает за край */
 .plan-cap { position: relative; height: 18px; margin-top: -4px; margin-bottom: -6px; }
 .plan-cap > span { position: absolute; top: 0; white-space: nowrap; }
-/* числа — на одной линии: подпись в одну строку у одной колонки и в две у соседних не сдвигает число вверх */
-.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: end; }
+/* числа — на одной линии, подписи — от верха: подпись в одну строку у одной колонки и в две у соседних не сдвигает
+   ни число (Алексей 12.11, фаза 14), ни саму подпись (фаза 15): ячейка во всю высоту ряда, число прижато к низу */
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.stats > div { display: flex; flex-direction: column; justify-content: space-between; gap: 2px; }
 .stat { font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
 
 .curve-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; min-height: 56px; }
