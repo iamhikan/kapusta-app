@@ -61,3 +61,43 @@ test('решение 61: слова ledger — словами человека: 
     points: [{ date: '2026-11-01', rsd: 20000, scale: 20000, plan: 8000 }] }, 'plan');
   assert.equal(days.note, 'Вдвое выше плана: 1.11. План дня — «Можно в день» на утро этого дня. Тап по дню — операции дня.');
 });
+
+// Решение 67 (Алексей 12.11, долг «служебные имена счетов»): у счёта без своего слова сервер отдаёт последнюю часть
+// имени (names.where: «cashunrecorded», «DROIT», «USDT») или одно имя на два счёта («кредит РФ»). Страница называет
+// такие счета по полному имени счёта — в «Откуда и куда», в строке операции и в списке; код валюты не трогает
+test('решение 67: служебные счета — словами человека по имени счёта, валюта и описание — как были', async () => {
+  const { cardView, opRow } = await import('../js/ops.js');
+  const found = cardView(words({ ref: 'add:1', date: '2026-11-03', where: 'Поправка остатка', what: 'нашёл 5 € налом',
+    kind: 'other', cats: [], src: 'нал Алексея', account: 'Assets:Family:Cash:Aleksey:EUR', amount: { number: 600, currency: 'RSD' },
+    rsd: 600, receipt: null, postings: [
+      { account: 'Assets:Family:Cash:Aleksey:EUR', name: 'нал Алексея', number: 5, currency: 'EUR', rsd: 600 },
+      { account: 'Expenses:Family:CashUnrecorded', name: 'cashunrecorded', number: -5, currency: 'EUR', rsd: -600 }] }));
+  assert.deepEqual(found.flow.map((s) => [s.label, s.lines.map((l) => l.name)]),
+    [['Откуда', ['неучтённый нал']], ['Куда', ['нал Алексея']]]);
+
+  const pay = words({ ref: 'walt:1', date: '2026-11-04', where: 'Walt', what: 'Пополнение USDT (Tron)', kind: 'income',
+    cats: [], src: 'USDT', account: 'Assets:Family:Walt:USDT', amount: { number: 1200, currency: 'USDT' }, rsd: 130000,
+    receipt: null, postings: [
+      { account: 'Assets:Family:Walt:USDT', name: 'USDT', number: 1200, currency: 'USDT', rsd: 130000 },
+      { account: 'Income:PR:DROIT', name: 'DROIT', number: -1200, currency: 'USDT', rsd: -130000 }] });
+  const c = cardView(pay);
+  assert.deepEqual(c.flow.map((s) => [s.label, s.lines.map((l) => `${l.name} ${l.value}`)]),
+    [['Откуда', [sp('доход ПР (DROIT) 1 200 USDT')]], ['Куда', [sp('Walt 1 200 USDT')]]]);
+  assert.equal(c.row.sub, 'Walt');                       // строка под заголовком: кошелёк, как плитка в остатках
+  assert.equal(pay.amount.currency, 'USDT');             // код валюты — не имя счёта
+  assert.equal(pay.what, 'Пополнение USDT (Tron)');      // описание человека и банка не меняется
+
+  const swap = opRow(words({ ref: 'add:2', where: 'Обмен', kind: 'exchange', src: 'USDT', account: 'Assets:Family:Walt:USDT',
+    legs: [{ name: 'USDT', account: 'Assets:Family:Walt:USDT', number: -110, currency: 'USDT' },
+      { name: 'нал Алексея', account: 'Assets:Family:Cash:Aleksey:EUR', number: 100, currency: 'EUR' }] }));
+  assert.equal(swap.sub, 'Walt');                        // список «Операций»: обмен с кошелька Walt
+
+  const loan = cardView(words({ ref: 'kredit:1', date: '2026-10-13', where: 'Райффайзен', what: 'Кредит РФ: платёж по графику',
+    kind: 'spend', cats: ['банк'], src: 'кредит РФ', account: 'Assets:Family:Raiffeisen:Kredit',
+    amount: { number: 300, currency: 'RUB' }, rsd: 400, receipt: null, postings: [
+      { account: 'Assets:Family:Raiffeisen:Kredit', name: 'кредит РФ', number: -2000, currency: 'RUB', rsd: -2600 },
+      { account: 'Liabilities:RU:Kredit', name: 'кредит РФ', number: 1700, currency: 'RUB', rsd: 2200 },
+      { account: 'Expenses:Family:Bank', name: 'банк', number: 300, currency: 'RUB', rsd: 400 }] }));
+  assert.deepEqual(loan.flow.map((s) => [s.label, s.lines.map((l) => l.name)]),
+    [['Откуда', ['кредит РФ']], ['Куда', ['долг по кредиту', 'банк']]]);   // счёт кредита — как плитка, долг — свой
+});

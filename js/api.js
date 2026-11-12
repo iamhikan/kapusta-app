@@ -18,10 +18,22 @@ const WORDS = { неразобранное: 'без категории', 'Raiffe
   'Opening-Balances': 'начальный остаток', учёба: 'образование', курс: 'обмен валюты', 'курсовые разницы': 'обмен валюты',
   'Регулярные по карте': 'Регулярные платежи' };
 
+// Служебные счета (решение 67): у счёта без своего слова сервер отдаёт последнюю часть имени («cashunrecorded»,
+// «DROIT», «USDT») или одно имя на два счёта («кредит РФ»). Подменяем по полному имени счёта — имя проводки или ноги
+// (name) и источник операции (src); строку «USDT» саму по себе не трогаем: это и код валюты
+const ACCOUNTS = { 'Expenses:Family:CashUnrecorded': 'неучтённый нал', 'Income:PR:DROIT': 'доход ПР (DROIT)',
+  'Assets:Family:Walt:USDT': 'Walt', 'Liabilities:RU:Kredit': 'долг по кредиту' };
+
 export function words(x) {
   if (typeof x === 'string') return Object.hasOwn(WORDS, x) ? WORDS[x] : x;
   if (Array.isArray(x)) return x.map(words);
-  if (x && typeof x === 'object') return Object.fromEntries(Object.entries(x).map(([k, v]) => [k, words(v)]));
+  if (x && typeof x === 'object') {
+    const out = Object.fromEntries(Object.entries(x).map(([k, v]) => [k, words(v)]));
+    const own = typeof x.account === 'string' && Object.hasOwn(ACCOUNTS, x.account) ? ACCOUNTS[x.account] : null;
+    if (own && typeof x.name === 'string') out.name = own;
+    if (own && typeof x.src === 'string') out.src = own;
+    return out;
+  }
   return x;
 }
 
