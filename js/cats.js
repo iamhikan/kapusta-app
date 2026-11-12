@@ -94,6 +94,7 @@ export function catsView(body) {
     cmp: prev ? { label: `к ${prevText(prev, body.from)}`, value: signed(body.total - prev.total),
       tone: tone(body.total - prev.total), sub: `было ${fmt(prev.total)}` } : null,
     cmpHead: prev ? cmpHead(prev, body.from) : '',
+    rowClass: prev ? 'cat-row' : 'cat-row no-cmp',     // без сравнения (до начала учёта) — без колонки «к …»
     empty: !body.cats.length,
   };
   if (sub) {

@@ -265,3 +265,15 @@ test('крупная сумма в шапке карточки не рвётся
   assert.equal(decls('.big')['flex-wrap'], 'wrap');
   assert.equal(decls('.big > span')['white-space'], 'nowrap');
 });
+
+test('строка «Категорий» без сравнения — три колонки (решение 76): пустая колонка «к …» не занимает 76 px', () => {
+  const tracks = (cls) => styleOf(cls)['grid-template-columns'].split(/\s+(?![^(]*\))/);
+  assert.equal(tracks('cat-row').length, 4);
+  assert.equal(tracks('cat-row no-cmp').length, 3);
+  assert.deepEqual(tracks('cat-row no-cmp'), tracks('cat-row').slice(0, 3), 'имя, сумма и доля — как со сравнением');
+});
+
+test('кольцо без сравнения — по центру карточки (решение 76): справа нет карточки «к …», пустая половина не видна', () => {
+  assert.equal(styleOf('donut-row no-cmp')['justify-content'], 'center');
+  assert.notEqual(styleOf('donut-row')['justify-content'], 'center', 'со сравнением — кольцо слева, «к …» справа');
+});

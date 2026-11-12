@@ -245,6 +245,7 @@ h1, h2, p { margin: 0; }
 .seg { min-height: 34px; border-radius: 8px; font-size: 14px; color: var(--fg); }
 .seg.on { background: var(--accent-fill); color: var(--button-text); font-weight: 600; }
 .donut-row { display: flex; align-items: center; gap: 16px; }
+.donut-row.no-cmp { justify-content: center; }   /* без сравнения — решение 76 */
 .donut { flex-shrink: 0; }
 .donut-track { fill: none; stroke: var(--track); stroke-width: 22; }
 .donut-total { font-size: 19px; font-weight: 700; fill: var(--fg); }
@@ -252,6 +253,7 @@ h1, h2, p { margin: 0; }
 .cmp-value { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
 .cat-row { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto 44px 76px; align-items: center;
   gap: 8px; padding: 8px 16px; min-height: 52px; text-align: left; }
+.cat-row.no-cmp { grid-template-columns: minmax(0, 1fr) auto 44px; }   /* без сравнения — решение 76 */
 .cat-row.cat-head { min-height: 32px; padding-top: 6px; padding-bottom: 6px; }
 .cat-row > :not(:first-child) { text-align: right; }
 .cat-name { display: flex; align-items: center; gap: 10px; min-width: 0; }

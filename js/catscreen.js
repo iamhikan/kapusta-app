@@ -75,7 +75,7 @@ function scopeSwitch(entry, nav) {
 }
 
 function donut(v) {
-  return h('div', { class: 'donut-row' },
+  return h('div', { class: v.cmp ? 'donut-row' : 'donut-row no-cmp' },
     h('svg:svg', { width: 150, height: 150, viewBox: '0 0 150 150', role: 'img', 'aria-label': v.aria, class: 'chart donut' },
       h('svg:g', { transform: 'rotate(-90 75 75)' }, h('svg:circle', { cx: 75, cy: 75, r: R, class: 'donut-track' }),
         ...v.segments.map((s) => h('svg:circle', { cx: 75, cy: 75, r: R, fill: 'none', stroke: s.color,
@@ -97,16 +97,16 @@ function list(entry, nav, v) {
     nav.push(newCats({ ...entry.period }, r.key, r.name, entry.scope));
   };
   return h('section', { class: 'card list cats' },
-    h('div', { class: 'cat-row cat-head muted small' }, h('span', {}, entry.cat ? 'подкатегория' : 'категория'),
-      h('span', {}, 'сумма'), h('span', {}, 'доля'), h('span', {}, v.cmpHead)),
-    ...v.rows.map((r) => h('button', { type: 'button', class: 'cat-row', 'aria-label': [`${r.name}${r.limit ? `, ${r.limit}` : ''}: `
+    h('div', { class: `${v.rowClass} cat-head muted small` }, h('span', {}, entry.cat ? 'подкатегория' : 'категория'),
+      h('span', {}, 'сумма'), h('span', {}, 'доля'), v.cmpHead ? h('span', {}, v.cmpHead) : null),
+    ...v.rows.map((r) => h('button', { type: 'button', class: v.rowClass, 'aria-label': [`${r.name}${r.limit ? `, ${r.limit}` : ''}: `
       + `${r.sum} RSD`, `доля ${r.share}`, r.delta ? `${v.cmpHead} ${r.delta}` : ''].filter(Boolean).join(', '),
       'data-focus': `cat:${r.key}`, on: { click: () => open(r) } },
     h('span', { class: 'cat-name' }, h('span', { class: 'dot', style: { background: r.color } }),
       h('span', { class: 'grow' }, h('span', { class: 'ellipsis' }, r.name),
         r.limit ? h('span', { class: 'muted small limit-of' }, r.limit) : null)),   // «лимит «дом и хозяйство»» переносится
     h('span', { class: 'num' }, r.sum), h('span', { class: 'num muted small' }, r.share),
-    h('span', { class: `num small ${r.deltaTone}` }, r.delta))));
+    v.cmpHead ? h('span', { class: `num small ${r.deltaTone}` }, r.delta) : null)));
 }
 
 function bars(entry) {

@@ -60,6 +60,10 @@ test('без сравнения — без колонки изменений', (
   const v = catsView({ ...BODY, prev: undefined, cats: BODY.cats.map(({ prev, ...c }) => c) });
   assert.equal(v.cmp, null);
   assert.equal(v.rows[0].delta, '');
+  assert.equal(v.cmpHead, '');
+  // решение 76: прошлый период до начала учёта — сравнения нет, пустая колонка «к …» не занимает место
+  assert.equal(v.rowClass, 'cat-row no-cmp');
+  assert.equal(catsView(BODY).rowClass, 'cat-row');
 });
 
 test('подкатегории: оттенки цвета категории, лимит категории сверху, самые дорогие', () => {
