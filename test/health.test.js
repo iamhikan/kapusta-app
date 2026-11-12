@@ -117,7 +117,7 @@ test('остатки — группами по типу, суммы в две с
   assert.deepEqual(v.groups[1].rows[0].lines, [sp('20 000 ₽')]);
   assert.equal(cash.tile.glyph, 'cash');
   assert.deepEqual(cash.ops, { account: 'Assets:Family:Cash:Aleksey' });
-  assert.equal(v.balTotal, sp('наличные и карты ≈ 293 200 RSD'));
+  assert.equal(v.balTotal, sp('наличные и карты сейчас ≈ 293 200 RSD'));   // решение 60
   assert.equal(v.empty, 'Пустые счета: другая карта, Walt.');
   assert.equal(v.balTitle, 'Остатки');
   assert.equal(v.fresh, 'последняя запись 11.11 в 08:11 · обновлено в 11:13');

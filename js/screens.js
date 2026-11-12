@@ -1,6 +1,6 @@
 // Экраны «Операции» и карточка операции (DOM). Данные — только из /api/tx и /api/tx/{ref}, в памяти страницы.
 import { h, icon, tap, ICONS, tg } from './dom.js';
-import { accountView, cardView, dayLabel, emptyText, filters, headView, money, monthRange, monthTitle, opRow, txPath } from './ops.js';
+import { FLAG, accountView, cardView, dayLabel, emptyText, filters, headView, money, monthRange, monthTitle, opRow, txPath } from './ops.js';
 import { tile, tileOf } from './tiles.js';
 import { shiftMonth } from './health.js';
 import { canNext, periodEnd, shiftPeriod } from './period.js';
@@ -173,7 +173,7 @@ function sheet(entry, nav) {
           class: `chip-btn${draft[g.key] === v ? ' on' : ''}`, 'aria-pressed': String(draft[g.key] === v), 'data-focus': `f:${g.key}:${v}`,
           on: { click: () => { tap(); draft[g.key] = v; nav.render(); } } },
         g.key === 'account' && v ? tile(tileOf(v, label), 18) : null, label))))),
-      h('label', { class: 'toggle' }, h('span', {}, 'Только с «!» — на разборе'),
+      h('label', { class: 'toggle' }, h('span', {}, FLAG),
         h('input', { type: 'checkbox', checked: draft.flag, 'data-focus': 'sheet:flag', on: { change: (e) => { draft.flag = e.target.checked; } } })),
       h('button', { type: 'button', class: 'button', 'data-focus': 'sheet:show', on: { click: () => {
         tap(); entry.f = { ...draft }; entry.sheet = false; entry.draft = null; nav.focus('filters'); loadOps(entry, nav); } } },

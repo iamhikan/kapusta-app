@@ -45,8 +45,8 @@ export function daysView(b, mode) {
   let note;
   if (plan) {
     const twice = b.points.filter((p) => tone(p.scale, p.plan) === 'bad').map((p) => short(p.date));
-    note = `${twice.length ? `Вдвое выше плана: ${twice.join(', ')}. ` : ''}План дня — (норма − потрачено до этого дня) / `
-      + `оставшиеся дни, как «можно ~N в день» в градуснике. ${tail}`;
+    note = `${twice.length ? `Вдвое выше плана: ${twice.join(', ')}. ` : ''}План дня — «Можно в день» `
+      + `на утро этого дня. ${tail}`;   // решение 61: было формулой
   } else {
     const top = [...b.points].filter((p) => p.rsd > 0).sort((a, c) => c.rsd - a.rsd).slice(0, 2);
     note = top.length ? `Самые дорогие дни: ${top.map((p) => `${short(p.date)} — ${fmt(p.rsd)}`).join(', ')}. ${tail}`

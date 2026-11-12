@@ -24,9 +24,11 @@ export function filters(accounts = []) {
     { key: 'account', label: 'Кошелёк или счёт', chips: [['все', ''], ...(accounts.length ? accounts : ACCOUNTS)] },
     { key: 'who', label: 'Кто записал', chips: [['все', ''], ['Алексей', 'aleksey'], ['Ангелина', 'angelina']] },
     { key: 'source', label: 'Источник', chips: [['все', ''], ['чек', 'receipt'], ['словами', 'words'],
-      ['выписка', 'bank'], ['Райф CSV', 'raif']] },
+      ['из банка', 'bank'], ['Райффайзен РФ', 'raif']] },   // решение 61: было «выписка», «Райф CSV»
   ];
 }
+
+export const FLAG = 'Только с «!» — надо уточнить';   // решение 61: было «на разборе»
 
 export function money(n) {
   // «3 098,86», «6 220», «−500»: копейки — только если есть
