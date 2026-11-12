@@ -291,3 +291,10 @@ test('начальный остаток — как был: «на счёт», с
   assert.equal(c.row.amount, sp('9 000 RSD'));
   assert.equal(c.flow[0].lines[0].name, 'начальный остаток');
 });
+
+test('сверка нала (нет экрана банка, сервер без after) — «сверка остатка» и найденное по курсу (решение 68)', () => {
+  const found = { ...CHECK, after: undefined };
+  assert.deepEqual([opRow(found).sub, opRow(found).amount], ['сверка остатка', sp('9 000 RSD')]);
+  const c = cardView(found);
+  assert.deepEqual([c.row.sub, c.row.amount, c.flow[0].lines[0].name], ['сверка остатка', sp('9 000 RSD'), 'сверка остатка']);
+});

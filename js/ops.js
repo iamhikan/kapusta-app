@@ -108,8 +108,12 @@ export function opRow(op, { inCategory = false, account = '' } = {}) {
       return { ...base, gray: true, sub: 'сверка остатка', amount: first ? full(first.number, first.currency) : full(0, 'RSD'),
         amountSub: 'остаток' };
     }
-    // приход без «откуда» (начальный остаток, поправка): весь приход по курсу НБС, а не первая из валют (ревью)
-    if (!from.length) return { ...base, gray: true, sub: into ? `на ${into}` : '', amount: full(op.rsd, 'RSD'), amountSub: '' };
+    // приход без «откуда» (начальный остаток, поправка, сверка нала): весь приход по курсу НБС, а не первая из валют
+    // (ревью); у сверки без остатка (нал — экрана банка нет, решение 68) — подпись «сверка остатка»
+    if (!from.length) {
+      return { ...base, gray: true, sub: op.opening === 'check' ? 'сверка остатка' : into ? `на ${into}` : '',
+        amount: full(op.rsd, 'RSD'), amountSub: '' };
+    }
     const main = to[0] || { number: op.rsd, currency: 'RSD' };
     return { ...base, gray: true, sub: [...new Set(from)].join(', ') + (to.length ? ` → ${into}` : ''),
       amount: full(main.number, main.currency), amountSub: '' };
