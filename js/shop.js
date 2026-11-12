@@ -77,11 +77,13 @@ function qtyText(q, unit) {
 export function basketView(b) {
   const m = Number(b.month.slice(5)) - 1;
   if (!b.receipts) {
-    return { title: 'По товарам', sub: monthTitle(b.month), shares: [], rows: [], note: '', empty: `За ${OF_MONTH[m]} чеков нет` };
+    return { title: 'По товарам', sub: monthTitle(b.month), shares: [], rows: [], note: '',
+      empty: `За ${OF_MONTH[m]} чеков с продуктами нет` };
   }
   return {
     title: 'По товарам',
-    sub: `${monthTitle(b.month)} · ${plural(b.receipts, ['чек', 'чека', 'чеков'])} на ${fmt(b.total)} RSD`,
+    // решение 57: в корзине только продукты — чеки и сумма по ним, как «по 2 чекам на 1 470» в fin basket
+    sub: `${monthTitle(b.month)} · продукты по ${plural(b.receipts, ['чеку', 'чекам', 'чекам'])} на ${fmt(b.total)} RSD`,
     shares: b.cats.slice(0, 6).map((c) => `${c.name} ${c.share} %`),
     rows: b.top.map((t) => ({ name: t.kind ? upper(t.name) : t.name, qty: qtyText(t.qty, t.unit), sum: fmt(t.rsd),
       open: t.kind ? { kind: t.kind } : { product: t.product } })),

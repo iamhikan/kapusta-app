@@ -10,7 +10,7 @@ import { limitRow } from './limitrow.js';
 
 const PATHS = {
   price: (e) => pricePath(e.q),
-  basket: (e) => `/api/basket?month=${e.month}`,
+  basket: (e) => `/api/basket?month=${e.month}&cat=food`,   // из «Продуктов» — только продукты (решение 57)
   budget: (e) => `/api/budget?month=${e.month}`,
   days: (e) => `/api/days?${new URLSearchParams({ month: e.month, scope: e.scope || 'all' })}`,
 };

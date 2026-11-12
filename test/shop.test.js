@@ -85,7 +85,7 @@ const BASKET = {
 test('по товарам: чеки и сумма, доли категорий (6), что больше всего — тап по товару или виду', () => {
   const v = basketView(BASKET);
   assert.equal(v.title, 'По товарам');
-  assert.equal(v.sub, sp('Ноябрь 2026 · 21 чек на 31 000 RSD'));
+  assert.equal(v.sub, sp('Ноябрь 2026 · продукты по 21 чеку на 31 000 RSD'));   // решение 57: только продукты
   assert.deepEqual(v.shares, ['супермаркеты 40 %', 'аптека 20 %', 'доставка 10 %', 'снеки 10 %', 'алкоголь 8 %', 'напитки 7 %']);
   assert.deepEqual(v.rows.map((r) => [r.name, r.qty, r.sum, r.open]), [
     ['Fibre Cat 2kg', '1 шт', sp('4 500'), { product: 'P:1' }],
@@ -98,7 +98,15 @@ test('по товарам: чеки и сумма, доли категорий (
 
 test('по товарам: чеков нет — пусто словами; доля продуктов неизвестна — без строки', () => {
   const v = basketView({ month: '2026-09', receipts: 0, total: 0, cats: [], top: [], food: null });
-  assert.equal(v.empty, 'За сентябрь чеков нет');
+  assert.equal(v.empty, 'За сентябрь чеков с продуктами нет');
   assert.equal(v.note, '');
-  assert.equal(basketView({ ...BASKET, receipts: 1, food: null }).sub, sp('Ноябрь 2026 · 1 чек на 31 000 RSD'));
+  assert.equal(basketView({ ...BASKET, receipts: 3, food: null }).sub, sp('Ноябрь 2026 · продукты по 3 чекам на 31 000 RSD'));
+});
+
+test('«По товарам» открывается из «Продуктов» и просит у сервера только продукты (решение 57, critique 12.11)', async () => {
+  const { loadMore } = await import('../js/more.js');
+  const asked = [];
+  const nav = { render() {}, get: async (path) => { asked.push(path); return { data: { month: '2026-11' } }; } };
+  await loadMore({ kind: 'basket', month: '2026-11' }, nav);
+  assert.deepEqual(asked, ['/api/basket?month=2026-11&cat=food']);
 });
