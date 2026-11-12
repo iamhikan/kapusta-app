@@ -25,7 +25,8 @@ function tone(v, plan) {
 }
 
 export function daysView(b, mode) {
-  const plan = mode === 'plan';
+  const canPlan = b.norm != null;   // месяц без курса (до начала учёта): нормы и плана дня нет — только «по сумме»
+  const plan = canPlan && mode === 'plan';
   const [y, m] = b.month.split('-').map(Number);
   const lead = (new Date(Date.UTC(y, m - 1, 1)).getUTCDay() + 6) % 7;   // пн = 0
   const byDay = new Map(b.points.map((p) => [Number(p.date.slice(8)), p]));
@@ -53,6 +54,8 @@ export function daysView(b, mode) {
       : `Трат нет. ${tail}`;
   }
   return {
+    canPlan,
+    mode: plan ? 'plan' : 'sum',
     title: `Траты по дням · ${monthTitle(b.month)}`,
     sub: `1–${last} ${OF_MONTH[m - 1]} · ${plan ? 'к плану на день' : b.scope === 'scale' ? 'в лимитах' : 'без аренды и регулярных'}`,
     cells,

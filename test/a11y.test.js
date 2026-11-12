@@ -499,3 +499,17 @@ test('карточка: категорию сменить нельзя — пр�
   assert.ok(!byKey(tree, 'recat'));
   assert.ok(find(tree, (e) => e.textContent === 'Из нескольких записей: сменить можно в чате с Капустой').length);
 });
+
+test('«По дням» без нормы (до начала учёта): переключателя «Как красить дни» нет, клетки — по сумме', () => {
+  const days = { month: '2025-11', days: 30, scope: 'all', norm: null, points: [
+    { date: '2025-11-03', rsd: 9000, scale: 9000, plan: null }, { date: '2025-11-04', rsd: 0, scale: 0, plan: null }] };
+  for (const mode of ['sum', 'plan']) {
+    const tree = moreScreen({ kind: 'days', month: '2025-11', mode, data: days }, nav);
+    assert.deepEqual(find(tree, (e) => e.getAttribute('role') === 'radiogroup'), [], mode);
+    assert.deepEqual(find(tree, (e) => e.classes.some((c) => c.startsWith('tone-'))), [], mode);
+    assert.equal(find(tree, (e) => e.tag === 'button' && e.classes.includes('heat-3')).length, 1, mode);   // 9 тыс. — 3-й оттенок
+  }
+  const planned = { ...days, norm: 200000, points: days.points.map((p) => ({ ...p, plan: 7000 })) };
+  assert.equal(find(moreScreen({ kind: 'days', month: '2025-11', mode: 'sum', data: planned }, nav),
+    (e) => e.getAttribute('role') === 'radiogroup').length, 1);
+});

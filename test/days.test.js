@@ -63,3 +63,16 @@ test('прошлый месяц — все дни; трат нет — пуст�
   assert.equal(v.sub, '1–31 октября · без аренды и регулярных');
   assert.equal(v.note, 'Трат нет. Тап по дню — операции дня.');
 });
+
+test('месяц без нормы (до начала учёта): плана дня нет — только «по сумме», «к плану на день» не предлагается', () => {
+  const early = { ...NOV, norm: null, points: NOV.points.map((p) => ({ ...p, plan: null })) };
+  assert.equal(daysView(NOV, 'sum').canPlan, true);
+  for (const mode of ['sum', 'plan']) {
+    const v = daysView(early, mode);
+    assert.equal(v.canPlan, false, mode);
+    assert.equal(v.mode, 'sum', mode);
+    assert.equal(v.sub, '1–5 ноября · без аренды и регулярных', mode);
+    assert.deepEqual(v.legend.map((l) => l.text), ['до 4 тыс.', 'до 8', 'до 15', 'больше 15 тыс.'], mode);
+    assert.equal(v.cells.find((c) => c.d === '2').aria, sp('2 ноября: 22 000 RSD'), mode);
+  }
+});

@@ -128,14 +128,14 @@ function daysBody(entry, nav) {
   const cell = (c) => {
     if (c.blank) return h('span', { class: 'day-cell blank', 'aria-hidden': 'true' });
     if (c.future) return h('span', { class: 'day-cell future', 'aria-label': `${c.d}: ещё не прошёл` }, h('span', {}, c.d));
-    const cls = entry.mode === 'plan' ? `tone-${c.tone}` : `heat-${c.level}`;
+    const cls = v.mode === 'plan' ? `tone-${c.tone}` : `heat-${c.level}`;
     return h('button', { type: 'button', class: `day-cell ${cls}`, 'aria-label': c.aria, 'data-focus': `day:${c.date}`, on: { click: () => open(nav,
       newOps(c.date.slice(0, 7), { title: c.aria.split(':')[0], period: { kind: 'custom', from: c.date, to: c.date },
         params: v.scale ? { scale: true } : {} })) } }, h('span', {}, c.d), h('span', { class: 'day-k' }, c.k));
   };
   return [head(v.title, v.sub),
-    h('div', { class: 'segmented', role: 'radiogroup', 'aria-label': 'Как красить дни' },
-      opt('sum', 'По сумме'), opt('plan', 'К плану на день')),
+    v.canPlan ? h('div', { class: 'segmented', role: 'radiogroup', 'aria-label': 'Как красить дни' },
+      opt('sum', 'По сумме'), opt('plan', 'К плану на день')) : null,
     h('section', { class: 'card pad stack' },
       h('div', { class: 'cal muted small', 'aria-hidden': 'true' }, ...['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'].map((d) => h('span', {}, d))),
       h('div', { class: 'cal' }, ...v.cells.map(cell)),
