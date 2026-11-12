@@ -12,11 +12,12 @@ const FOR_MONTH = ['январь', 'февраль', 'март', 'апрель',
 const ZONE = { ok: 'good', fast: 'fast', savings: 'warn', over: 'bad' };   // fast — выше плана на сегодня (решение 46)
 // решение 50: «тратим быстрее плана» шлёт сервер; прежний сервер (и снимок до p14a) — «быстрее плана»
 const OLD_WORD = { 'быстрее плана': 'тратим быстрее плана' };
-// решение 49: легенда цветов полосок — одной строкой у «Лимиты»; цвета — те же, что у limitColor
-const LEGEND = [{ text: 'в плане', color: 'var(--bar-green)' },
-  { text: 'выше плана', color: 'linear-gradient(90deg, var(--bar-yellow), var(--bar-orange))' },
-  { text: 'сверх лимита', color: 'var(--bad)' }];
-const LEGEND_CLOSED = [{ text: 'в лимите', color: 'var(--bar-green)' }, { text: 'сверх лимита', color: 'var(--bad)' }];
+// решение 49: легенда цветов полосок — одной строкой у «Лимиты»; решение 69: один цвет — один смысл, в легенде —
+// только цвета, которые есть в полосках месяца (было: красный «сверх лимита», а покрытый перерасход — оранжевый)
+const COVERED = 'var(--bar-orange)';   // перерасход, который покрыл резерв (решение 63)
+const LEGEND = [{ text: 'в плане', color: 'var(--bar-green)' }, { text: 'выше плана', color: 'var(--bar-yellow)' },
+  { text: 'покрыто резервом', color: COVERED }, { text: 'сверх лимита', color: 'var(--bad)' }];
+const LEGEND_CLOSED = [{ text: 'в лимите', color: 'var(--bar-green)' }, ...LEGEND.slice(2)];
 export const TOP = 6;   // лимитов сразу; остальные — по «Все N»
 // группы остатков (решение 48), порядок показа; прежний сервер без group — одна группа без заголовка
 const GROUPS = [['cash', 'Наличные'], ['cards', 'Карты и счета'], ['business', 'Бизнес'], ['debts', 'Долги']];
@@ -59,11 +60,10 @@ function when(stamp) {
 }
 
 function limitColor(share, plan) {
-  // полоска: до плана на сегодня — зелёная, выше — от жёлтого к оранжевому у лимита, сверх — красная
+  // полоска: до плана на сегодня — зелёная, выше — жёлтая и у самого лимита (решение 69: оранжевый — только
+  // «покрыто резервом»), сверх — красная
   if (share > 1) return 'var(--bad)';
-  if (share <= plan) return 'var(--bar-green)';
-  const warm = Math.round(((share - plan) / (1 - plan)) * 100);
-  return `color-mix(in oklch, var(--bar-orange) ${warm}%, var(--bar-yellow))`;
+  return share <= plan ? 'var(--bar-green)' : 'var(--bar-yellow)';
 }
 
 function limitState(share, plan, closed) {
@@ -142,7 +142,7 @@ export function view(h) {
     const share = l.limit ? l.spent / l.limit : 0;
     const calm = covered(l);
     const row = { name: l.name, ops: { limit: l.name }, spent: fmt(l.spent), limit: fmt(l.limit), over: l.over ? `+${fmt(l.over)}` : '',
-      fill: Math.max(0, Math.min(1, share)), color: calm ? 'var(--bar-orange)' : limitColor(share, plan),
+      fill: Math.max(0, Math.min(1, share)), color: calm ? COVERED : limitColor(share, plan),
       state: calm ? 'сверх лимита, покрыто резервом' : limitState(share, plan, h.closed) };
     if (l.over > 0 && rv && l !== rv.res) row.covered = calm;
     if (calm) row.hint = 'покрыто резервом';
@@ -171,7 +171,7 @@ export function view(h) {
     // решение 63: строка резерва видна сразу — под горячими лимитами, даже если по порядку она дальше первых TOP
     top: [...limits.slice(0, TOP), ...limits.slice(TOP).filter((l) => l.note)],
     limitsShown: Math.min(TOP, h.limits.length),
-    legend: h.closed ? LEGEND_CLOSED : LEGEND,
+    legend: (h.closed ? LEGEND_CLOSED : LEGEND).filter((l) => limits.some((r) => r.color === l.color)),
     reserve: note,
     // решение 40: скрытые лимиты (show: hot) — отдельной кнопкой; дошли до порога — уже в общем списке (сервер)
     hidden: h.hidden && h.hidden.length ? { label: `Скрытые лимиты · ${h.hidden.length}`,
