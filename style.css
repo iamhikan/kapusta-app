@@ -17,6 +17,8 @@
   --accent-ink: color-mix(in srgb, var(--accent) 70%, #000000);
   --bad-ink: color-mix(in srgb, var(--bad) 70%, #000000);
   --bad-fill: color-mix(in srgb, var(--bad) 80%, #000000);   /* заливка с белым текстом */
+  /* выбранный чип и сегмент: цвет ссылки на 20 % темнее — белый текст 5,9:1 и 5,1:1 (у самого цвета 4,1 и 3,5) */
+  --accent-fill: color-mix(in srgb, var(--accent) 80%, #000000);
   --heat-top: var(--accent-ink);                               /* самый тёмный день «По сумме», белый текст */
   --bar-green: #34c759;      /* полоски — яркие цвета iOS: зелёный, жёлтый, оранжевый */
   --bar-yellow: #ffcc00;
@@ -99,7 +101,8 @@ h1, h2, p { margin: 0; }
 /* план на сегодня — подписью у черты (решение 49): подпись сдвинута на ту же долю своей ширины — не вылезает за край */
 .plan-cap { position: relative; height: 18px; margin-top: -4px; margin-bottom: -6px; }
 .plan-cap > span { position: absolute; top: 0; white-space: nowrap; }
-.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+/* числа — на одной линии: подпись в одну строку у одной колонки и в две у соседних не сдвигает число вверх */
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: end; }
 .stat { font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
 
 .curve-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; min-height: 56px; }
@@ -189,7 +192,7 @@ h1, h2, p { margin: 0; }
   min-height: 34px; padding: 0 12px; border-radius: 99px; background: var(--card); border: 1px solid var(--line);
   white-space: nowrap; }
 .chip-month { padding: 0 2px; font-weight: 600; }
-.chip-btn.on { background: var(--accent); border-color: var(--accent); color: var(--button-text); }
+.chip-btn.on { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--button-text); }
 .small-arrow { min-width: 32px; min-height: 32px; justify-content: center; }
 .day { display: flex; flex-direction: column; gap: 6px; }
 .day-head { display: flex; justify-content: space-between; padding: 0 4px; font-weight: 600; text-transform: none; }
@@ -225,7 +228,7 @@ h1, h2, p { margin: 0; }
 .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 2px; border-radius: 10px;
   background: var(--track); }
 .seg { min-height: 34px; border-radius: 8px; font-size: 14px; color: var(--fg); }
-.seg.on { background: var(--accent); color: var(--button-text); font-weight: 600; }
+.seg.on { background: var(--accent-fill); color: var(--button-text); font-weight: 600; }
 .donut-row { display: flex; align-items: center; gap: 16px; }
 .donut { flex-shrink: 0; }
 .donut-track { fill: none; stroke: var(--track); stroke-width: 22; }
