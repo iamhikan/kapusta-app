@@ -24,11 +24,13 @@ export function filters(accounts = []) {
     { key: 'account', label: 'Кошелёк или счёт', chips: [['все', ''], ...(accounts.length ? accounts : ACCOUNTS)] },
     { key: 'who', label: 'Кто записал', chips: [['все', ''], ['Алексей', 'aleksey'], ['Ангелина', 'angelina']] },
     { key: 'source', label: 'Источник', chips: [['все', ''], ['чек', 'receipt'], ['словами', 'words'],
-      ['из банка', 'bank'], ['выписка РФ', 'raif']] },   // решения 61, 64: было «выписка», «Райф CSV»
+      ['из банка', 'bank'], ['выписка РФ', 'raif'], ['Walt', 'walt']] },   // решения 61, 64, 70: было «выписка», «Райф CSV»
   ];
 }
 
-export const FLAG = 'Только с «!» — надо уточнить';   // решение 61: было «на разборе»
+export const FLAG = 'Только с «!» — надо уточнить';
+
+const FROM = { walt: 'из кошелька Walt' };   // запись без автора: откуда пришла (решение 70: было «из выписки банка»)   // решение 61: было «на разборе»
 
 export function money(n) {
   // «3 098,86», «6 220», «−500»: копейки — только если есть
@@ -199,7 +201,7 @@ export function cardView(c) {
   return {
     title: c.where, what: c.what && c.what !== c.where ? c.what : '',
     when: dayLabel(c.date) + (time ? ` · ${time}` : ''),
-    by: c.by ? `записал${c.by === 'Ангелина' ? 'а' : ''} ${c.by}` : 'из выписки банка',
+    by: c.by ? `записал${c.by === 'Ангелина' ? 'а' : ''} ${c.by}` : FROM[c.source] || 'из выписки банка',
     row: check && c.after ? checkHead(opRow(c), c.after) : opRow(c),
     flow: flow(postings),
     receipt: c.receipt && {

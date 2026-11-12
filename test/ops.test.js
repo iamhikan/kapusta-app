@@ -298,3 +298,11 @@ test('сверка нала (нет экрана банка, сервер без
   const c = cardView(found);
   assert.deepEqual([c.row.sub, c.row.amount, c.flow[0].lines[0].name], ['сверка остатка', sp('9 000 RSD'), 'сверка остатка']);
 });
+
+test('источник Walt (решение 70): «из кошелька Walt», а не «из выписки банка»; в фильтре — свой чип', () => {
+  const by = (c) => cardView({ ...LIDL, receipt: null, postings: [], ...c }).by;
+  assert.equal(by({ by: undefined, source: 'walt', ref: 'walt:7' }), 'из кошелька Walt');
+  assert.equal(by({ by: undefined, source: 'bank' }), 'из выписки банка');
+  assert.equal(by({ by: 'Ангелина', source: 'words' }), 'записала Ангелина');
+  assert.deepEqual(filters()[2].chips.slice(-2), [['выписка РФ', 'raif'], ['Walt', 'walt']]);
+});
