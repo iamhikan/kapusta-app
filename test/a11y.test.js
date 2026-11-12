@@ -214,6 +214,17 @@ test('между перерисовками — скелет загрузки б
   assert.equal(focusKey(), 'month:prev');
 });
 
+test('кнопки с ключом на готовом экране нет (по ссылке «Открыть в Капусте»: трат категории за месяц нет) — фокус на заголовок', () => {
+  const { root, p } = setup();
+  p.show(btn('month:prev'), btn('cat-ops'));
+  byKey(root, 'cat-ops').focus();
+  p.focus('cat:Expenses:Family:Gifts');            // «Назад» — вернуть фокус на строку категории под экраном
+  p.show(h('div', { 'aria-busy': 'true' }));        // скелет — строки ещё нет, ждём её
+  assert.equal(focusKey(), 'BODY');
+  p.show(h('h1', { 'data-focus': 'title', tabindex: '-1' }, 'Октябрь'), btn('month:prev'), btn('cat:Expenses:Family:Food'));
+  assert.equal(focusKey(), 'title');
+});
+
 test('кнопка стала неактивной (стрелка «вперёд» дошла до текущего месяца) — фокус на соседнюю из data-focus-alt', () => {
   const { root, p } = setup();
   p.show(btn('month:prev'), btn('month:next', { 'data-focus-alt': 'month:prev' }));
