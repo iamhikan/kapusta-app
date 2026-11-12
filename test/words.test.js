@@ -47,3 +47,21 @@ test('«Категории»: «По дням» описан словами че
   assert.doesNotMatch(said, /тепловая/i);
   assert.match(said, /траты каждого дня/);
 });
+
+test('«Ещё в …»: сумма и подпись — как в списке; сверка — «остаток после сверки» и остаток, не сумма прихода (решение 68)', () => {
+  const card = { ref: 'add:c', date: '2026-11-11', at: '2026-11-11 21:46', where: 'Freedom', what: 'остаток', kind: 'transfer',
+    cats: [], src: 'Freedom', rsd: 9000, receipt: null, flag: false, by: 'Алексей', opening: 'check', refs: ['add:c'],
+    after: { lines: [{ number: 30.5, currency: 'EUR' }, { number: 0.2, currency: 'USD' }], rsd: 3600.6 },
+    legs: [{ name: 'Freedom', number: 30.5, currency: 'EUR' }],
+    postings: [{ account: 'Assets:Family:Freedom:EUR', name: 'Freedom', number: 30.5, currency: 'EUR' },
+      { account: 'Equity:Opening-Balances', name: 'начальный остаток', number: -30.5, currency: 'EUR' }],
+    similar: [{ ref: 'walt:2', date: '2026-11-06', where: 'Freedom', kind: 'income', cats: [], src: 'Freedom',
+      amount: { number: 1000, currency: 'USDT' }, rsd: 104500, receipt: false, flag: false }] };
+  const said = text(cardScreen({ kind: 'card', ref: 'add:c', data: card }, nav)).replace(/\s+/g, ' ');
+  assert.match(said, /30,50 €/);
+  assert.doesNotMatch(said, /9\s000/);
+  assert.match(said, /остаток после сверки/);
+  assert.match(said, /сверка остатка/);
+  assert.doesNotMatch(said, /начальный остаток/);
+  assert.match(said, /\+1\s000 USDT 104\s500 RSD/);
+});

@@ -102,6 +102,12 @@ export function opRow(op, { inCategory = false, account = '' } = {}) {
     const from = op.legs.filter((l) => l.number < 0).map((l) => l.name);
     const to = op.legs.filter((l) => l.number > 0);
     const into = [...new Set(to.map((l) => l.name))].join(', ');
+    // сверка остатка (решение 68): остаток счёта после неё, как на экране банка, — не сумма поступлений по курсу
+    if (op.opening === 'check' && op.after) {
+      const [first] = op.after.lines;
+      return { ...base, gray: true, sub: 'сверка остатка', amount: first ? full(first.number, first.currency) : full(0, 'RSD'),
+        amountSub: 'остаток' };
+    }
     // приход без «откуда» (начальный остаток, поправка): весь приход по курсу НБС, а не первая из валют (ревью)
     if (!from.length) return { ...base, gray: true, sub: into ? `на ${into}` : '', amount: full(op.rsd, 'RSD'), amountSub: '' };
     const main = to[0] || { number: op.rsd, currency: 'RSD' };
@@ -163,19 +169,41 @@ function flow(postings) {
   return [...side('Откуда', -1), ...side('Куда', 1)];
 }
 
+const OPENING = 'Equity:Opening-Balances';
+
+// время записи из at любого вида: «15:35» (Walt) или «2026-11-10 18:40» (решение 68: было «· ·» у Walt)
+const clock = (at) => (/(?:^|[ T])(\d{1,2}:\d{2})/.exec(at || '') || [])[1] || '';
+
+function checkHead(row, after) {
+  // сверка (решение 68): крупно — первая валюта остатка, рядом — итог по курсу НБС, ниже — остальные валюты
+  const rest = after.lines.slice(1);
+  return { ...row, sub: 'остаток после сверки', note: rest.map((l) => cur(l.number, l.currency)).join(' · '), noteTone: 'muted',
+    amountSub: after.lines.some((l) => l.currency !== 'RSD') ? `≈ ${fmt(after.rsd)} RSD` : '' };
+}
+
+function similarRow(s) {
+  // «Ещё в …» — сумма, как в списке «Операций» (решение 68); прежний сервер слал только ref, date, rsd — числом
+  if (!s.kind) return { ref: s.ref, label: dayLabel(s.date), value: money(s.rsd), sub: '' };
+  const r = opRow(s);
+  return { ref: s.ref, label: dayLabel(s.date), value: r.amount, sub: r.amountSub };
+}
+
 export function cardView(c) {
+  const check = c.opening === 'check';
+  const postings = (c.postings || []).map((p) => (check && p.account === OPENING ? { ...p, name: 'сверка остатка' } : p));
+  const time = clock(c.at);
   return {
     title: c.where, what: c.what && c.what !== c.where ? c.what : '',
-    when: dayLabel(c.date) + (c.at ? ` · ${c.at.slice(11, 16)}` : ''),
+    when: dayLabel(c.date) + (time ? ` · ${time}` : ''),
     by: c.by ? `записал${c.by === 'Ангелина' ? 'а' : ''} ${c.by}` : 'из выписки банка',
-    row: opRow(c),
-    flow: flow(c.postings),
+    row: check && c.after ? checkHead(opRow(c), c.after) : opRow(c),
+    flow: flow(postings),
     receipt: c.receipt && {
       shop: c.receipt.shop, total: money(c.receipt.total), url: c.receipt.url,
       items: c.receipt.items.map((it) => ({ name: it.name,
         line: it.qty === 1 ? '' : `${String(it.qty).replace('.', ',')}${it.unit === 'шт' ? '' : ` ${it.unit}`} × ${money(it.price)}`,
         value: money(it.total), sub: [it.kind, it.cat].filter(Boolean).join(' · ') })),
     },
-    similar: (c.similar || []).map((s) => ({ ref: s.ref, label: dayLabel(s.date), value: money(s.rsd) })),
+    similar: (c.similar || []).map(similarRow),
   };   // ref в карточке не показываем (решение 51): он для бота, человеку ничего не говорит
 }

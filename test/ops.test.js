@@ -146,7 +146,7 @@ test('карточка: проводки, кто и когда, позиции �
   assert.equal(c.receipt.items[1].sub, 'сыр твёрдый · супермаркеты');
   assert.equal(c.receipt.items[0].sub, 'алкоголь');
   assert.equal(c.receipt.url, 'https://suf.purs.gov.rs/v/?vl=X');
-  assert.deepEqual(c.similar[0], { ref: 'sms:0', label: '3 ноября, вт', value: '900' });
+  assert.deepEqual(c.similar[0], { ref: 'sms:0', label: '3 ноября, вт', value: '900', sub: '' });   // прежний сервер
   assert.equal(c.refs, undefined);                              // решение 51: ref в карточке не показываем
   assert.equal(c.row.amount, sp('1 500,50 RSD'));
 });
@@ -231,4 +231,63 @@ test('шапка счёта: плитка, имя, остаток в две ст
     flow: [['пришло', sp('+5 000')], ['ушло', sp('−12 500')]], sub: 'ноябрь · 7 записей' });
   const bare = accountView({ name: 'Walt', lines: [], tile: { text: 'W' } }, { count: 0 }, '2026-10');
   assert.deepEqual([bare.lines, bare.label, bare.flow], [[], '', []]);       // остатка и потока нет — без строк
+});
+
+test('время в карточке — из at любого вида: «ЧЧ:ММ» (Walt) и «ГГГГ-ММ-ДД ЧЧ:ММ» (решение 68: было «· ·»)', () => {
+  const when = (at) => cardView({ ...LIDL, receipt: null, postings: [], at }).when;
+  assert.equal(when('15:35'), '10 ноября, вт · 15:35');
+  assert.equal(when('2026-11-10 18:40'), '10 ноября, вт · 18:40');
+  assert.equal(when(null), '10 ноября, вт');
+});
+
+test('«Ещё в …» — сумма как в списке «Операций» (решение 68): пополнение, начальный остаток, трата', () => {
+  const c = cardView({ ...LIDL, receipt: null, postings: [], similar: [
+    { ref: 'walt:2', date: '2026-11-06', where: 'Walt', kind: 'income', cats: [], src: 'Walt',
+      amount: { number: 1000, currency: 'USDT' }, rsd: 104500, receipt: false, flag: false },
+    { ref: 'walt:1', date: '2026-11-02', where: 'Walt', kind: 'transfer', cats: [], src: 'Walt', rsd: 2090.5,
+      opening: 'start', receipt: false, flag: false, legs: [{ name: 'Walt', number: 20, currency: 'USDT' }] },
+    { ...LIDL, ref: 'sms:0', date: '2026-11-03', rsd: 900 }] });
+  assert.deepEqual(c.similar.map((s) => [s.ref, s.label, s.value, s.sub]), [
+    ['walt:2', '6 ноября, пт', sp('+1 000 USDT'), sp('104 500 RSD')],
+    ['walt:1', '2 ноября, пн', sp('2 090,50 RSD'), ''],
+    ['sms:0', '3 ноября, вт', '900 RSD', '']]);
+});
+
+const CHECK = { ref: 'add:c', date: '2026-11-11', at: '2026-11-11 21:46', where: 'Freedom', what: 'остаток по экрану',
+  kind: 'transfer', cats: [], src: 'Freedom', rsd: 9000, receipt: null, flag: false, by: 'Алексей', opening: 'check',
+  after: { lines: [{ number: 30.5, currency: 'EUR' }, { number: 0.2, currency: 'USD' }], rsd: 3600.6 },
+  legs: [{ name: 'Freedom', number: 0.2, currency: 'USD' }, { name: 'Freedom', number: 30.5, currency: 'EUR' },
+    { name: 'Freedom', number: 5000, currency: 'RSD' }],
+  postings: [{ account: 'Assets:Family:Freedom:EUR', name: 'Freedom', number: 5000, currency: 'RSD' },
+    { account: 'Equity:Opening-Balances', name: 'начальный остаток', number: -5000, currency: 'RSD' },
+    { account: 'Assets:Family:Freedom:EUR', name: 'Freedom', number: 30.5, currency: 'EUR' },
+    { account: 'Equity:Opening-Balances', name: 'начальный остаток', number: -30.5, currency: 'EUR' }] };
+
+test('сверка остатка в списке — «сверка остатка» и остаток после неё, а не сумма поступлений (решение 68)', () => {
+  const r = opRow(CHECK);
+  assert.equal(r.gray, true);
+  assert.equal(r.sub, 'сверка остатка');
+  assert.equal(r.amount, '30,50 €');
+  assert.equal(r.amountSub, 'остаток');
+});
+
+test('сверка в карточке: крупно — остаток, рядом ≈ RSD, ниже — другие валюты; «Откуда» — «сверка остатка»', () => {
+  const c = cardView(CHECK);
+  assert.equal(c.row.amount, '30,50 €');
+  assert.equal(c.row.amountSub, sp('≈ 3 601 RSD'));
+  assert.equal(c.row.note, '0,20 $');
+  assert.equal(c.row.sub, 'остаток после сверки');
+  assert.deepEqual(c.flow.map((s) => [s.label, s.lines.map((l) => l.name)]), [['Откуда', ['сверка остатка']],
+    ['Куда', ['Freedom']]]);
+  const rsdOnly = cardView({ ...CHECK, after: { lines: [{ number: 12000, currency: 'RSD' }], rsd: 12000 } });
+  assert.deepEqual([rsdOnly.row.amount, rsdOnly.row.amountSub, rsdOnly.row.note], [sp('12 000 RSD'), '', '']);
+  const zero = cardView({ ...CHECK, after: { lines: [], rsd: 0 } });
+  assert.equal(zero.row.amount, '0 RSD');
+});
+
+test('начальный остаток — как был: «на счёт», сумма по курсу НБС, «Откуда» — «начальный остаток»', () => {
+  const c = cardView({ ...CHECK, opening: 'start', after: undefined });
+  assert.equal(c.row.sub, 'на Freedom');
+  assert.equal(c.row.amount, sp('9 000 RSD'));
+  assert.equal(c.flow[0].lines[0].name, 'начальный остаток');
 });

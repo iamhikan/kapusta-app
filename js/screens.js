@@ -399,6 +399,8 @@ export function cardScreen(entry, nav) {
     c.similar.length ? [h('div', { class: 'section-head' }, h('h2', {}, `Ещё в «${c.title}»`)),
       h('section', { class: 'card list' }, ...c.similar.map((s) => h('button', { type: 'button', class: 'line op',
         'data-focus': `op:${s.ref}`, on: { click: () => { tap(); nav.push({ kind: 'card', ref: s.ref }); } } }, h('span', {}, s.label),
-      h('span', {}, s.value))))] : null,
+      // решение 68: сумма и подпись под ней — как в списке «Операций» («+1 000 USDT» и «104 500 RSD»)
+      h('span', { class: 'bal-amounts' }, h('span', {}, s.value), s.sub ? h('span', { class: 'muted small' }, s.sub) : null))))]
+      : null,
     entry.picker ? pickerSheet(entry, nav) : null);
 }
