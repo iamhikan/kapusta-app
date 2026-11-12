@@ -22,7 +22,8 @@ const WORDS = { неразобранное: 'без категории', 'Raiffe
 // «DROIT», «USDT») или одно имя на два счёта («кредит РФ»). Подменяем по полному имени счёта — имя проводки или ноги
 // (name) и источник операции (src); строку «USDT» саму по себе не трогаем: это и код валюты
 const ACCOUNTS = { 'Expenses:Family:CashUnrecorded': 'неучтённый нал', 'Income:PR:DROIT': 'доход ПР (DROIT)',
-  'Assets:Family:Walt:USDT': 'Walt', 'Liabilities:RU:Kredit': 'долг по кредиту' };
+  'Assets:Family:Walt:USDT': 'Walt', 'Liabilities:RU:Kredit': 'долг по кредиту',
+  'Expenses:PR:Porez': 'налог ПР', 'Liabilities:PR:Porez': 'налог к уплате' };   // решение 72: было «Porez»
 
 export function words(x) {
   if (typeof x === 'string') return Object.hasOwn(WORDS, x) ? WORDS[x] : x;

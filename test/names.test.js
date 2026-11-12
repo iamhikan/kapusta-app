@@ -102,3 +102,21 @@ test('решение 67: служебные счета — словами чел
   assert.deepEqual(loan.flow.map((s) => [s.label, s.lines.map((l) => l.name)]),
     [['Откуда', ['кредит РФ']], ['Куда', ['долг по кредиту', 'банк']]]);   // счёт кредита — как плитка, долг — свой
 });
+
+// Решение 72 (Алексей 12.11, долг «служебные слова у сверки и резерва налога»): счета налога ПР — словами человека;
+// сверка нала (`pad`, вид other) — подпись «сверка остатка», как у сверки через начальный остаток (решение 68)
+test('решение 72: резерв налога — «налог ПР» и «налог к уплате»; сверка нала — «сверка остатка» и сумма', async () => {
+  const { cardView, opRow } = await import('../js/ops.js');
+  const tax = cardView(words({ ref: 'line:2026-tax:4', date: '2026-01-31', where: 'Резерв налога', what: '10 % прибыли',
+    kind: 'other', cats: [], src: 'Porez', account: 'Liabilities:PR:Porez', amount: { number: 1200, currency: 'RSD' },
+    rsd: 1200, source: 'calc', origin: 'calc', receipt: null, postings: [
+      { account: 'Expenses:PR:Porez', name: 'porez', number: 1200, currency: 'RSD', rsd: 1200 },
+      { account: 'Liabilities:PR:Porez', name: 'Porez', number: -1200, currency: 'RSD', rsd: -1200 }] }));
+  assert.deepEqual(tax.flow.map((s) => [s.label, s.lines.map((l) => l.name)]),
+    [['Откуда', ['налог к уплате']], ['Куда', ['налог ПР']]]);
+  assert.deepEqual([tax.row.sub, tax.row.amount, tax.by], ['налог к уплате', sp('1 200 RSD'), 'посчитала Капуста']);
+  const pad = { ref: 'line:2026-cash:7', date: '2026-10-25', where: 'Сверка нала', what: 'по факту 700 RSD', kind: 'other',
+    cats: [], src: 'нал Алексея', account: 'Assets:Family:Cash:Aleksey:RSD', amount: { number: 3000, currency: 'RSD' },
+    rsd: 3000, opening: 'check', source: 'calc', receipt: false, flag: false };
+  assert.deepEqual([opRow(words(pad)).sub, opRow(words(pad)).amount], ['сверка остатка', sp('3 000 RSD')]);
+});

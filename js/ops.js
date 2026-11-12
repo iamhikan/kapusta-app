@@ -123,7 +123,9 @@ export function opRow(op, { inCategory = false, account = '' } = {}) {
   }
   // операции счёта (решение 48): счёт — в шапке, под строкой его не повторяем
   const own = account && op.account && op.account.startsWith(account);
-  const sub = [inCategory ? '' : op.cats.join(', '), own ? '' : op.src].filter(Boolean).join(' · ');
+  // сверка нала (`pad`, решение 72) — «сверка остатка», как у сверки через начальный остаток (решение 68)
+  const sub = op.opening === 'check' ? 'сверка остатка'
+    : [inCategory ? '' : op.cats.join(', '), own ? '' : op.src].filter(Boolean).join(' · ');
   if (op.kind === 'income') {
     return { ...base, sub, amount: `+${full(op.amount.number, op.amount.currency)}`, noteTone: 'good',
       amountSub: op.amount.currency !== 'RSD' ? `${money(op.rsd)} RSD` : '', income: true };
