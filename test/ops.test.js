@@ -304,5 +304,17 @@ test('источник Walt (решение 70): «из кошелька Walt»,
   assert.equal(by({ by: undefined, source: 'walt', ref: 'walt:7' }), 'из кошелька Walt');
   assert.equal(by({ by: undefined, source: 'bank' }), 'из выписки банка');
   assert.equal(by({ by: 'Ангелина', source: 'words' }), 'записала Ангелина');
-  assert.deepEqual(filters()[2].chips.slice(-2), [['выписка РФ', 'raif'], ['Walt', 'walt']]);
+  assert.deepEqual(filters()[2].chips.slice(5, 7), [['выписка РФ', 'raif'], ['Walt', 'walt']]);
+});
+
+test('SMS банка и расчёт Капусты (решение 71): не «из выписки банка»; у SMS с чеком — тоже «из SMS банка»', () => {
+  const by = (c) => cardView({ ...LIDL, receipt: null, postings: [], ...c }).by;
+  assert.equal(by({ by: undefined, source: 'sms', origin: 'sms', ref: 'sms:7' }), 'из SMS банка');
+  assert.equal(by({ by: undefined, source: 'receipt', origin: 'sms', ref: 'sms:8' }), 'из SMS банка');
+  assert.equal(by({ by: undefined, source: 'calc', origin: 'calc', ref: 'gap:RSD:2026-01-05' }), 'посчитала Капуста');
+  assert.equal(by({ by: undefined, source: 'receipt', origin: 'bank' }), 'из выписки банка');
+  assert.equal(by({ by: undefined, source: 'sms' }), 'из SMS банка');          // прежний сервер — без origin
+  assert.equal(by({ by: 'Алексей', source: 'receipt', origin: 'sms' }), 'записал Алексей');
+  assert.deepEqual(filters()[2].chips, [['все', ''], ['чек', 'receipt'], ['словами', 'words'], ['из банка', 'bank'],
+    ['SMS банка', 'sms'], ['выписка РФ', 'raif'], ['Walt', 'walt'], ['посчитала Капуста', 'calc']]);
 });
