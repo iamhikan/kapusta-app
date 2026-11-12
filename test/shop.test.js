@@ -38,7 +38,8 @@ test('товары того же вида: дешевле за кг/л — вы�
     ['Maxi', '70,50', '141 за л', false, { product: 'P2:9' }],
     ['Idea', sp('99,99'), '', false, { product: 'P3:1' }]]);
   assert.deepEqual(v.stores.map((s) => s.sub), ['Mleko 2,8% 1L · 01.11', 'MLEKO 0,5L · 09.03.2025', 'MLEKO DUGOTRAJNO · 20.10']);
-  assert.equal(v.cheapest, 'Дешевле всего за л: Lidl — 125');
+  assert.equal(v.cheapest, 'Дешевле всего за л: Lidl — 125.');   // critique 12.11: следом идёт «Цена за кг или л …»
+  assert.equal(v.storesTitle, 'По магазинам');
 });
 
 test('товар без вида и одна покупка; весовой — «за кг»; цена упала — зелёным', () => {
@@ -62,6 +63,8 @@ test('вид без товара (строка вида в корзине): то
   assert.equal(v.big, null);
   assert.equal(v.chart, null);
   assert.equal(v.stores[0].open.product, 'P1:7');
+  // тот же список, что у товара, — то же имя (critique 12.11: «Магазины» и «Тот же вид в других сетях»)
+  assert.equal(v.storesTitle, 'По магазинам');
 });
 
 test('адрес истории цены: позиция чека (строка с 1), товар или вид', () => {

@@ -141,7 +141,7 @@ test('карточка: проводки, кто и когда, позиции �
   assert.equal(c.title, 'Lidl');
   assert.equal(c.when, '10 ноября, вт · 18:40');
   assert.equal(c.by, 'записал Алексей');
-  assert.deepEqual(c.postings[0], { name: 'Freedom', value: sp('−1 500,50 RSD') });
+  assert.deepEqual(c.flow[0], { label: 'Откуда', lines: [{ name: 'Freedom', value: sp('1 500,50 RSD'), more: '' }] });
   assert.equal(c.receipt.items[0].line, '4 × 100');
   assert.equal(c.receipt.items[1].sub, 'сыр твёрдый · супермаркеты');
   assert.equal(c.receipt.items[0].sub, 'алкоголь');
@@ -149,6 +149,41 @@ test('карточка: проводки, кто и когда, позиции �
   assert.deepEqual(c.similar[0], { ref: 'sms:0', label: '3 ноября, вт', value: '900' });
   assert.equal(c.refs, undefined);                              // решение 51: ref в карточке не показываем
   assert.equal(c.row.amount, sp('1 500,50 RSD'));
+});
+
+const flowOf = (postings) => cardView({ ...LIDL, receipt: null, postings });
+
+test('«Откуда и куда» — две части без знаков (решение 65): трата, перенос между категориями, обмен', () => {
+  const spend = flowOf([{ name: 'сладкое', number: 120, currency: 'RSD' },
+    { name: 'нал Ангелины', number: -470, currency: 'RSD' }, { name: 'вода', number: 350, currency: 'RSD' }]);
+  assert.deepEqual(spend.flow, [
+    { label: 'Откуда', lines: [{ name: 'нал Ангелины', value: '470 RSD', more: '' }] },
+    { label: 'Куда', lines: [{ name: 'сладкое', value: '120 RSD', more: '' }, { name: 'вода', value: '350 RSD', more: '' }] },
+  ]);
+  const move = flowOf([{ name: 'питомцы', number: 55.5, currency: 'RSD' },
+    { name: 'супермаркеты', number: -55.5, currency: 'RSD' }]);
+  assert.deepEqual(move.flow.map((s) => [s.label, s.lines.map((l) => `${l.name} ${l.value}`)]),
+    [['Откуда', ['супермаркеты 55,50 RSD']], ['Куда', ['питомцы 55,50 RSD']]]);
+  const fx = flowOf([{ name: 'нал Алексея', number: 11800, currency: 'RSD' },
+    { name: 'нал Алексея', number: -100, currency: 'EUR' }]);
+  assert.deepEqual(fx.flow.map((s) => s.lines[0].value), ['100 €', sp('11 800 RSD')]);
+});
+
+test('«Откуда и куда»: счёт в нескольких валютах — одной строкой, RSD сверху (начальный остаток — 2 строки, а не 8)', () => {
+  const c = flowOf([
+    { name: 'Freedom', number: 2400.25, currency: 'RSD' }, { name: 'начальный остаток', number: -2400.25, currency: 'RSD' },
+    { name: 'Freedom', number: 31, currency: 'EUR' }, { name: 'начальный остаток', number: -31, currency: 'EUR' },
+    { name: 'Freedom', number: 0.02, currency: 'USD' }, { name: 'начальный остаток', number: -0.02, currency: 'USD' },
+    { name: 'Freedom', number: 0.15, currency: 'KZT' }, { name: 'начальный остаток', number: -0.15, currency: 'KZT' }]);
+  assert.deepEqual(c.flow, [
+    { label: 'Откуда', lines: [{ name: 'начальный остаток', value: sp('2 400,25 RSD'), more: '31 € · 0,02 $ · 0,15 KZT' }] },
+    { label: 'Куда', lines: [{ name: 'Freedom', value: sp('2 400,25 RSD'), more: '31 € · 0,02 $ · 0,15 KZT' }] },
+  ]);
+  // без динаров — первая валюта сверху; строк нет — частей нет
+  const eur = flowOf([{ name: 'Freedom', number: -7, currency: 'EUR' }, { name: 'Freedom', number: -2, currency: 'USD' },
+    { name: 'сервисы', number: 7, currency: 'EUR' }, { name: 'сервисы', number: 2, currency: 'USD' }]);
+  assert.deepEqual(eur.flow[0].lines, [{ name: 'Freedom', value: '7 €', more: '2 $' }]);
+  assert.deepEqual(flowOf([]).flow, []);
 });
 
 test('пустой месяц: «в ноябре трат … нет» (холст 6.3)', () => {

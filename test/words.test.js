@@ -37,3 +37,13 @@ test('«Категории»: переключатель «В лимитах / �
   assert.match(said, /В лимитах/);
   assert.doesNotMatch(said, /Шкала/);
 });
+
+test('«Категории»: «По дням» описан словами человека, без «тепловой карты» (critique 12.11, P2 № 5)', () => {
+  const entry = { kind: 'cats', period: { kind: 'month', from: '2026-11-01', to: '2026-11-30' }, cat: null, title: '',
+    scope: 'all', data: { from: '2026-11-01', to: '2026-11-30', end: '2026-11-11', scope: 'all', cat: null, total: 100,
+      cats: [{ key: 'Expenses:Family:Food', name: 'продукты', rsd: 100, share: 1, limit: null }] }, bars: null };
+  const said = text(catsScreen(entry, nav));
+  assert.match(said, /По дням/);
+  assert.doesNotMatch(said, /тепловая/i);
+  assert.match(said, /траты каждого дня/);
+});

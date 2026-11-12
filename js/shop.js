@@ -49,10 +49,13 @@ export function priceView(b, today) {
   const stores = b.stores.map((s) => ({ store: s.store, sub: `${s.name} · ${day(s.day, today)}`, price: money(s.price),
     per: s.per_price == null ? '' : `${money(s.per_price)} за ${s.per}`, mine: !!s.mine,
     open: s.mine ? null : { product: s.product } }));
-  const cheapest = b.cheapest ? `Дешевле всего за ${b.cheapest.per}: ${b.cheapest.store} — ${money(b.cheapest.per_price)}` : '';
+  // с точкой: следом в той же подписи — «Цена за кг или л …» (critique 12.11)
+  const cheapest = b.cheapest ? `Дешевле всего за ${b.cheapest.per}: ${b.cheapest.store} — ${money(b.cheapest.per_price)}.` : '';
+  // один список — одно имя у товара и у вида (critique 12.11: было «Тот же вид в других сетях» и «Магазины»)
+  const storesTitle = 'По магазинам';
   if (kindOnly) {
     return { title: upper(b.name), sub: `товаров: ${b.stores.length}, магазинов: ${new Set(b.stores.map((s) => s.store)).size}`,
-      big: null, chart: null, stores, cheapest };
+      big: null, chart: null, stores, storesTitle, cheapest };
   }
   const last = b.history[b.history.length - 1];
   const change = b.change ? b.change.replace('-', '−') : '';
@@ -65,6 +68,7 @@ export function priceView(b, today) {
       tone: change.startsWith('+') ? 'warn' : change ? 'good' : '' },
     chart: chart(b.history, b.unit),
     stores,
+    storesTitle,
     cheapest,
   };
 }

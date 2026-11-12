@@ -136,7 +136,7 @@ function extra(entry, nav) {
       { kind: 'basket', month: monthOf(entry, today) }));
   }
   if (entry.cat) return null;
-  return h('section', { class: 'card list' }, row('По дням', 'тепловая карта месяца — по сумме и к плану на день',
+  return h('section', { class: 'card list' }, row('По дням', 'траты каждого дня — по сумме и к плану на день',   // critique 12.11: без «тепловой карты»
     { kind: 'days', month: monthOf(entry, today), scope: entry.scope, mode: 'sum' }));
 }
 

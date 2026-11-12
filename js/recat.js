@@ -13,11 +13,18 @@ const nameOf = (card) => {
 
 const words = (card, accounts) => [...new Set(accounts.map(nameOf(card)))].join(', ');
 
+// сменить нельзя (сервер не дал `change`, fin.recat._can) — почему и где можно (critique 12.11, P2 № 3)
+function why(card) {
+  const cause = card.secret ? 'Секрет' : (card.refs || []).length > 1 ? 'Из нескольких записей'
+    : (card.cats || []).length > 1 ? 'Разнесено по категориям' : '';
+  return `${cause ? `${cause}: с` : 'С'}менить можно в чате с Капустой`;
+}
+
 export function category(card, waiting = null) {
   // строка «Категория» карточки: сейчас словами; смена в очереди — «было → стало», серым
   const now = card.change ? words(card, card.change.accounts) : card.cats.join(', ');
-  if (waiting && waiting.n == null) return { text: `${now} → ${waiting.toName}`, can: true, queued: true };
-  return { text: now, can: !!card.change, queued: false };
+  if (waiting && waiting.n == null) return { text: `${now} → ${waiting.toName}`, can: true, queued: true, why: '' };
+  return { text: now, can: !!card.change, queued: false, why: card.change ? '' : why(card) };
 }
 
 const parentOf = (account) => account.split(':').slice(0, -1).join(':');

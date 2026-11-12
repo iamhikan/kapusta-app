@@ -65,7 +65,7 @@ function priceBody(entry, nav) {
         h('span', { class: 'muted' }, v.big.unit || 'RSD')),
       h('div', { class: `small ${v.big.tone || 'muted'}` }, v.big.meta),
       priceChart(v.chart)) : null,
-    v.stores.length ? [h('div', { class: 'section-head' }, h('h2', {}, v.big ? 'Тот же вид в других сетях' : 'Магазины')),
+    v.stores.length ? [h('div', { class: 'section-head' }, h('h2', {}, v.storesTitle)),
       h('section', { class: 'card list' }, ...v.stores.map(store)),
       h('p', { class: 'note-text muted small' }, [v.cheapest, 'Цена за кг или л — по весу или упаковке в названии.']
         .filter(Boolean).join(' '))] : null];

@@ -121,7 +121,7 @@ function accountHead(entry, nav) {
   const v = accountView(bal, entry.pages[0] || { count: 0 }, entry.month);
   return h('section', { class: 'card pad stack acct' },
     h('div', { class: 'acct-top' }, tile(v.tile, 40),
-      h('div', { class: 'grow' }, h('h2', { class: 'acct-name', ...TITLE }, v.title), h('span', { class: 'muted small' }, v.sub)),
+      h('div', { class: 'grow' }, h('h1', { class: 'acct-name', ...TITLE }, v.title), h('span', { class: 'muted small' }, v.sub)),
       v.lines.length ? h('div', { class: 'bal-amounts' }, h('span', { class: 'muted small' }, v.label),
         ...v.lines.map((l, i) => h('span', { class: i ? 'muted small' : 'num' }, l))) : null),
     v.flow.length ? h('div', { class: 'acct-flow' }, ...v.flow.map(([k, val]) => h('div', {},
@@ -146,16 +146,17 @@ function toolbar(entry, nav) {
         entry.timer = setTimeout(() => { f.q = entry.typed; loadOps(entry, nav); }, 350);
       } } }));
   // «Фильтры» — в строке поиска: месяц, «Фильтры» и «Переводы» в один ряд не помещались (ревью, 403 px из 358)
-  return h('div', { class: 'toolbar' }, h('div', { class: 'search-row' }, search,
+  // заголовок экрана — для диктора (critique 12.11, P2 № 4): на экране «Операции» уже есть вкладка; у счёта h1 — его имя
+  return h('div', { class: 'toolbar' }, f.account ? null : h('h1', { class: 'sr' }, 'Операции'), h('div', { class: 'search-row' }, search,
     chip('filters', 'Фильтры', false, () => { entry.sheet = true; nav.focus('sheet'); nav.render(); }, ICONS.filter)),
     h('div', { class: 'chips wrap' },
       h('span', { class: 'chip-month' },
         h('button', { type: 'button', class: 'arrow small-arrow', 'aria-label': 'Прошлый месяц', ...stepKey(-1),
-          on: { click: () => { tap(); entry.month = shiftMonth(entry.month, -1); loadOps(entry, nav); } } }, icon(ICONS.left, 16)),
+          on: { click: () => { tap(); entry.month = shiftMonth(entry.month, -1); loadOps(entry, nav); } } }, icon(ICONS.left, 18)),
         h('span', {}, monthTitle(entry.month)),
         h('button', { type: 'button', class: 'arrow small-arrow', 'aria-label': 'Следующий месяц', ...stepKey(1),
           disabled: entry.month >= nav.today().slice(0, 7),
-          on: { click: () => { tap(); entry.month = shiftMonth(entry.month, 1); loadOps(entry, nav); } } }, icon(ICONS.right, 16))),
+          on: { click: () => { tap(); entry.month = shiftMonth(entry.month, 1); loadOps(entry, nav); } } }, icon(ICONS.right, 18))),
       chip('transfers', 'Переводы', f.transfers, () => { f.transfers = !f.transfers; loadOps(entry, nav); }, ICONS.transfer),
       ...active));
 }
@@ -168,7 +169,9 @@ function sheet(entry, nav) {
       h('div', { class: 'row' }, h('h2', {}, 'Фильтры'),
         h('button', { type: 'button', class: 'link', 'data-focus': 'sheet:reset', on: { click: () => {
           tap(); Object.assign(draft, { account: '', who: '', source: '', flag: false }); nav.render(); } } }, 'Сбросить')),
-      ...filters(nav.accounts()).map((g) => h('div', { class: 'stack-s' }, h('span', { class: 'muted small' }, g.label),
+      // группа чипов подписана (critique 12.11, P2 № 4): иначе диктор слышит три «все» подряд без имени группы
+      ...filters(nav.accounts()).map((g) => h('div', { class: 'stack-s', role: 'group', 'aria-labelledby': `fg-${g.key}` },
+        h('span', { class: 'muted small', id: `fg-${g.key}` }, g.label),
         h('div', { class: 'chips wrap' }, ...g.chips.map(([label, v]) => h('button', { type: 'button',
           class: `chip-btn${draft[g.key] === v ? ' on' : ''}`, 'aria-pressed': String(draft[g.key] === v), 'data-focus': `f:${g.key}:${v}`,
           on: { click: () => { tap(); draft[g.key] = v; nav.render(); } } },
@@ -282,7 +285,7 @@ function categoryRow(entry, nav) {
   const c = category(card, waiting);
   return h('section', { class: 'card list' }, h('div', { class: 'line' },
     h('span', { class: 'grow' }, h('span', { class: 'muted small' }, 'Категория'),
-      h('span', { class: c.queued ? 'muted' : '' }, c.text)),
+      h('span', { class: c.queued ? 'muted' : '' }, c.text), c.why ? h('span', { class: 'muted small why' }, c.why) : null),
     c.queued ? h('span', { class: 'mark secret' }, 'в очереди') : null,
     c.can ? h('button', { type: 'button', class: 'link', 'data-focus': 'recat', on: { click: () => {
       tap(); entry.picker = { item: null, q: '', chosen: null, all: false, group: null, from: 'recat' }; nav.focus('sheet');
@@ -352,9 +355,6 @@ export function cardScreen(entry, nav) {
   const c = cardView(entry.data);
   const r = c.row;
   const [bigNum, bigUnit] = splitSum(r.amount);
-  const line = (name, value, sub) => h('div', { class: 'line' },
-    h('span', { class: 'grow' }, h('span', {}, name), sub ? h('span', { class: 'muted small' }, sub) : null),
-    h('span', { class: 'nowrap' }, value));
   const canItems = !!entry.data.change;
   const waitingItems = new Set(nav.queued(entry.data.ref).filter((j) => j.n != null).map((j) => j.n));
   const item = (it, n) => {
@@ -382,8 +382,13 @@ export function cardScreen(entry, nav) {
       r.note ? h('div', { class: `small ${r.noteTone}` }, r.note) : null,
       h('div', { class: 'muted small' }, `${r.sub ? `${r.sub} · ` : ''}${c.when} · ${c.by}`)),
     entry.data.kind === 'spend' ? categoryRow(entry, nav) : null,
-    h('div', { class: 'section-head' }, h('h2', {}, 'Откуда и куда')),   // решение 51: было «Проводки»
-    h('section', { class: 'card list' }, ...c.postings.map((p) => line(p.name, p.value))),
+    // решение 51: было «Проводки»; решение 65: «Откуда» и «Куда» подписями, суммы без знаков, валюты счёта — в одной строке
+    c.flow.length ? [h('div', { class: 'section-head' }, h('h2', {}, 'Откуда и куда')),
+      h('section', { class: 'card list' }, ...c.flow.map((s) => h('div', { class: 'flow' },
+        h('span', { class: 'flow-label muted small' }, s.label),
+        ...s.lines.map((l) => h('div', { class: 'line' }, h('span', {}, l.name),
+          h('span', { class: 'bal-amounts' }, h('span', {}, l.value), l.more ? h('span', { class: 'muted small' }, l.more) : null))))))]
+      : null,
     c.receipt ? [h('div', { class: 'section-head' }, h('h2', {}, `Чек · ${c.receipt.shop}`),
       h('span', { class: 'muted small' }, canItems ? 'тап — цена и категория позиции' : 'тап — история цены')),
     h('section', { class: 'card list' }, ...c.receipt.items.map(item),

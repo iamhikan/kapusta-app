@@ -20,11 +20,19 @@ const RCPT = { ...CARD, ref: 'sms:9', where: 'Маркет', cats: ['проду�
     { name: 'SENF BELO VINO', total: 150, account: ALC, cat: 'алкоголь' }] } };
 
 test('строка «Категория»: текущие словами и «Сменить»; в очереди — «было → стало»; нельзя — без кнопки', () => {
-  assert.deepEqual(category(CARD), { text: 'хозяйство', can: true, queued: false });
-  assert.deepEqual(category(RCPT), { text: 'продукты, алкоголь', can: true, queued: false });
+  assert.deepEqual(category(CARD), { text: 'хозяйство', can: true, queued: false, why: '' });
+  assert.deepEqual(category(RCPT), { text: 'продукты, алкоголь', can: true, queued: false, why: '' });
   const waiting = job(CARD, E, { id: 'c1', now: '2026-11-11T19:40:00' });
-  assert.deepEqual(category(CARD, waiting), { text: 'хозяйство → техника', can: true, queued: true });
-  assert.deepEqual(category({ ...CARD, change: null }), { text: 'хозяйство', can: false, queued: false });
+  assert.deepEqual(category(CARD, waiting), { text: 'хозяйство → техника', can: true, queued: true, why: '' });
+  assert.equal(category({ ...CARD, change: null }).can, false);
+});
+
+test('сменить нельзя — причина словами и куда идти (critique 12.11, P2 № 3: строка без кнопки и без причины)', () => {
+  const fixed = { ...CARD, change: null, refs: ['add:7'] };
+  assert.equal(category(fixed).why, 'Сменить можно в чате с Капустой');
+  assert.equal(category({ ...fixed, secret: true }).why, 'Секрет: сменить можно в чате с Капустой');
+  assert.equal(category({ ...fixed, refs: ['add:7', 'rcpt:3'] }).why, 'Из нескольких записей: сменить можно в чате с Капустой');
+  assert.equal(category({ ...fixed, cats: ['вода', 'сладкое'] }).why, 'Разнесено по категориям: сменить можно в чате с Капустой');
 });
 
 test('выбор категории: «Часто» — 5 первых, текущая помечена «сейчас»; поиск — по всем; кнопка — после выбора', () => {

@@ -151,8 +151,13 @@ h1, h2, p { margin: 0; }
   color: var(--accent); font-size: 15px; }
 .line { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 16px; min-height: 48px; }
 .line > :first-child { min-width: 0; }
-.line > :last-child { text-align: right; }
+/* вправо — только вторая часть строки: одиночный блок («Категория», которую сменить нельзя) — слева (critique 12.11) */
+.line > :last-child:not(:first-child) { text-align: right; }
+/* «Откуда и куда» (решение 65): подпись части — над её строками */
+.flow-label { display: block; padding: 10px 16px 0; }
+.flow > .line { min-height: 40px; }
 .note-text { padding: 0 4px; margin-top: -6px; text-wrap: pretty; }
+.why { text-wrap: pretty; }
 .fresh { text-align: center; padding-top: 6px; }
 
 .skel { display: block; border-radius: 6px; background: var(--skel); }
@@ -178,7 +183,7 @@ h1, h2, p { margin: 0; }
 .tabs { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(3, 1fr);
   background: var(--card); border-top: 1px solid var(--line); padding-bottom: var(--tg-safe-area-inset-bottom, 0px); z-index: 5; }
 .tab { min-height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  font-size: 11px; color: var(--muted); }
+  font-size: 12px; color: var(--muted); }
 .tab.on { color: var(--accent); font-weight: 600; }
 
 /* «Операции» */
@@ -199,7 +204,8 @@ h1, h2, p { margin: 0; }
   white-space: nowrap; }
 .chip-month { padding: 0 2px; font-weight: 600; }
 .chip-btn.on { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--button-text); }
-.small-arrow { min-width: 32px; min-height: 32px; justify-content: center; }
+/* стрелки месяца — шире (critique 12.11: 32 px мелко); высота — в ряд с чипами */
+.small-arrow { min-width: 40px; min-height: 32px; justify-content: center; }
 .day { display: flex; flex-direction: column; gap: 6px; }
 .day-head { display: flex; justify-content: space-between; padding: 0 4px; font-weight: 600; text-transform: none; }
 .op { width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 16px; min-height: 56px; text-align: left; }

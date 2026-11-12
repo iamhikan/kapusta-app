@@ -144,13 +144,32 @@ export function accountView(bal, body, month) {
     sub: [monthTitle(month).split(' ')[0].toLowerCase(), records(body.count || 0)].join(' · ') };
 }
 
+// «Откуда и куда» (решение 65): ушло — «Откуда», пришло — «Куда», суммы без знаков. Один счёт в нескольких валютах —
+// одной строкой: RSD сверху, остальные ниже (как остатки, решение 48) — начальный остаток Freedom в 2 строки, а не в 8
+function flow(postings) {
+  const side = (label, sign) => {
+    const by = new Map();
+    for (const p of postings.filter((x) => Math.sign(x.number) === sign)) {
+      if (!by.has(p.name)) by.set(p.name, []);
+      by.get(p.name).push(p);
+    }
+    const lines = [...by].map(([name, ps]) => {
+      const [first, ...rest] = [...ps.filter((p) => p.currency === 'RSD'), ...ps.filter((p) => p.currency !== 'RSD')]
+        .map((p) => full(Math.abs(p.number), p.currency));
+      return { name, value: first, more: rest.join(' · ') };
+    });
+    return lines.length ? [{ label, lines }] : [];
+  };
+  return [...side('Откуда', -1), ...side('Куда', 1)];
+}
+
 export function cardView(c) {
   return {
     title: c.where, what: c.what && c.what !== c.where ? c.what : '',
     when: dayLabel(c.date) + (c.at ? ` · ${c.at.slice(11, 16)}` : ''),
     by: c.by ? `записал${c.by === 'Ангелина' ? 'а' : ''} ${c.by}` : 'из выписки банка',
     row: opRow(c),
-    postings: c.postings.map((p) => ({ name: p.name, value: full(p.number, p.currency) })),
+    flow: flow(c.postings),
     receipt: c.receipt && {
       shop: c.receipt.shop, total: money(c.receipt.total), url: c.receipt.url,
       items: c.receipt.items.map((it) => ({ name: it.name,

@@ -113,7 +113,8 @@ test('строка лимита: диктор слышит имя, потрач�
     assert.equal(row.attrs['aria-label'], undefined);
     return heard(row).replace(/\s+/g, ' ');
   });
-  assert.match(said[0], /питомцы.*\+2 000.*6 000.*4 000.*сверх лимита/);
+  // после v3 (critique 12.11, P2 № 4): числа — словами, а не «+2 000 6 000 / 4 000»
+  assert.equal(said[0], 'питомцы: 6 000 из 4 000, сверх на 2 000');
   // решение 63: перерасход покрыл резерв — без красного: «+N» и сумма спокойным цветом, подпись видна глазами
   const res = view({ ...NOW, limits: [...NOW.limits, { name: 'резерв', spent: 2000, limit: 30000, over: 0, eaten: 2000 }] });
   const pets = limitRow(res.limits[0], { plan: res.plan, open() {} });
@@ -121,11 +122,16 @@ test('строка лимита: диктор слышит имя, потрач�
   walk(pets, (e) => all.push((e.attrs.class || '').split(' ')));
   assert.ok(!all.some((c) => c.includes('bad')));
   assert.ok(all.some((c) => c.includes('calm')));
-  assert.match(heard(pets).replace(/\s+/g, ' '), /питомцы.*сверх лимита, покрыто резервом/);
+  assert.equal(heard(pets).replace(/\s+/g, ' '), 'питомцы: 6 000 из 4 000, сверх на 2 000, покрыто резервом');
   assert.match(pets.textContent, /покрыто резервом/);
-  assert.match(said[1], /путешествия.*14 000.*16 000.*выше плана/);
-  assert.match(said[2], /еда вне дома.*5 000.*25 000.*в плане/);
+  assert.equal(said[1], 'путешествия: 14 000 из 16 000, выше плана');
+  assert.equal(said[2], 'еда вне дома: 5 000 из 25 000, в плане');
   assertHeard(list, 3);
+});
+
+test('скрытый лимит (без состояния полоски): «образование: 1 000 из 20 000» и порог словами', () => {
+  const row = view(NOW).hidden.rows[0];
+  assert.equal(heard(limitRow(row, { open() {} })).replace(/\s+/g, ' '), 'образование: 1 000 из 20 000, в градуснике — от 90 % лимита');
 });
 
 const nav = {
@@ -453,4 +459,32 @@ test('живой зоны нет (index.html старый, из кэша Telegra
   const p = painter(root, doc, null);
   p.show(h('div', { 'data-say': 'Капуста не отвечает' }, 'Капуста не отвечает'));
   assert.equal(root.children.length, 1);
+});
+
+// ——— после v3: повторный critique 12.11, P2 № 3 и № 4 ———
+
+const find = (root, fn) => { const out = []; walk(root, (e) => { if (fn(e)) out.push(e); }); return out; };
+
+test('«Операции»: у экрана есть заголовок h1 — диктор находит экран по заголовкам; у счёта заголовок — его имя', () => {
+  const { root } = opsSetup();
+  assert.deepEqual(find(root, (e) => e.tag === 'h1').map((e) => e.textContent), ['Операции']);
+  const acc = { ...newOps('2026-11'), pages: [{ days: [], total: 0, count: 0, next: null }] };
+  acc.f.account = 'Assets:Family:Cash:Aleksey';
+  const tree = opsScreen(acc, { ...nav, accounts: () => [['нал Алексея', 'Assets:Family:Cash:Aleksey']] });
+  assert.deepEqual(find(tree, (e) => e.tag === 'h1').map((e) => e.textContent), ['Нал Алексея']);
+});
+
+test('лист «Фильтры»: группа чипов подписана — диктор слышит «Кто записал», а не третье «все» подряд', () => {
+  const { root } = opsSetup();
+  byKey(root, 'filters').click();
+  const groups = find(root, (e) => e.getAttribute('role') === 'group');
+  const names = groups.map((g) => find(root, (e) => e.getAttribute('id') === g.getAttribute('aria-labelledby'))[0].textContent);
+  assert.deepEqual(names, ['Кошелёк или счёт', 'Кто записал', 'Источник']);
+  for (const g of groups) assert.ok(find(g, (e) => e.textContent === 'все' && e.tag === 'button').length === 1);
+});
+
+test('карточка: категорию сменить нельзя — причина под категорией, кнопки «Сменить» нет', () => {
+  const tree = cardScreen({ kind: 'card', ref: 'sms:1', data: { ...CARD, change: null, refs: ['sms:1', 'add:2'] } }, nav);
+  assert.ok(!byKey(tree, 'recat'));
+  assert.ok(find(tree, (e) => e.textContent === 'Из нескольких записей: сменить можно в чате с Капустой').length);
 });
