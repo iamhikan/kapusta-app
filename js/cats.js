@@ -2,7 +2,7 @@
 // считает сервер (fin api); страница раскладывает кольцо, список и столбцы. Цвет закреплён за категорией (спека, «Графики»).
 import { fmt } from './health.js';
 import { dayLabel, money } from './ops.js';
-import { rangeText } from './period.js';
+import { prevText } from './period.js';
 
 export const OTHER = '#a1a1a6';     // «прочее» — серый на любой теме
 const COLORS = {
@@ -35,6 +35,15 @@ const upper = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const signed = (n) => (Math.round(n) > 0 ? `+${fmt(n)}` : fmt(n));
 const tone = (n) => (Math.round(n) > 0 ? 'warn' : Math.round(n) < 0 ? 'good' : '');   // больше трат — оранжевый
 const short = (iso) => `${iso.slice(8)}.${iso.slice(5, 7)}`.replace(/^0/, '');
+
+function cmpHead(prev, from) {
+  // столбец узкий: «к 11.11», «к 1–11.10», через месяц — «к 1.07–12.08», у года — «к 2025» (долг 12.11)
+  const y = prev.from.slice(0, 4);
+  if (from.endsWith('-01-01') && prev.from === `${y}-01-01` && prev.to.startsWith(y) && !from.startsWith(y)) return `к ${y}`;
+  if (prev.from === prev.to) return `к ${short(prev.from)}`;
+  if (prev.from.slice(0, 7) === prev.to.slice(0, 7)) return `к ${Number(prev.from.slice(8))}–${short(prev.to)}`;
+  return `к ${short(prev.from)}–${short(prev.to)}`;
+}
 
 function limitText(l, name) {
   // свой лимит (и общий с тем же именем: «транспорт» с машиной) — «лимит N»; общий под другим именем — чей он
@@ -82,9 +91,9 @@ export function catsView(body) {
   const out = {
     total: fmt(body.total), rows, segments,
     aria: `Траты: ${parts.map((c) => `${c.name} ${fmt(c.rsd)}`).join(', ')}`,
-    cmp: prev ? { label: `к ${rangeText(prev.from, prev.to)}`, value: signed(body.total - prev.total),
+    cmp: prev ? { label: `к ${prevText(prev, body.from)}`, value: signed(body.total - prev.total),
       tone: tone(body.total - prev.total), sub: `было ${fmt(prev.total)}` } : null,
-    cmpHead: prev ? `к ${prev.from === prev.to ? short(prev.from) : `${Number(prev.from.slice(8))}–${short(prev.to)}`}` : '',
+    cmpHead: prev ? cmpHead(prev, body.from) : '',
     empty: !body.cats.length,
   };
   if (sub) {

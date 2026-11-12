@@ -68,9 +68,17 @@ export function periodInText(p) {
   return p.kind === 'month' ? title.toLowerCase() : title;
 }
 
+// Прошлый период словами: год — если он не год текущего периода («к 1 января — 12 ноября 2025»); у периода через
+// Новый год годы и так есть
+export function prevText(prev, from) {
+  const text = rangeText(prev.from, prev.to);
+  const y = prev.from.slice(0, 4);
+  return y === prev.to.slice(0, 4) && y !== from.slice(0, 4) ? `${text} ${y}` : text;
+}
+
 export function periodSub(p, today, prev) {
   const days = rangeText(p.from, periodEnd(p, today));
-  return prev ? `${days}, к ${rangeText(prev.from, prev.to)}` : days;
+  return prev ? `${days}, к ${prevText(prev, p.from)}` : days;
 }
 
 export function barsRange(p) {
