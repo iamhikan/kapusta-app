@@ -38,7 +38,8 @@ test('решение 59: резерв в «Бюджете» — тем же сл
 });
 
 test('решение 60: итог денег — одно имя с датой: «сейчас» на «Здоровье», «на 1 ноября» в «Бюджете»', () => {
-  assert.equal(budgetView(BUDGET).plan.have, sp('Наличные и карты на 1 ноября ≈ 300 000 RSD'));
+  const { have } = budgetView(BUDGET).plan;                        // правка 5: подпись над числом
+  assert.equal(`${have.label} ${have.value} RSD`, sp('Наличные и карты на 1 ноября ≈ 300 000 RSD'));
   const h = view({ month: '2026-11', date: '2026-11-11', day: 11, days: 30, norm: 100, spent: 10, left: 90, per_day: 5,
     plan_today: 37, zone: { status: 'ok', word: 'в норме' }, closed: false, regular: 0, oneoff: 0, limits: [], curve: [], empty: [],
     fresh: { last: '2026-11-11 08:11', now: '2026-11-11T11:13' }, available: null,

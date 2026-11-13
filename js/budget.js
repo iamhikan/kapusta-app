@@ -50,24 +50,30 @@ export function budgetView(b) {
     },
     free: b.free == null ? null : b.free >= 0 ? { text: `Резерв (норма без лимитов): ${fmt(b.free)}`, tone: '' }   // решение 59: как на «Здоровье»
       : { text: `Лимиты больше нормы на ${fmt(-b.free)}`, tone: 'bad' },
-    plan: b.plan ? planView(b.plan, word, OF_MONTH[Number(b.month.slice(5)) - 1]) : null,
+    plan: b.plan ? planView(b.plan, word, b.month) : null,
   };
 }
 
-function planView(p, word, of) {
+// правка 5 (ui-ux-pro-max, 13.11): вывод — первым (плашка словом и значком, что делать, сколько), «есть» и «нужно» —
+// двумя числами рядом и полосой «нужно из того, что есть»; разбивка — под «Из чего суммы» (было: четыре абзаца)
+function planView(p, word, month) {
+  const m = Number(month.slice(5));
   const have = Object.fromEntries(Object.entries(p.have).filter(([, v]) => v));   // динары первыми, как в остатках
   const label = (x) => (x.full != null ? `${x.name} без доли ПР` : x.name);
+  const share = p.have_rsd > 0 ? p.need / p.have_rsd : 1;
   return {
     title: `Деньги на ${word}`,
-    // итог «≈» по курсу НБС, под ним слагаемые через «+»: «1 752 566» над «175 362 RSD» читалось как опечатка (ревью).
-    // Решение 60: имя — как у итога на «Здоровье», дата — явно (fin plan считает на утро 1-го, «Здоровье» — сейчас)
-    have: `Наличные и карты на 1 ${of} ≈ ${fmt(p.have_rsd)} RSD`,
-    haveSub: `${amountLines(have).join(' + ')} по курсу НБС`,
-    need: `Нужно на месяц: ${fmt(p.need)} RSD`,
-    parts: p.parts.map((x) => `${label(x)} ${fmt(x.rsd)}`),
     verdict: p.transfer
-      ? { text: `Перевести себе с ПР: ${fmt(p.transfer)} RSD${p.transfer_eur ? ` (≈ ${p.transfer_eur})` : ''}`, tone: 'warn' }
-      : { text: `Переводить с ПР не нужно: хватает, сверху ${fmt(p.spare)} RSD`, tone: 'good' },
-    salary: p.salary ? `Зарплата (~${fmt(p.salary)}) придёт в конце месяца — уйдёт в остаток к следующему 1-му.` : '',
+      ? { word: 'не хватает', text: 'Перевести себе с ПР', value: `${fmt(p.transfer)} RSD${p.transfer_eur ? ` (≈ ${p.transfer_eur})` : ''}`,
+        tone: 'warn' }
+      : { word: 'хватает', text: 'Переводить с ПР не нужно', value: `сверху ${fmt(p.spare)} RSD`, tone: 'good' },
+    // решение 60: имя — как у итога на «Здоровье», дата — явно (fin plan считает на утро 1-го, «Здоровье» — сейчас);
+    // итог «≈» по курсу НБС, слагаемые через «+» — в разбивке (ревью: «1 752 566» над «175 362 RSD» — как опечатка)
+    have: { label: `Наличные и карты на 1 ${OF_MONTH[m - 1]}`, value: `≈ ${fmt(p.have_rsd)}`, sub: `${amountLines(have).join(' + ')} по курсу НБС` },
+    need: { label: 'Нужно на месяц', value: fmt(p.need) },
+    fill: Math.max(0, Math.min(1, share)),
+    ratio: `нужно — ${Math.round(share * 100)} % того, что есть`,
+    parts: p.parts.map((x) => `${label(x)} ${fmt(x.rsd)}`),
+    salary: p.salary ? `Зарплата ~${fmt(p.salary)} придёт в конце месяца и уйдёт в остаток к 1 ${OF_MONTH[m % 12]}.` : '',
   };
 }

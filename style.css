@@ -120,6 +120,16 @@ h1, h2, p { margin: 0; }
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .stats > div { display: flex; flex-direction: column; justify-content: space-between; gap: 2px; }
 .stat { font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+/* правка 5: «Деньги на …» — вывод плашкой первым, «есть / нужно» — двумя числами, разбивка — под раскрытием */
+.plan-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pill { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; line-height: 20px;
+  padding: 2px 10px 2px 7px; border-radius: 99px; white-space: nowrap; }
+.pill.good { color: var(--good); background: color-mix(in srgb, var(--good) 14%, var(--card)); }
+.pill.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, var(--card)); }
+.plan-verdict { font-size: 17px; }
+.plan-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bar .fill.plan-fill { background: var(--accent); }
+.plan-more > summary { min-height: 44px; display: flex; align-items: center; gap: 6px; color: var(--accent-ink); cursor: pointer; }
 
 .curve-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; min-height: 56px; }
 .curve-head .title { font-size: 17px; font-weight: 600; }

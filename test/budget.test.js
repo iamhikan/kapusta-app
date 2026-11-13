@@ -55,19 +55,24 @@ test('лимиты месяца: сумма, евро, скрытые и вне 
   assert.deepEqual(budgetView({ ...ALEKSEY, free: -4200 }).free, { text: sp('Лимиты больше нормы на 4 200'), tone: 'bad' });
 });
 
-test('деньги на месяц (Алексею): есть, нужно, перевести с ПР; хватает — «сверху N»', () => {
+// правка 5 (ui-ux-pro-max, 13.11.2026): вывод — первым, «есть» и «нужно» — двумя числами рядом, разбивка — под
+// раскрытием (было: четыре абзаца, вывод — пятым)
+test('правка 5: деньги на месяц (Алексею) — вывод плашкой и словами, есть и нужно — числами, разбивка отдельно', () => {
   const p = budgetView(ALEKSEY).plan;
   assert.equal(p.title, 'Деньги на ноябрь');
-  // ревью: «1 752 566» и ниже «175 362 RSD» читались как опечатка — итог «≈», под ним слагаемые через «+»
-  assert.equal(p.have, sp('Наличные и карты на 1 ноября ≈ 300 000 RSD'));   // решение 60: имя и дата
-  assert.equal(p.haveSub, sp('280 000 RSD + 170 € по курсу НБС'));
-  assert.equal(p.need, sp('Нужно на месяц: 420 000 RSD'));
+  assert.deepEqual(p.verdict, { word: 'не хватает', text: 'Перевести себе с ПР', value: sp('120 000 RSD (≈ 1025 €)'), tone: 'warn' });
+  // решение 60: имя и дата; итог «≈» по курсу НБС, слагаемые — через «+»
+  assert.deepEqual(p.have, { label: 'Наличные и карты на 1 ноября', value: sp('≈ 300 000'), sub: sp('280 000 RSD + 170 € по курсу НБС') });
+  assert.deepEqual(p.need, { label: 'Нужно на месяц', value: sp('420 000') });
+  assert.deepEqual([p.fill, p.ratio], [1, 'нужно — 140 % того, что есть']);
   assert.deepEqual(p.parts, [sp('траты в лимитах (норма) 240 000'), sp('жильё 180 000')]);
-  assert.deepEqual(p.verdict, { text: sp('Перевести себе с ПР: 120 000 RSD (≈ 1025 €)'), tone: 'warn' });
-  assert.equal(p.salary, sp('Зарплата (~300 000) придёт в конце месяца — уйдёт в остаток к следующему 1-му.'));
-  const ok = budgetView({ ...ALEKSEY, plan: { ...ALEKSEY.plan, transfer: 0, spare: 5000, transfer_eur: null, salary: null } }).plan;
-  assert.deepEqual(ok.verdict, { text: sp('Переводить с ПР не нужно: хватает, сверху 5 000 RSD'), tone: 'good' });
-  assert.equal(ok.salary, '');
+  assert.equal(p.salary, sp('Зарплата ~300 000 придёт в конце месяца и уйдёт в остаток к 1 декабря.'));
+  const ok = budgetView({ ...ALEKSEY, plan: { ...ALEKSEY.plan, have_rsd: 1680000, transfer: 0, spare: 5000, transfer_eur: null,
+    salary: null } }).plan;
+  assert.deepEqual(ok.verdict, { word: 'хватает', text: 'Переводить с ПР не нужно', value: sp('сверху 5 000 RSD'), tone: 'good' });
+  assert.deepEqual([ok.fill, ok.ratio, ok.salary], [0.25, 'нужно — 25 % того, что есть', '']);
+  const dec = budgetView({ ...ALEKSEY, month: '2026-12' }).plan;
+  assert.match(dec.salary, /к 1 января\.$/);
 });
 
 test('Ангелине: без дохода, ПР, «отложить», нормы и плана — обязательные, регулярные и лимиты', () => {

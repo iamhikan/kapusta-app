@@ -99,11 +99,7 @@ function budgetBody(entry, nav) {
       h('div', { class: 'list' }, ...v.alloc.map((a) => h('div', { class: 'line flush' },
         h('span', { class: 'legend-item' }, h('span', { class: 'swatch-box', style: { background: a.color } }), a.name),
         h('span', { class: 'nowrap' }, a.sum))))) : null,
-    v.plan ? h('section', { class: 'card pad stack' }, h('span', { class: 'title' }, v.plan.title),
-      h('span', {}, v.plan.have), v.plan.haveSub ? h('span', { class: 'muted small' }, v.plan.haveSub) : null,
-      h('span', {}, v.plan.need), h('span', { class: 'muted small' }, v.plan.parts.join(', ')),
-      h('b', { class: v.plan.verdict.tone }, v.plan.verdict.text),
-      v.plan.salary ? h('span', { class: 'muted small' }, v.plan.salary) : null) : null,
+    v.plan ? planCard(v.plan) : null,
     ...v.groups.map((g) => [h('div', { class: 'section-head' }, h('h2', {}, g.name), h('span', { class: 'muted small' }, g.sum)),
       h('section', { class: 'card list' }, ...g.rows.map((r) => row(r.name, r.sum, r.note))),
       g.sub ? h('p', { class: 'note-text muted small' }, g.sub) : null]),
@@ -151,6 +147,28 @@ function hiddenBody(entry, nav) {
     h('section', { class: 'card list' }, ...v.hidden.rows.map((l) => limitRow(l, { open: () => open(nav,
       newOps(entry.month, { title: l.name.charAt(0).toUpperCase() + l.name.slice(1), params: l.ops })) }))),
     h('p', { class: 'note-text muted small' }, 'Лимит дошёл до порога — он в общем списке «Здоровья» и в градуснике.')];
+}
+
+const OK = 'M5 12.5l4.5 4.5L19 7.5';
+const WARN = ['M12 7v6', 'M12 17h.01'];
+
+// «Деньги на …» (правка 5, ui-ux-pro-max 13.11): вывод — первой строкой с плашкой (слово и значок, не только цвет),
+// ниже «есть / нужно» числами и полоса; разбивка сумм — под «Из чего суммы» (details: раскрыть может и диктор)
+export function planCard(p) {
+  const v = p.verdict;
+  return h('section', { class: 'card pad stack plan' },
+    h('div', { class: 'plan-head' }, h('span', { class: 'title' }, p.title),
+      h('span', { class: `pill ${v.tone}` }, icon(v.tone === 'good' ? OK : WARN, 14), v.word)),
+    h('div', { class: 'stack-0' }, h('b', { class: 'plan-verdict' }, v.text), h('span', { class: `small ${v.tone === 'good' ? 'muted' : v.tone}` }, v.value)),
+    h('div', { class: 'plan-cols' },
+      h('div', { class: 'stack-0' }, h('span', { class: 'muted small' }, p.have.label), h('b', { class: 'stat' }, p.have.value)),
+      h('div', { class: 'stack-0' }, h('span', { class: 'muted small' }, p.need.label), h('b', { class: 'stat' }, p.need.value))),
+    h('span', { class: 'bar', 'aria-hidden': 'true' }, h('span', { class: 'fill plan-fill', style: { width: `${(p.fill * 100).toFixed(1)}%` } })),
+    h('span', { class: 'muted small' }, p.ratio),
+    h('details', { class: 'plan-more' }, h('summary', {}, 'Из чего суммы'),
+      h('div', { class: 'stack-s' }, h('span', { class: 'small' }, `${p.have.label}: ${p.have.sub}`),
+        h('span', { class: 'small' }, `${p.need.label}: ${p.parts.join(', ')}`))),
+    p.salary ? h('span', { class: 'muted small' }, p.salary) : null);
 }
 
 const BODIES = { price: priceBody, basket: basketBody, budget: budgetBody, days: daysBody, hidden: hiddenBody };

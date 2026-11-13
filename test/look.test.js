@@ -7,6 +7,7 @@ import { limitLegend, limitRow } from '../js/limitrow.js';
 import { catRow, stripChart } from '../js/catscreen.js';
 import { cardScreen, opLine } from '../js/screens.js';
 import { opRow } from '../js/ops.js';
+import { planCard } from '../js/more.js';
 
 const OVER = { name: 'транспорт', spent: '24 900', limit: '5 800', over: '+19 100', fill: 5800 / 24900, limitAt: 5800 / 24900,
   color: 'var(--bar-orange)', state: 'сверх лимита, покрыто резервом', hint: 'покрыто резервом', covered: true };
@@ -101,4 +102,21 @@ test('правка 4: строка операции — плитка катег�
   assert.equal(t.getAttribute('aria-hidden'), 'true');
   assert.match(t.style.background, /#827717/);
   assert.equal(all(t, '<svg').length, 1);
+});
+
+const PLAN = { title: 'Деньги на ноябрь', verdict: { word: 'хватает', text: 'Переводить с ПР не нужно', value: 'сверху 5 000 RSD', tone: 'good' },
+  have: { label: 'Наличные и карты на 1 ноября', value: '≈ 1 680 000', sub: '1 600 000 RSD + 680 € по курсу НБС' },
+  need: { label: 'Нужно на месяц', value: '420 000' }, fill: 0.25, ratio: 'нужно — 25 % того, что есть',
+  parts: ['траты в лимитах (норма) 240 000', 'жильё 180 000'], salary: '' };
+
+test('правка 5: карточка «Деньги на …» — сначала вывод, потом «есть / нужно», разбивка — под «Из чего суммы»', () => {
+  const el = planCard(PLAN);
+  const text = seen(el);
+  assert.ok(text.indexOf('Переводить с ПР не нужно') < text.indexOf('Наличные и карты на 1 ноября'), 'вывод выше чисел');
+  assert.ok(seen(one(el, 'pill')).includes('хватает'));
+  assert.equal(all(one(el, 'pill'), '<svg').length, 1, 'у плашки — значок, не только цвет');
+  const more = one(el, '<details');
+  assert.equal(seen(one(more, '<summary')), 'Из чего суммы');
+  assert.ok(seen(more).includes('жильё 180 000') && seen(more).includes('по курсу НБС'));
+  assert.equal(one(el, 'fill').style.width, '25.0%');
 });
