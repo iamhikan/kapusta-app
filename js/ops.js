@@ -247,6 +247,11 @@ function whoOf(c) {
   return { label: 'Запись', value: FROM[c.origin || c.source] || 'из выписки банка' };
 }
 
+// М9: страница открывает только чек на сайте налоговой Сербии; другой адрес из ответа сервера не открывает и кнопку
+// «Чек на сайте налоговой» не рисует (было: открывала любой адрес — window.open)
+const TAX = 'https://suf.purs.gov.rs/';
+export const taxLink = (url) => (typeof url === 'string' && url.startsWith(TAX) ? url : null);
+
 export function cardView(c) {
   const check = c.opening === 'check';
   const postings = (c.postings || []).map((p) => (check && p.account === OPENING ? { ...p, name: 'сверка остатка' } : p));
@@ -263,7 +268,7 @@ export function cardView(c) {
     row: check && c.after ? checkHead(opRow(c), c.after) : opRow(c),
     flow: sides,
     receipt: c.receipt && {
-      shop: c.receipt.shop, total: money(c.receipt.total), url: c.receipt.url,
+      shop: c.receipt.shop, total: money(c.receipt.total), url: taxLink(c.receipt.url),
       items: c.receipt.items.map((it) => ({ name: it.name,
         line: it.qty === 1 ? '' : `${String(it.qty).replace('.', ',')}${it.unit === 'шт' ? '' : ` ${it.unit}`} × ${money(it.price)}`,
         value: money(it.total), sub: [it.kind, it.cat].filter(Boolean).join(' · ') })),

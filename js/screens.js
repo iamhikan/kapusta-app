@@ -1,7 +1,8 @@
 // Экраны «Операции» и карточка операции (DOM). Данные — только из /api/tx и /api/tx/{ref}, в памяти страницы.
 import { screen } from './api.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
-import { FLAG, accountView, cardView, dayLabel, emptyText, filters, headView, money, monthRange, monthTitle, opRow, txPath } from './ops.js';
+import { FLAG, accountView, cardView, dayLabel, emptyText, filters, headView, money, monthRange, monthTitle, opRow, taxLink,
+  txPath } from './ops.js';
 import { tile, tileOf } from './tiles.js';
 import { GLYPHS } from './catcolor.js';
 import { shiftMonth } from './health.js';
@@ -392,6 +393,13 @@ function pickerSheet(entry, nav) {
         'data-focus': 'sheet:submit', 'data-focus-alt': 'sheet', on: { click: () => { tap(); submit(entry, nav, p.chosen); } } }, p.saving ? 'Меняем…' : v.button.label)));
 }
 
+function openTax(link) {
+  // М9: только https://suf.purs.gov.rs/ — через Telegram; старый клиент — окном браузера
+  const url = taxLink(link);
+  if (!url) return;
+  try { tg.openLink(url); } catch { window.open(url, '_blank', 'noopener'); }
+}
+
 export function cardScreen(entry, nav) {
   if (!entry.data) {
     // М6: карточка не открылась — тот же вид, что у экранов (М2), и «Повторить» — новая загрузка карточки
@@ -441,8 +449,7 @@ export function cardScreen(entry, nav) {
     h('section', { class: 'card list' }, ...c.receipt.items.map(item),
       h('div', { class: 'line' }, h('b', {}, 'Итого'), h('b', {}, c.receipt.total)),
       c.receipt.url ? h('button', { type: 'button', class: 'more', 'data-focus': 'receipt-url', on: { click: () => {
-        tap(); try { tg.openLink(c.receipt.url); } catch { window.open(c.receipt.url, '_blank', 'noopener'); } } } },
-      'Чек на сайте налоговой') : null)] : null,
+        tap(); openTax(c.receipt.url); } } }, 'Чек на сайте налоговой') : null)] : null,
     c.similar.length ? [h('div', { class: 'section-head' }, h('h2', {}, `Ещё в «${c.title}»`)),
       h('section', { class: 'card list' }, ...c.similar.map((s) => h('button', { type: 'button', class: 'line op',
         'data-focus': `op:${s.ref}`, on: { click: () => { tap(); nav.push({ kind: 'card', ref: s.ref }); } } }, h('span', {}, s.label),
