@@ -66,6 +66,15 @@ function limitColor(share, plan) {
   return share <= plan ? 'var(--bar-green)' : 'var(--bar-yellow)';
 }
 
+// легенда: только цвета полосок месяца (решение 69); у цвета перерасхода — образец штриховкой, метка «лимит» —
+// если есть строка сверх лимита (правка 1)
+function legendOf(limits, closed) {
+  const over = limits.filter((r) => r.limitAt != null);
+  const items = (closed ? LEGEND_CLOSED : LEGEND).filter((l) => limits.some((r) => r.color === l.color))
+    .map((l) => (over.some((r) => r.color === l.color) ? { ...l, hatch: true } : l));
+  return over.length ? [...items, { text: 'лимит', mark: true }] : items;
+}
+
 function limitState(share, plan, closed) {
   // те же пороги, что у цвета полоски, — словами для диктора (фаза 12); итог месяца — без плана на сегодня
   if (share > 1) return 'сверх лимита';
@@ -141,8 +150,10 @@ export function view(h) {
   const limits = h.limits.map((l) => {
     const share = l.limit ? l.spent / l.limit : 0;
     const calm = covered(l);
+    // правка 1 (ui-ux-pro-max, 13.11): сверх лимита шкала — до потраченного; limitAt — метка лимита и начало штриховки
+    const limitAt = share > 1 ? l.limit / l.spent : null;
     const row = { name: l.name, ops: { limit: l.name }, spent: fmt(l.spent), limit: fmt(l.limit), over: l.over ? `+${fmt(l.over)}` : '',
-      fill: Math.max(0, Math.min(1, share)), color: calm ? COVERED : limitColor(share, plan),
+      fill: limitAt ?? Math.max(0, Math.min(1, share)), limitAt, color: calm ? COVERED : limitColor(share, plan),
       state: calm ? 'сверх лимита, покрыто резервом' : limitState(share, plan, h.closed) };
     if (l.over > 0 && rv && l !== rv.res) row.covered = calm;
     if (calm) row.hint = 'покрыто резервом';
@@ -171,7 +182,7 @@ export function view(h) {
     // решение 63: строка резерва видна сразу — под горячими лимитами, даже если по порядку она дальше первых TOP
     top: [...limits.slice(0, TOP), ...limits.slice(TOP).filter((l) => l.note)],
     limitsShown: Math.min(TOP, h.limits.length),
-    legend: (h.closed ? LEGEND_CLOSED : LEGEND).filter((l) => limits.some((r) => r.color === l.color)),
+    legend: legendOf(limits, h.closed),
     reserve: note,
     // решение 40: скрытые лимиты (show: hot) — отдельной кнопкой; дошли до порога — уже в общем списке (сервер)
     hidden: h.hidden && h.hidden.length ? { label: `Скрытые лимиты · ${h.hidden.length}`,

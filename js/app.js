@@ -5,7 +5,7 @@ import { fmt, shiftMonth, view } from './health.js';
 import { BOX, curve } from './chart.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
 import { tile } from './tiles.js';
-import { limitRow } from './limitrow.js';
+import { limitLegend, limitRow } from './limitrow.js';
 import { cardScreen, loadCard, loadOps, newOps, opsScreen, stepKey } from './screens.js';
 import { catsScreen, loadCats, newCats } from './catscreen.js';
 import { isPeriod, periodOf } from './period.js';
@@ -306,9 +306,9 @@ function limits(v, data) {
     : null;
   return [
     // решение 49: легенда цветов полосок — одной строкой у заголовка, а не абзацем под списком
-    h('div', { class: 'section-head' }, h('h2', {}, 'Лимиты'),
-      h('span', { class: 'legend muted small' }, ...v.legend.map((l) => h('span', { class: 'legend-item' },
-        h('span', { class: 'swatch-bar', style: { background: l.color } }), l.text)))),
+    // правка 1: легенда — одной строкой под заголовком (было — справа от него, в две строки по 12 px)
+    h('div', { class: 'section-head' }, h('h2', {}, 'Лимиты')),
+    limitLegend(v.legend),
     h('section', { class: 'card list' }, ...shown.map((l) => limitRow(l, { plan: data.closed ? null : v.plan,
       open: () => opsOf(l.name, l.ops, data, !!l.note) })), more),
     budgetLinks(v, data),

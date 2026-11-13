@@ -277,3 +277,11 @@ test('кольцо без сравнения — по центру карточ�
   assert.equal(styleOf('donut-row no-cmp')['justify-content'], 'center');
   assert.notEqual(styleOf('donut-row')['justify-content'], 'center', 'со сравнением — кольцо слева, «к …» справа');
 });
+
+test('правка 1 (ui-ux-pro-max): перерасход на полоске и в легенде — штриховка, цвет не единственный признак', () => {
+  for (const sel of ['.bar .over', '.swatch-hatch']) {
+    const d = decls(sel);
+    assert.match(d['background-image'] || d.background || '', /repeating-linear-gradient/, sel);
+  }
+  assert.ok(decls('.limit-mark').width, 'метка лимита');
+});

@@ -91,7 +91,7 @@ test('лимиты: горячие сверху, «+N» сверх лимита;
   assert.equal(pets.color, 'var(--bar-orange)');                 // решение 63: перерасход покрыл резерв — не красная
   const bare = { ...NOW, limits: NOW.limits.filter((l) => !l.eaten) };
   assert.equal(view(bare).limits[0].color, 'var(--bad)');        // резерва нет — красная
-  assert.equal(pets.fill, 1);                                    // полоска не вылезает за край
+  assert.equal(pets.fill, 4000 / 6000);                          // правка 1: сплошная часть — до лимита, дальше штриховка
   assert.equal(travel.over, '');
   assert.equal(travel.color, 'var(--bar-yellow)');            // 87,5 % при плане 37 %: у самого лимита — не оранжевая
   assert.equal(view({ ...NOW, day: 30 }).limits[1].color, 'var(--bar-green)');                   // к концу месяца — в плане
@@ -234,10 +234,10 @@ test('решение 50: прежний сервер шлёт «быстрее �
 
 test('решения 49, 69: легенда у «Лимиты» — только цвета полосок месяца, один цвет — один смысл; у итога месяца плана нет', () => {
   // NOW: питомцы — сверх, покрыто резервом; путешествия — выше плана; остальные — в плане; красных нет
-  assert.deepEqual(view(NOW).legend.map((l) => [l.text, l.color]), [['в плане', 'var(--bar-green)'],
+  assert.deepEqual(view(NOW).legend.filter((l) => !l.mark).map((l) => [l.text, l.color]), [['в плане', 'var(--bar-green)'],
     ['выше плана', 'var(--bar-yellow)'], ['покрыто резервом', 'var(--bar-orange)']]);
-  assert.deepEqual(view(SHORT).legend.map((l) => l.text), ['в плане', 'выше плана', 'сверх лимита']);   // резерв кончился
-  assert.deepEqual(view(OCT).legend.map((l) => l.text), ['в лимите', 'покрыто резервом']);
+  assert.deepEqual(view(SHORT).legend.map((l) => l.text), ['в плане', 'выше плана', 'сверх лимита', 'лимит']);   // резерв кончился
+  assert.deepEqual(view(OCT).legend.map((l) => l.text), ['в лимите', 'покрыто резервом', 'лимит']);
   const legend = view(NOW).legend.map((l) => l.color);
   for (const l of view(NOW).limits) assert.ok(legend.includes(l.color), `${l.name}: ${l.color} нет в легенде`);
 });
@@ -271,4 +271,25 @@ test('решение 63: строка резерва видна сразу, по
   assert.deepEqual(v.top.map((l) => l.name), [...many.limits.slice(0, 6).map((l) => l.name), 'резерв']);
   assert.equal(v.top.at(-1).hint, sp('свои 0 + перерасход других 2 000 — покрыл «питомцы».'));
   assert.deepEqual(view(NOW).top.map((l) => l.name), NOW.limits.slice(0, 6).map((l) => l.name));   // резерв и так в первых 6
+});
+
+// правка 1 (ui-ux-pro-max, 13.11.2026): сверх лимита шкала строки — до потраченного, лимит — метка, перерасход —
+// штриховка; было: полоска упиралась в 100 %, перерасход ×4 и ×1,1 выглядели одинаково
+test('правка 1: сверх лимита полоска — до потраченного, лимит — метка (limitAt); в лимите — как было', () => {
+  const v = view(NOW);
+  const pets = v.limits.find((l) => l.name === 'питомцы');          // 6 000 из 4 000
+  assert.deepEqual([pets.fill, pets.limitAt], [4000 / 6000, 4000 / 6000]);
+  const travel = v.limits.find((l) => l.name === 'путешествия');    // 14 000 из 16 000
+  assert.deepEqual([travel.fill, travel.limitAt], [14000 / 16000, null]);
+  const big = view({ ...NOW, limits: [{ name: 'транспорт', spent: 25000, limit: 5000, over: 20000 }] }).limits[0];
+  assert.deepEqual([big.fill, big.limitAt], [0.2, 0.2]);              // ×5 — метка на пятой части полоски
+});
+
+test('правка 1: в легенде перерасход — штриховкой (hatch), метка «лимит» — если есть строка сверх лимита', () => {
+  assert.deepEqual(view(NOW).legend.map((l) => [l.text, l.color ?? null, !!l.hatch, !!l.mark]), [
+    ['в плане', 'var(--bar-green)', false, false], ['выше плана', 'var(--bar-yellow)', false, false],
+    ['покрыто резервом', 'var(--bar-orange)', true, false], ['лимит', null, false, true]]);
+  assert.deepEqual(view(SHORT).legend.filter((l) => l.hatch).map((l) => l.text), ['сверх лимита']);
+  const calm = { ...NOW, limits: NOW.limits.filter((l) => !l.over && !l.eaten) };
+  assert.ok(!view(calm).legend.some((l) => l.mark || l.hatch));
 });
