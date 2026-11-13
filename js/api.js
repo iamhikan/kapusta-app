@@ -56,8 +56,27 @@ export async function get(path, { base, initData, fetch = globalThis.fetch, time
   }
   if (r.status === 401) return { error: 'stale' };
   if (r.status === 403) return { error: 'stranger' };
-  if (!r.ok) return { error: 'down', detail: `HTTP ${r.status} · ${host}` };
+  if (!r.ok) return failure(r, host);
   return { data: words(await r.json()) };
+}
+
+async function reason(r) {
+  // слова fin из тела ответа {"error": "…"} (fin api: Denied и 503); тела нет или не JSON — ответил не fin
+  try {
+    const body = await r.json();
+    return body && typeof body.error === 'string' && body.error ? body.error : null;
+  } catch {
+    return null;
+  }
+}
+
+async function failure(r, host) {
+  // М2: кто ответил — тот и вид. fin отказал (4xx) — его словами; fin ответил ошибкой (5xx) — «Капуста ошиблась», не
+  // снимок; ответ без слов fin — прокси Funnel за fin (502: fin serve не запущен или перезапускается) — Мак молчит, как сеть
+  const said = await reason(r);
+  if (r.status >= 400 && r.status < 500) return { error: 'refused', status: r.status, detail: said || `HTTP ${r.status}` };
+  if (said) return { error: 'fault', detail: `HTTP ${r.status} · ${said}` };
+  return { error: 'down', detail: `HTTP ${r.status} · ${host}` };
 }
 
 export async function post(path, body, { base, initData, fetch = globalThis.fetch, timeout = TIMEOUT }) {
@@ -90,8 +109,15 @@ const SCREENS = {
     text: 'Этот аккаунт Telegram не в списке семьи. Доступ даёт Алексей.' },
   down: { title: 'Капуста не отвечает', icon: 'warn', retry: true,
     text: 'Мак спит или Капуста перезапускается. Попробуйте ещё раз через минуту.' },
+  // М2: fin ответил, но не данными — отказ его словами (текст — из detail) или его ошибка; снимка нет: Мак не спит
+  refused: { title: 'Капуста не может это показать', icon: 'warn', retry: true, text: 'Капуста не приняла запрос.' },
+  fault: { title: 'Капуста ошиблась', icon: 'warn', retry: true,
+    text: 'Мак на связи, но Капуста не смогла ответить. Попробуйте ещё раз через минуту.' },
 };
 
-export function screen(kind) {
-  return { retry: false, link: null, ...SCREENS[kind] };
+export function screen(kind, detail = null) {
+  // detail — причина мелким шрифтом; у отказа это слова fin, и они — сам текст экрана
+  const s = { retry: false, link: null, ...SCREENS[kind], detail: detail || null };
+  if (kind === 'refused') return { ...s, text: detail ? `${detail.charAt(0).toUpperCase()}${detail.slice(1)}.` : s.text, detail: null };
+  return s;
 }

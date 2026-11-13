@@ -5,7 +5,7 @@ import { h, icon, tap, ICONS } from './dom.js';
 import { basketView, PRICE_BOX, pricePath, priceView } from './shop.js';
 import { budgetView } from './budget.js';
 import { daysView } from './days.js';
-import { newOps, offlineBody, TITLE } from './screens.js';
+import { failBody, newOps, TITLE } from './screens.js';
 import { limitRow } from './limitrow.js';
 
 const PATHS = {
@@ -26,9 +26,10 @@ export async function loadMore(entry, nav) {
   const r = await nav.get(PATHS[entry.kind](entry));
   if (mine !== entry.seq) return;
   if (r.error === 'stale' || r.error === 'stranger') return nav.problem(r.error);
-  if (r.error) entry.error = r.detail || r.error;
+  if (r.error) [entry.error, entry.fail] = [r.detail || r.error, r.error];
   else entry.data = r.data;
-  entry.missing = /HTTP 404/.test(entry.error || '');   // позиции нет (или чек к секрету — зритель Ангелина)
+  // позиции нет (или чек к секрету — зритель Ангелина): 404 цены; другой отказ — словами fin (М2: было — регэксп по «HTTP 404»)
+  entry.missing = entry.kind === 'price' && r.error === 'refused' && r.status === 404;
   nav.render();
 }
 
@@ -177,7 +178,7 @@ export function moreScreen(entry, nav) {
   if (entry.missing) {
     body = h('div', { class: 'empty' }, h('h2', {}, 'Истории цены нет'), h('p', { class: 'muted small' }, 'Такой позиции нет в архиве покупок.'));
   } else if (entry.kind !== 'hidden' && entry.error && !entry.data) {
-    body = offlineBody(entry.kind, entry, nav, () => loadMore(entry, nav));
+    body = failBody(entry.kind, entry, nav, () => loadMore(entry, nav));
   } else if (entry.kind !== 'hidden' && !entry.data) {
     body = busy();
   } else {

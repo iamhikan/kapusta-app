@@ -4,7 +4,7 @@ import { h, icon, tap, ICONS } from './dom.js';
 import { barsView, BARS, catsView } from './cats.js';
 import { limitBar } from './limitrow.js';
 import { barsRange, canNext, KINDS, periodEnd, periodInText, periodOf, periodSub, periodTitle, shiftPeriod } from './period.js';
-import { DIALOG, newOps, offlineBody, stepKey, TITLE } from './screens.js';
+import { DIALOG, failBody, newOps, stepKey, TITLE } from './screens.js';
 
 const upper = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -25,7 +25,7 @@ export async function loadCats(entry, nav) {
     : nav.get(`/api/series?${new URLSearchParams({ ...range, by: 'month', scope: entry.scope })}`)]);
   if (mine !== entry.seq) return;
   if (r.error === 'stale' || r.error === 'stranger') return nav.problem(r.error);
-  if (r.error) entry.error = r.detail || r.error;
+  if (r.error) [entry.error, entry.fail] = [r.detail || r.error, r.error];
   else entry.data = r.data;
   // подкатегории по ссылке «Открыть в Капусте» (решение 74): имени строки нет — имя категории из ответа
   if (entry.cat && !entry.title && entry.data && entry.data.name) entry.title = entry.data.name;
@@ -211,7 +211,7 @@ export function catsScreen(entry, nav) {
   const sub = periodSub(entry.period, today, data && data.prev);
   let body;
   if (entry.error && !data) {
-    body = offlineBody('cats', entry, nav, () => loadCats(entry, nav));
+    body = failBody('cats', entry, nav, () => loadCats(entry, nav));
   } else if (!data) {
     body = h('div', { class: 'stack', 'aria-busy': 'true', 'aria-label': 'Загрузка' },
       h('section', { class: 'card', style: { height: '190px' } }), h('section', { class: 'card', style: { height: '320px' } }));

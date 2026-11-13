@@ -12,12 +12,17 @@ test('адрес API — только https на ts.net из параметра 
   assert.equal(apiBase(''), null);
 });
 
+const NOBODY = Symbol('тело не JSON');   // так отвечает прокси Funnel, когда fin serve не запущен: 502 без слов fin
+
 function fake(status, body) {
   const calls = [];
   const fn = async (url, opts) => {
     calls.push({ url, opts });
     if (status === 'down') throw new TypeError('Failed to fetch');
-    return { status, ok: status === 200, json: async () => body };
+    return { status, ok: status === 200, json: async () => {
+      if (body === NOBODY) throw new SyntaxError('Unexpected end of JSON input');
+      return body;
+    } };
   };
   fn.calls = calls;
   return fn;
@@ -31,11 +36,21 @@ test('запрос несёт initData в заголовке Authorization: tma 
   assert.equal(f.calls[0].opts.headers.Authorization, 'tma user=1&hash=x');
 });
 
-test('401, 403, Мак молчит — свой экран', async () => {
+test('кто ответил — тот и вид (М2): 4xx — отказ словами fin, 5xx со словами fin — ошибка Капусты; «Мак молчит» — только'
+  + ' сеть, тайм-аут и прокси без слов fin (было: любой ответ не 2xx — «не отвечает» и снимок)', async () => {
   const base = 'https://mac.tail0.ts.net';
-  for (const [status, kind] of [[401, 'stale'], [403, 'stranger'], [503, 'down'], ['down', 'down'], [404, 'down']]) {
-    const r = await get('/api/me', { base, initData: 'x', fetch: fake(status, { error: 'e' }) });
-    assert.equal(r.error, kind, String(status));
+  const cases = [
+    [401, {}, { error: 'stale' }],
+    [403, {}, { error: 'stranger' }],
+    [400, { error: 'нет такого лимита' }, { error: 'refused', status: 400, detail: 'нет такого лимита' }],
+    [404, { error: 'нет такой операции' }, { error: 'refused', status: 404, detail: 'нет такой операции' }],
+    [503, { error: 'ledger не грузится' }, { error: 'fault', detail: 'HTTP 503 · ledger не грузится' }],
+    [500, { error: 'сбой' }, { error: 'fault', detail: 'HTTP 500 · сбой' }],
+    [502, NOBODY, { error: 'down', detail: 'HTTP 502 · mac.tail0.ts.net' }],
+    ['down', null, { error: 'down', detail: 'сеть: TypeError: Failed to fetch · mac.tail0.ts.net' }],
+  ];
+  for (const [status, body, want] of cases) {
+    assert.deepEqual(await get('/api/me', { base, initData: 'x', fetch: fake(status, body) }), want, String(status));
   }
 });
 
@@ -50,10 +65,19 @@ test('экраны ошибок — словами человека', () => {
   assert.equal(screen('stale').retry, false);
 });
 
-test('«не отвечает» — с причиной мелким шрифтом: код ответа или ошибка сети и адрес', async () => {
+test('отказ fin — его словами, ошибка Капусты — своим видом и «Повторить»; причина мелко — код и слова fin (М2)', () => {
+  assert.deepEqual(screen('refused', 'месяц ещё не начался'), { title: 'Капуста не может это показать', icon: 'warn',
+    text: 'Месяц ещё не начался.', retry: true, link: null, detail: null });
+  assert.deepEqual(screen('fault', 'HTTP 503 · ledger не грузится'), { title: 'Капуста ошиблась', icon: 'warn',
+    text: 'Мак на связи, но Капуста не смогла ответить. Попробуйте ещё раз через минуту.', retry: true, link: null,
+    detail: 'HTTP 503 · ledger не грузится' });
+  assert.equal(screen('down', 'HTTP 502 · mac.tail0.ts.net').detail, 'HTTP 502 · mac.tail0.ts.net');
+});
+
+test('«не отвечает» — с причиной мелким шрифтом: код ответа прокси или ошибка сети и адрес', async () => {
   const base = 'https://mac.tail0.ts.net';
-  const http = await get('/api/me', { base, initData: 'x', fetch: fake(503, {}) });
-  assert.equal(http.detail, 'HTTP 503 · mac.tail0.ts.net');
+  const http = await get('/api/me', { base, initData: 'x', fetch: fake(502, NOBODY) });
+  assert.equal(http.detail, 'HTTP 502 · mac.tail0.ts.net');
   const net = await get('/api/me', { base, initData: 'x', fetch: fake('down') });
   assert.equal(net.detail, 'сеть: TypeError: Failed to fetch · mac.tail0.ts.net');
 });

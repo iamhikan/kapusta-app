@@ -204,7 +204,8 @@ function skeleton() {
 }
 
 function problem(kind, detail) {
-  const s = screen(kind);
+  // М2: у отказа fin его слова — текст экрана (s.text), мелким шрифтом — только причина ошибки или молчания
+  const s = screen(kind, detail);
   const pic = s.icon === 'logo' ? h('div', { class: 'logo' }, 'К')
     : icon(s.icon === 'lock' ? ['M7 11V7a5 5 0 0 1 10 0v4', 'M5 11h14v10H5z'] : ['M12 9v4', 'M12 17h.01',
       'M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'], 56);
@@ -213,7 +214,7 @@ function problem(kind, detail) {
       'Повторить')
       : h('button', { class: 'button', type: 'button', 'data-focus': 'problem', on: { click: () => tg && tg.close() } }, 'Закрыть');
   show(h('div', { class: 'problem', 'data-say': `${s.title}. ${s.text}` }, h('div', { class: 'problem-icon' }, pic), h('h1', {}, s.title),
-    h('p', {}, s.text), act, detail ? h('p', { class: 'small detail' }, detail) : null));
+    h('p', {}, s.text), act, s.detail ? h('p', { class: 'small detail' }, s.detail) : null));
 }
 
 function monthNav(v, snapped) {

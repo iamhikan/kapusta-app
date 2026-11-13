@@ -1,4 +1,5 @@
 // Экраны «Операции» и карточка операции (DOM). Данные — только из /api/tx и /api/tx/{ref}, в памяти страницы.
+import { screen } from './api.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
 import { FLAG, accountView, cardView, dayLabel, emptyText, filters, headView, money, monthRange, monthTitle, opRow, txPath } from './ops.js';
 import { tile, tileOf } from './tiles.js';
@@ -42,7 +43,7 @@ export async function loadOps(entry, nav, more = false) {
   if (mine !== entry.seq) return;
   entry.loading = false;
   if (r.error === 'stale' || r.error === 'stranger') return nav.problem(r.error);
-  if (r.error) entry.error = r.detail || r.error;
+  if (r.error) [entry.error, entry.fail] = [r.detail || r.error, r.error];
   else entry.pages.push(r.data);
   nav.render();
 }
@@ -194,6 +195,16 @@ function sheet(entry, nav) {
       'Показать')));
 }
 
+export function failBody(kind, entry, nav, retry) {
+  // М2: Мак молчит — холст 6.2 со ссылкой на снимок; fin ответил отказом или ошибкой (entry.fail) — его словами, без
+  // снимка: Мак не спит
+  if (entry.fail !== 'refused' && entry.fail !== 'fault') return offlineBody(kind, entry, nav, retry);
+  const s = screen(entry.fail, entry.error);
+  return h('div', { class: 'empty', 'data-say': `${s.title}. ${s.text}` }, h('h2', {}, s.title), h('p', { class: 'muted' }, s.text),
+    h('button', { type: 'button', class: 'button', 'data-focus': 'retry', on: { click: () => { tap(); retry(); } } }, 'Повторить'),
+    s.detail ? h('p', { class: 'small detail muted' }, s.detail) : null);
+}
+
 export function offlineBody(kind, entry, nav, retry) {
   // холст 6.2: Мак молчит — «Повторить» и ссылка на снимок «Здоровья» (операций и категорий в снимке нет)
   const o = offline(kind, nav.hasSnap);
@@ -208,7 +219,7 @@ export function opsScreen(entry, nav) {
   const last = entry.pages[entry.pages.length - 1];
   let body;
   if (entry.error && !entry.pages.length) {
-    body = offlineBody('ops', entry, nav, () => loadOps(entry, nav));
+    body = failBody('ops', entry, nav, () => loadOps(entry, nav));
   } else if (!entry.pages.length) {
     body = h('div', { class: 'stack', 'aria-busy': 'true', 'aria-label': 'Загрузка' },
       ...[1, 2, 3].map(() => h('section', { class: 'card', style: { height: '160px' } })));

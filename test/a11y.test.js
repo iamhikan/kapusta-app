@@ -7,7 +7,7 @@ import { view } from '../js/health.js';
 import { limitRow } from '../js/limitrow.js';
 import { moreScreen } from '../js/more.js';
 import { catsScreen, newCats } from '../js/catscreen.js';
-import { cardScreen, newOps, offlineBody, opsScreen } from '../js/screens.js';
+import { cardScreen, failBody, newOps, offlineBody, opsScreen } from '../js/screens.js';
 import { painter } from '../js/a11y.js';
 import { h } from '../js/dom.js';
 import { returnTo } from '../js/back.js';
@@ -422,6 +422,9 @@ test('у каждой кнопки и поля экранов — ключ data-
   }
   assert.deepEqual(unkeyed(moreScreen({ kind: 'hidden', month: '2026-11' }, nav)), []);
   assert.deepEqual(unkeyed(offlineBody('ops', { error: 'сеть' }, { ...nav, hasSnap: true }, () => {})), []);
+  for (const fail of ['refused', 'fault']) {
+    assert.deepEqual(unkeyed(failBody('ops', { error: 'нет такого лимита', fail }, nav, () => {})), [], fail);
+  }
 });
 
 test('открытый экран: заголовок принимает фокус скриптом (tabindex=-1, ключ title) — фокус не теряется в BODY', () => {
@@ -455,6 +458,12 @@ test('диктор: сообщение (сохранено, ошибка, Мак
     assert.equal(el.getAttribute('aria-live'), null, 'живых зон на экране нет — только своя маленькая');
     assert.notEqual(el.getAttribute('role'), 'status');
   });
+});
+
+test('диктор: Капуста ошиблась (М2) — слышно заголовок и что делать, без кода ответа', () => {
+  const { live, p } = setup();
+  p.show(failBody('ops', { error: 'HTTP 503 · ledger не грузится', fail: 'fault' }, nav, () => {}));
+  assert.equal(live.textContent, 'Капуста ошиблась. Мак на связи, но Капуста не смогла ответить. Попробуйте ещё раз через минуту.');
 });
 
 test('диктор: Мак молчит на «Операциях» — слышно заголовок и что делать', () => {
