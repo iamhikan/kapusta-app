@@ -269,12 +269,16 @@ async function submit(entry, nav, to) {
   if (!p || p.saving) return;
   p.saving = true;
   nav.render();
-  const j = job(entry.data, to, { n: p.item });
+  await send(entry, nav, job(entry.data, to, { n: p.item }));
+}
+
+async function send(entry, nav, j) {
+  // смена ушла на сервер (из листа или «Повторить» у плашки) -> итог плашкой над карточкой
   const r = await nav.post(jobPath(j), jobBody(j));
   if (r.error === 'stale' || r.error === 'stranger') return nav.problem(r.error);
   const res = result(r, j, names(entry.data));
   entry.picker = null;
-  nav.focus(p.from);
+  nav.focus(j.n == null ? 'recat' : `item:${j.n}`);
   if (res.kind === 'done') {
     entry.data = r.data.card;
     entry.notice = { tone: 'good', text: res.text };
@@ -284,6 +288,10 @@ async function submit(entry, nav, to) {
     const ok = await nav.enqueue(j);
     entry.notice = ok ? { tone: 'warn', text: res.text, cancel: j.id }
       : { tone: 'bad', text: 'Капуста не отвечает, а очередь смен заполнена. Смените, когда Мак проснётся.' };
+  } else if (res.kind === 'fault') {
+    // Капуста ошиблась (5xx со словами fin, тело не прочитать): Мак на связи — не в очередь; «Повторить» шлёт ту же
+    // смену с тем же id — сервер не применит её дважды
+    entry.notice = { tone: 'bad', text: res.text, detail: r.detail, retry: j };
   } else {
     entry.notice = { tone: res.kind === 'conflict' ? 'warn' : 'bad', text: res.text };
     if (res.kind === 'conflict') return loadCard(entry, nav);
@@ -298,9 +306,14 @@ function notice(entry, nav) {
   const cancel = n.cancel ? h('button', { type: 'button', class: 'link', 'data-focus': 'notice:cancel', on: { click: async () => {
     tap(); await nav.unqueue(n.cancel); entry.notice = null; nav.focus(entry.data.change ? 'recat' : 'title'); nav.render(); } } },
   'Отменить') : null;
-  // диктор слышит итог из своей живой зоны (data-say), а не перечитывает экран
-  return h('div', { class: `offline notice ${n.tone}`, 'data-say': n.text }, h('span', { class: 'offline-text' }, n.text),
-    cancel);
+  const again = n.retry ? h('button', { type: 'button', class: 'link', 'data-focus': 'notice:retry', disabled: !!n.busy,
+    on: { click: () => { tap(); if (n.busy) return; n.busy = true; nav.render(); send(entry, nav, n.retry); } } },
+  n.busy ? 'Меняем…' : 'Повторить') : null;
+  // диктор слышит итог из своей живой зоны (data-say), а не перечитывает экран; код ответа — только мелко на экране
+  return h('div', { class: `offline notice ${n.tone}`, 'data-say': n.text },
+    h('span', { class: 'offline-text' }, n.text, n.detail ? h('span', { class: 'small detail muted',
+      style: { display: 'block', overflowWrap: 'anywhere' } }, n.detail) : null),
+    cancel, again);
 }
 
 // правка 3 (ui-ux-pro-max, 13.11): у траты под суммой — только дата; категория, кошелёк (у простой траты) и кто записал —

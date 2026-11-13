@@ -99,7 +99,9 @@ function failure(status, body, host) {
 }
 
 export async function post(path, body, { base, initData, fetch = globalThis.fetch, timeout = TIMEOUT }) {
-  // смена категории (этап 6): 409 — запись уже изменили (в ответе — что стоит сейчас), 400/404 — отказ словами
+  // смена категории (этап 6): 409 — запись уже изменили (в ответе — что стоит сейчас). Прочее — как у GET (М2): 4xx —
+  // отказ словами fin; 5xx со словами fin — «Капуста ошиблась» (Мак на связи, смена не в очередь); сеть, срок и прокси
+  // без слов fin — «down»: Мак молчит, смена ждёт в очереди
   const host = base.replace('https://', '');
   const a = await ask(base + path, { method: 'POST', body: JSON.stringify(body), cache: 'no-store',
     headers: { Authorization: `tma ${initData}`, 'Content-Type': 'application/json' } }, { fetch, timeout, host });
@@ -108,8 +110,10 @@ export async function post(path, body, { base, initData, fetch = globalThis.fetc
   if (r.status === 401) return { error: 'stale' };
   if (r.status === 403) return { error: 'stranger' };
   if (r.status === 409) return got === BROKEN ? broken(409) : { error: 'conflict', data: words(got) };
-  if (r.status === 400 || r.status === 404) return { error: 'refused', detail: failure(r.status, got, host).detail };
-  if (!r.ok) return { error: 'down', detail: `HTTP ${r.status}` };
+  if (!r.ok) {
+    const f = failure(r.status, got, host);
+    return f.error === 'refused' ? { error: 'refused', detail: f.detail } : f;
+  }
   if (got === BROKEN) return broken(r.status);
   return { data: words(got) };
 }

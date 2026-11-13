@@ -156,6 +156,22 @@ test('POST — JSON с initData; 409 — конфликт с тем, что ст
   }
 });
 
+test('POST — кто ответил, тот и вид (как у GET, М2): 4xx — отказ словами fin, 5xx со словами fin — «Капуста ошиблась»;'
+  + ' «Мак молчит» (смена — в очередь) — только сеть, тайм-аут и прокси без слов fin (было: 5xx и прочие 4xx — в очередь)', async () => {
+  const base = 'https://mac.tail0.ts.net';
+  const cases = [
+    [422, { error: 'нет такой категории' }, { error: 'refused', detail: 'нет такой категории' }],
+    [413, NOBODY, { error: 'refused', detail: 'HTTP 413' }],
+    [503, { error: 'ledger не грузится' }, { error: 'fault', detail: 'HTTP 503 · ledger не грузится' }],
+    [500, { error: 'сбой' }, { error: 'fault', detail: 'HTTP 500 · сбой' }],
+    [502, NOBODY, { error: 'down', detail: 'HTTP 502 · mac.tail0.ts.net' }],
+    ['down', null, { error: 'down', detail: 'сеть: TypeError: Failed to fetch · mac.tail0.ts.net' }],
+  ];
+  for (const [status, body, want] of cases) {
+    assert.deepEqual(await post('/x', {}, { base, initData: 'q', fetch: fake(status, body) }), want, String(status));
+  }
+});
+
 test('слова приложения (решение 51, Алексей 12.11): «неразобранное» — «без категории», Райффайзен — кириллицей;'
   + ' сервер и ответы бота — как были', async () => {
   const body = { cats: [{ name: 'неразобранное', key: 'Expenses:Family:Uncategorized' }], src: 'Raiffeisen Ангелина',

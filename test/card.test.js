@@ -60,3 +60,50 @@ test('смена категории: тело ответа не JSON — ито�
   assert.equal(entry.picker, null, 'лист закрыт');
   assert.match(text, /Не сменили: Капуста ошиблась/);
 });
+
+const DONE = [200, { card: { ...CARD, cats: ['продукты'], change: { ...CARD.change, accounts: ['Expenses:Family:Food'] } } }];
+
+test('смена категории: Капуста ошиблась (5xx со словами fin) — не в очередь: «не сменили», мелко — код и слова fin,'
+  + ' «Повторить» шлёт ту же смену (тот же id)', async () => {
+  const nav = navOf([503, { error: 'ledger не грузится' }], DONE);
+  const entry = { kind: 'card', ref: 'sms:1', data: CARD };
+  const text = await change(entry, nav);
+  assert.deepEqual(nav.inQueue, [], 'Мак на связи — смена не в очереди');
+  assert.match(text, /Не сменили: Капуста ошиблась\. Мак на связи — попробуйте ещё раз через минуту\./);
+  assert.match(text, /HTTP 503 · ledger не грузится/);
+  assert.doesNotMatch(text, /в очереди|не отвечает/);
+  press(button(cardScreen(entry, nav), 'Повторить'));
+  for (let i = 0; i < 5; i += 1) await tick();
+  assert.equal(nav.sent.length, 2);
+  assert.deepEqual(nav.sent[1], nav.sent[0], 'та же смена с тем же id: сервер не применит её дважды');
+  assert.match(seen(cardScreen(entry, nav)), /Сменили на «продукты»\. Капуста написала в чат\./);
+});
+
+test('смена категории: отказ fin (любой 4xx) — его словами, не в очередь и без «Повторить»', async () => {
+  const nav = navOf([422, { error: 'нет такой категории' }]);
+  const entry = { kind: 'card', ref: 'sms:1', data: CARD };
+  const text = await change(entry, nav);
+  assert.deepEqual(nav.inQueue, []);
+  assert.match(text, /Не сменили: нет такой категории\./);
+  assert.equal(button(cardScreen(entry, nav), 'Повторить'), null);
+});
+
+const hang = (url, opts) => new Promise((_, reject) => opts.signal.addEventListener('abort',
+  () => reject(Object.assign(new Error('The operation was aborted.'), { name: 'AbortError' }))));
+
+for (const [what, make] of [['сеть', () => navOf(['down'])], ['прокси без слов fin (502)', () => navOf([502, NOBODY])],
+  ['тайм-аут', () => { const n = navOf([200, {}]); n.post = (path, body) => post(path, body, { base: BASE, initData: 'x',
+    fetch: hang, timeout: 20 }); return n; }]]) {
+  test(`смена категории: Мак молчит (${what}) — смена в очереди, «Отменить»`, async () => {
+    const nav = make();
+    const entry = { kind: 'card', ref: 'sms:1', data: CARD };
+    entry.picker = { item: null, q: '', chosen: 'Expenses:Family:Food', all: false, group: null, from: 'recat' };
+    press(button(cardScreen(entry, nav), 'Сменить на «продукты»'));
+    for (let i = 0; i < 20 && !nav.inQueue.length; i += 1) await new Promise((r) => setTimeout(r, 5));
+    await tick();
+    assert.equal(nav.inQueue.length, 1);
+    const text = seen(cardScreen(entry, nav));
+    assert.match(text, /Капуста не отвечает\. Смена в очереди/);
+    assert.ok(button(cardScreen(entry, nav), 'Отменить'));
+  });
+}
