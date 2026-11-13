@@ -39,6 +39,7 @@ export async function loadOps(entry, nav, more = false) {
   const cursor = more ? entry.pages[entry.pages.length - 1].next : null;
   const mine = (entry.seq = (entry.seq || 0) + 1);
   if (!more) { entry.pages = []; entry.error = null; nav.render(); }
+  else if (entry.error) { entry.error = null; nav.render(); }   // М14: «Повторить» под списком — «Загружаю…», пока ждём
   const r = await nav.get(query(entry, nav.today(), cursor));
   if (mine !== entry.seq) return;
   entry.loading = false;
@@ -232,8 +233,11 @@ export function opsScreen(entry, nav) {
       h('section', { class: 'card list' }, ...d.ops.map((op, i) => opLine(opRow(op, { inCategory: !!entry.ctx,
         account: entry.ctx ? '' : entry.f.account }), nav,
         { expanded: entry.expanded, key: `${d.date}:${i}:${op.where}` }))))),
-    last && last.next ? h('button', { type: 'button', class: 'more card', disabled: entry.loading, 'data-focus': 'ops-more',
-      on: { click: () => { tap(); loadOps(entry, nav, true); } } }, entry.loading ? 'Загружаю…' : 'Показать ещё') : null);
+    // М14: следующие 50 не пришли — под списком тот же вид ошибки (М2) и «Повторить»; кнопки «Показать ещё» нет —
+    // подгрузка при прокрутке не повторяет запрос сама (было: ошибка молчала, список прежний)
+    last && last.next && entry.error ? failBody('ops', entry, nav, () => loadOps(entry, nav, true))
+      : last && last.next ? h('button', { type: 'button', class: 'more card', disabled: entry.loading, 'data-focus': 'ops-more',
+        on: { click: () => { tap(); loadOps(entry, nav, true); } } }, entry.loading ? 'Загружаю…' : 'Показать ещё') : null);
   }
   const top = entry.ctx ? head(entry, nav) : [entry.f.account ? accountHead(entry, nav) : null, toolbar(entry, nav)];
   const screen = h('div', { class: 'screen with-tabs' }, top, body,

@@ -103,3 +103,39 @@ test('«История цены», 404 «нет такой позиции» — 
   assert.match(text, /Нужны receipt и line, product или kind\./);
   assert.doesNotMatch(text, /Истории цены нет|не отвечает/);
 });
+
+// М14 (этап 2 фазы 6): следующие 50 не пришли — список на месте, под ним ошибка тем же видом и «Повторить»
+const op = (where) => ({ ref: `sms:${where}`, date: '2026-11-10', where, what: '', kind: 'spend', cats: ['продукты'],
+  src: 'Freedom', amount: { number: 500, currency: 'RSD' }, rsd: 500, receipt: false, flag: false, by: 'Алексей' });
+const page = (where, next = null) => ({ days: [{ date: '2026-11-10', sum: 500, ops: [op(where)] }], count: 2, total: 1000, next });
+const press = (el) => el.handlers.click({ target: el, currentTarget: el });
+const tick = () => new Promise((r) => setImmediate(r));
+
+for (const [what, fail, title] of [['Капуста ошиблась (503)', [503, { error: 'ledger не грузится' }], 'Капуста ошиблась'],
+  ['Мак молчит (сеть)', ['down', null], 'Капуста не отвечает']]) {
+  test(`«Операции»: следующие 50 не пришли, ${what} — список на месте, под ним ошибка тем же видом и «Повторить» (М14)`, async () => {
+    const answers = [[200, page('Lidl', '50')], fail, [200, page('Maxi')]];
+    const asked = [];
+    const nav = navOf(200, {});
+    nav.get = (path) => {
+      asked.push(path);
+      const [status, body] = answers.shift();
+      return get(path, { base: BASE, initData: 'x', fetch: fetchOf(status, body), timeout: 20 });
+    };
+    const entry = newOps('2026-11');
+    await loadOps(entry, nav);
+    await loadOps(entry, nav, true);
+    const tree = opsScreen(entry, nav);
+    const text = seen(tree);
+    assert.match(text, /Lidl/, 'первые 50 на месте');
+    assert.match(text, new RegExp(title));
+    assert.equal(one(tree, 'more'), null, 'кнопки «Показать ещё» нет: подгрузка при прокрутке не повторяет запрос сама');
+    press(button(tree, 'Повторить'));
+    for (let i = 0; i < 5; i += 1) await tick();
+    assert.deepEqual(asked.map((x) => /cursor=50/.test(x)), [false, true, true], '«Повторить» — те же следующие 50');
+    const after = seen(opsScreen(entry, nav));
+    assert.match(after, /Lidl/);
+    assert.match(after, /Maxi/);
+    assert.doesNotMatch(after, new RegExp(`${title}|Повторить`));
+  });
+}
