@@ -153,6 +153,59 @@ test('при открытии: Капуста ошиблась на смене �
   assert.deepEqual((await queue.load(cs)).map((x) => x.id), ['a']);
 });
 
+// CloudStorage Telegram отвечает не сразу: колбэк — в следующем обороте; так видны гонки чтения и записи очереди
+function slowCloud() {
+  const c = cloud();
+  return { items: c.items, setItem: (k, v, cb) => setImmediate(() => c.setItem(k, v, cb)),
+    getItem: (k, cb) => setImmediate(() => c.getItem(k, cb)), getKeys: (cb) => setImmediate(() => c.getKeys(cb)) };
+}
+const ids = async (cs) => (await queue.load(cs)).map((x) => x.id);
+const jobOf = (id) => job({ ...CARD, ref: `add:${id}` }, E, { id });
+
+test('две смены подряд, не дожидаясь записи, — обе в очереди (М7: запись по очереди, было: вторая затирала первую)', async () => {
+  const cs = slowCloud();
+  await Promise.all([queue.add(cs, jobOf('a')), queue.add(cs, jobOf('b'))]);
+  assert.deepEqual(await ids(cs), ['a', 'b']);
+});
+
+test('смена, сделанная во время отправки очереди, не теряется и уходит в ту же отправку (М7)', async () => {
+  const cs = slowCloud();
+  await queue.add(cs, jobOf('a'));
+  const sent = [];
+  const out = await flush(cs, async (j) => {
+    sent.push(j.id);
+    if (j.id === 'a') await queue.add(cs, jobOf('b'));
+    return { data: {} };
+  });
+  assert.deepEqual(sent, ['a', 'b']);
+  assert.deepEqual(out, { done: 2, conflicts: 0, left: 0 });
+  assert.deepEqual(await ids(cs), []);
+});
+
+test('Мак замолчал во время отправки — смена, сделанная в это время, остаётся в очереди вместе с неотправленной (М7)', async () => {
+  const cs = slowCloud();
+  await queue.add(cs, jobOf('a'));
+  const out = await flush(cs, async (j) => {
+    if (j.id === 'a') await queue.add(cs, jobOf('b'));
+    return { error: 'down' };
+  });
+  assert.deepEqual(await ids(cs), ['a', 'b']);
+  assert.equal(out.left, 2);
+});
+
+test('смену отменили («Отменить») во время отправки очереди — она не уходит и не возвращается в очередь (М7)', async () => {
+  const cs = slowCloud();
+  for (const id of ['a', 'b']) await queue.add(cs, jobOf(id));
+  const sent = [];
+  await flush(cs, async (j) => {
+    sent.push(j.id);
+    if (j.id === 'a') await queue.drop(cs, 'b');
+    return { data: {} };
+  });
+  assert.deepEqual(sent, ['a']);
+  assert.deepEqual(await ids(cs), []);
+});
+
 test('все категории — в два уровня (решение 39): верхние; у категории с подкатегориями — они, первой — она сама', () => {
   const v = picker(CARD, {});
   assert.deepEqual(v.groups.map((g) => [g.name, g.subs]), [['хозяйство', 0], ['продукты', 1], ['техника', 0], ['дом', 0],

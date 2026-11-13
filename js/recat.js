@@ -101,6 +101,15 @@ const call = (fn) => new Promise((resolve) => {
   try { fn((err, value) => resolve(err ? null : value)); } catch { resolve(null); }
 });
 
+// М7: очередь правят по одному — чтение и запись CloudStorage под замком, следующая правка ждёт конца прошлой
+// (было: две правки читали одну очередь и вторая затирала первую; отправка писала свой старый снимок поверх правок)
+let line = Promise.resolve();
+function locked(fn) {
+  const run = line.then(fn);
+  line = run.catch(() => {});
+  return run;
+}
+
 export const queue = {
   async load(cs) {
     if (!cs) return [];
@@ -111,35 +120,39 @@ export const queue = {
     if (!cs || raw.length > LIMIT) return false;
     return (await call((cb) => cs.setItem(QUEUE, raw, cb))) === true;
   },
-  async add(cs, j) {
+  add(cs, j) {
     // та же запись (и позиция) — остаётся последняя смена: сервер получит одну
-    const rest = (await queue.load(cs)).filter((x) => !(x.ref === j.ref && x.n === j.n));
-    return queue.store(cs, [...rest, j]);
+    return locked(async () => {
+      const rest = (await queue.load(cs)).filter((x) => !(x.ref === j.ref && x.n === j.n));
+      return queue.store(cs, [...rest, j]);
+    });
   },
-  async drop(cs, id) {
-    return queue.store(cs, (await queue.load(cs)).filter((x) => x.id !== id));
+  drop(cs, id) {
+    return locked(async () => {
+      const jobs = await queue.load(cs);
+      return jobs.some((x) => x.id === id) ? queue.store(cs, jobs.filter((x) => x.id !== id)) : true;
+    });
   },
 };
 
 export async function flush(cs, send) {
   // при открытии: очередь по порядку; ответил — из очереди (конфликт Капуста спросит в чате); Мак молчит — ждём.
-  // Капуста ошиблась (fault) — смена остаётся до следующего открытия, остальные уходят
+  // Капуста ошиблась (fault) — смена остаётся до следующего открытия, остальные уходят. М7: очередь читается заново
+  // перед каждой сменой, из неё убирается только отправленная — правка, сделанная во время отправки, уходит следом;
+  // отменённая — не уходит. Замок на время ответа сервера не держим: «Меняем…» не ждёт отправку очереди
   const out = { done: 0, conflicts: 0, left: 0 };
-  const jobs = await queue.load(cs);
-  const kept = [];
-  for (let i = 0; i < jobs.length; i += 1) {
-    const r = await send(jobs[i]);
-    const kind = result(r, jobs[i]).kind;
-    if (kind === 'queued' || kind === 'stale' || kind === 'stranger') {
-      out.left = kept.length + jobs.length - i;
-      await queue.store(cs, [...kept, ...jobs.slice(i)]);
-      return out;
-    }
-    if (kind === 'fault') kept.push(jobs[i]);
+  const tried = new Set();
+  for (;;) {
+    const j = (await locked(() => queue.load(cs))).find((x) => !tried.has(x.id));
+    if (!j) break;
+    tried.add(j.id);
+    const kind = result(await send(j), j).kind;
+    if (kind === 'queued' || kind === 'stale' || kind === 'stranger') break;
+    if (kind === 'fault') continue;
+    await queue.drop(cs, j.id);
     if (kind === 'done') out.done += 1;
     if (kind === 'conflict') out.conflicts += 1;
   }
-  out.left = kept.length;
-  if (jobs.length) await queue.store(cs, kept);
+  out.left = (await locked(() => queue.load(cs))).length;
   return out;
 }
