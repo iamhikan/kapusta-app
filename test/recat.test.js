@@ -86,6 +86,12 @@ test('итог словами: сменили, позиция, конфликт,
   assert.equal(result({ error: 'stale' }, j).kind, 'stale');
 });
 
+test('итог словами: Капуста ошиблась (М8: тело не прочитать) — «не сменили» и что делать, без кода ответа', () => {
+  const j = job(CARD, E, { id: 'c1' });
+  assert.deepEqual(result({ error: 'fault', detail: 'HTTP 200 · ответ не JSON' }, j), { kind: 'fault',
+    text: 'Не сменили: Капуста ошиблась. Мак на связи — попробуйте ещё раз через минуту.' });
+});
+
 function cloud(init = {}) {
   const items = { ...init };
   return {
@@ -134,6 +140,17 @@ test('при открытии очередь уходит по порядку: �
   assert.deepEqual((await queue.load(cs)).map((x) => x.id), ['d']);
   const again = await flush(cs, async () => ({ error: 'down' }));
   assert.deepEqual(again, { done: 0, conflicts: 0, left: 1 });
+});
+
+test('при открытии: Капуста ошиблась на смене — смена ждёт следующего открытия, остальные уходят (М8: не терять)', async () => {
+  const cs = cloud();
+  for (const id of ['a', 'b']) await queue.add(cs, job({ ...CARD, ref: `add:${id}` }, E, { id }));
+  const answers = { a: { error: 'fault', detail: 'HTTP 503 · ledger не грузится' }, b: { data: {} } };
+  const sent = [];
+  const out = await flush(cs, async (j) => { sent.push(j.id); return answers[j.id]; });
+  assert.deepEqual(sent, ['a', 'b']);
+  assert.deepEqual(out, { done: 1, conflicts: 0, left: 1 });
+  assert.deepEqual((await queue.load(cs)).map((x) => x.id), ['a']);
 });
 
 test('все категории — в два уровня (решение 39): верхние; у категории с подкатегориями — они, первой — она сама', () => {

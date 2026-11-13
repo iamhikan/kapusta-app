@@ -104,6 +104,34 @@ test('тайм-аут по умолчанию — 8 секунд', async () => {
   assert.equal(TIMEOUT, 8000);
 });
 
+// ---- М8: тело ответа — под тем же сроком и с защитой
+
+test('тело не JSON — ошибка словами, а не исключение (М8): 200 и 409 — «Капуста ошиблась», 4xx — отказ с кодом', async () => {
+  const base = 'https://mac.tail0.ts.net';
+  const opts = (status) => ({ base, initData: 'x', fetch: fake(status, NOBODY) });
+  assert.deepEqual(await get('/api/tx', opts(200)), { error: 'fault', detail: 'HTTP 200 · ответ не JSON' });
+  assert.deepEqual(await post('/x', {}, opts(200)), { error: 'fault', detail: 'HTTP 200 · ответ не JSON' });
+  assert.deepEqual(await post('/x', {}, opts(409)), { error: 'fault', detail: 'HTTP 409 · ответ не JSON' });
+  const bad = await post('/x', {}, opts(400));
+  assert.deepEqual([bad.error, bad.detail], ['refused', 'HTTP 400']);
+});
+
+// ответ пришёл, а тело — нет: json() не кончается и сигнал отмены не слушает (худший случай)
+const slowBody = async () => ({ status: 200, ok: true, json: () => new Promise(() => {}) });
+
+test('тело, которое не пришло за срок, — тайм-аут (М8: срок снимался до чтения тела — «Меняем…» висела)',
+  { timeout: 2000 }, async () => {
+    const o = { base: 'https://mac.tail0.ts.net', initData: 'x', fetch: slowBody, timeout: 20 };
+    assert.deepEqual(await get('/api/tx', o), { error: 'down', detail: 'сеть: нет ответа за 0.02 с · mac.tail0.ts.net' });
+    assert.deepEqual(await post('/x', {}, o), { error: 'down', detail: 'сеть: нет ответа за 0.02 с · mac.tail0.ts.net' });
+  });
+
+test('обрыв сети при чтении тела — «Мак молчит», как обрыв до ответа', async () => {
+  const cut = async () => ({ status: 200, ok: true, json: async () => { throw new TypeError('network error'); } });
+  const r = await get('/api/tx', { base: 'https://mac.tail0.ts.net', initData: 'x', fetch: cut });
+  assert.deepEqual(r, { error: 'down', detail: 'сеть: TypeError: network error · mac.tail0.ts.net' });
+});
+
 // ---- POST: смена категории из карточки (этап 6)
 
 test('POST — JSON с initData; 409 — конфликт с тем, что стоит сейчас; 400/404 — отказ словами', async () => {

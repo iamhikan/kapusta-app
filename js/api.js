@@ -42,64 +42,76 @@ export function words(x) {
 
 export const TIMEOUT = 8000;   // решение 31: Мак спит — запрос не висит, через 8 с снимок или «не отвечает»
 
-export async function get(path, { base, initData, fetch = globalThis.fetch, timeout = TIMEOUT }) {
-  // detail — причина мелким шрифтом на экране «не отвечает»: по ней видно, где оборвался запрос (без данных)
-  const host = base.replace('https://', '');
+const BROKEN = Symbol('тело не JSON');
+
+// М8: запрос и чтение тела — под одним сроком: тело, которое не пришло за срок, — тайм-аут, как молчание Мака; обрыв
+// сети при чтении тела — тоже; тело не JSON — BROKEN, вид решает код ответа. Исключений наружу нет: «Меняем…» не висит
+async function ask(url, init, { fetch, timeout, host }) {
   const stop = new AbortController();
   const timer = setTimeout(() => stop.abort(), timeout);
-  let r;
+  // json() старого WebView может не слушать отмену — срок держим сами
+  const late = new Promise((_, reject) => stop.signal.addEventListener('abort', () => reject(new Error('timeout'))));
+  late.catch(() => {});
+  const down = (e) => ({ down: stop.signal.aborted ? `сеть: нет ответа за ${timeout / 1000} с · ${host}`
+    : `сеть: ${e.name}: ${e.message} · ${host}` });
   try {
-    r = await fetch(base + path, { headers: { Authorization: `tma ${initData}` }, cache: 'no-store', signal: stop.signal });
-  } catch (e) {
-    if (stop.signal.aborted) return { error: 'down', detail: `сеть: нет ответа за ${timeout / 1000} с · ${host}` };
-    return { error: 'down', detail: `сеть: ${e.name}: ${e.message} · ${host}` };
+    let r;
+    try {
+      r = await Promise.race([fetch(url, { ...init, signal: stop.signal }), late]);
+    } catch (e) {
+      return down(e);
+    }
+    try {
+      return { r, body: await Promise.race([r.json(), late]) };
+    } catch (e) {
+      return stop.signal.aborted || e.name !== 'SyntaxError' ? down(e) : { r, body: BROKEN };
+    }
   } finally {
     clearTimeout(timer);
   }
+}
+
+export async function get(path, { base, initData, fetch = globalThis.fetch, timeout = TIMEOUT }) {
+  // detail — причина мелким шрифтом на экране «не отвечает»: по ней видно, где оборвался запрос (без данных)
+  const host = base.replace('https://', '');
+  const a = await ask(base + path, { headers: { Authorization: `tma ${initData}` }, cache: 'no-store' },
+    { fetch, timeout, host });
+  if (a.down) return { error: 'down', detail: a.down };
+  const { r, body } = a;
   if (r.status === 401) return { error: 'stale' };
   if (r.status === 403) return { error: 'stranger' };
-  if (!r.ok) return failure(r, host);
-  return { data: words(await r.json()) };
+  if (!r.ok) return failure(r.status, body, host);
+  if (body === BROKEN) return broken(r.status);
+  return { data: words(body) };
 }
 
-async function reason(r) {
-  // слова fin из тела ответа {"error": "…"} (fin api: Denied и 503); тела нет или не JSON — ответил не fin
-  try {
-    const body = await r.json();
-    return body && typeof body.error === 'string' && body.error ? body.error : null;
-  } catch {
-    return null;
-  }
-}
+// fin ответил, но тело не прочитать — ошибка Капусты: Мак на связи, повтор может помочь
+const broken = (status) => ({ error: 'fault', detail: `HTTP ${status} · ответ не JSON` });
 
-async function failure(r, host) {
+function failure(status, body, host) {
   // М2: кто ответил — тот и вид. fin отказал (4xx) — его словами; fin ответил ошибкой (5xx) — «Капуста ошиблась», не
-  // снимок; ответ без слов fin — прокси Funnel за fin (502: fin serve не запущен или перезапускается) — Мак молчит, как сеть
-  const said = await reason(r);
-  if (r.status >= 400 && r.status < 500) return { error: 'refused', status: r.status, detail: said || `HTTP ${r.status}` };
-  if (said) return { error: 'fault', detail: `HTTP ${r.status} · ${said}` };
-  return { error: 'down', detail: `HTTP ${r.status} · ${host}` };
+  // снимок; ответ без слов fin — прокси Funnel за fin (502: fin serve не запущен или перезапускается) — Мак молчит, как сеть.
+  // Слова fin — из тела {"error": "…"} (fin api: Denied и 503); тела нет или не JSON — ответил не fin
+  const said = body && body !== BROKEN && typeof body.error === 'string' && body.error ? body.error : null;
+  if (status >= 400 && status < 500) return { error: 'refused', status, detail: said || `HTTP ${status}` };
+  if (said) return { error: 'fault', detail: `HTTP ${status} · ${said}` };
+  return { error: 'down', detail: `HTTP ${status} · ${host}` };
 }
 
 export async function post(path, body, { base, initData, fetch = globalThis.fetch, timeout = TIMEOUT }) {
   // смена категории (этап 6): 409 — запись уже изменили (в ответе — что стоит сейчас), 400/404 — отказ словами
-  const stop = new AbortController();
-  const timer = setTimeout(() => stop.abort(), timeout);
-  let r;
-  try {
-    r = await fetch(base + path, { method: 'POST', body: JSON.stringify(body), cache: 'no-store', signal: stop.signal,
-      headers: { Authorization: `tma ${initData}`, 'Content-Type': 'application/json' } });
-  } catch (e) {
-    return { error: 'down', detail: stop.signal.aborted ? `сеть: нет ответа за ${timeout / 1000} с` : `сеть: ${e.name}` };
-  } finally {
-    clearTimeout(timer);
-  }
+  const host = base.replace('https://', '');
+  const a = await ask(base + path, { method: 'POST', body: JSON.stringify(body), cache: 'no-store',
+    headers: { Authorization: `tma ${initData}`, 'Content-Type': 'application/json' } }, { fetch, timeout, host });
+  if (a.down) return { error: 'down', detail: a.down };
+  const { r, body: got } = a;
   if (r.status === 401) return { error: 'stale' };
   if (r.status === 403) return { error: 'stranger' };
-  if (r.status === 409) return { error: 'conflict', data: words(await r.json()) };
-  if (r.status === 400 || r.status === 404) return { error: 'refused', detail: (await r.json()).error };
+  if (r.status === 409) return got === BROKEN ? broken(409) : { error: 'conflict', data: words(got) };
+  if (r.status === 400 || r.status === 404) return { error: 'refused', detail: failure(r.status, got, host).detail };
   if (!r.ok) return { error: 'down', detail: `HTTP ${r.status}` };
-  return { data: words(await r.json()) };
+  if (got === BROKEN) return broken(r.status);
+  return { data: words(got) };
 }
 
 const SCREENS = {

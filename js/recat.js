@@ -92,6 +92,8 @@ export function result(r, j, names = (a) => a.split(':').pop().toLowerCase()) {
       text: 'Капуста не отвечает. Смена в очереди: уйдёт, когда вы откроете приложение и Капуста ответит.' };
   }
   if (r.error === 'refused') return { kind: 'refused', text: `Не сменили: ${r.detail}.` };
+  // fin ответил ошибкой или телом, которое не прочитать (М2, М8): Мак на связи — повтор может помочь; код — не диктору
+  if (r.error === 'fault') return { kind: 'fault', text: 'Не сменили: Капуста ошиблась. Мак на связи — попробуйте ещё раз через минуту.' };
   return { kind: r.error, text: '' };
 }
 
@@ -120,20 +122,24 @@ export const queue = {
 };
 
 export async function flush(cs, send) {
-  // при открытии: очередь по порядку; ответил — из очереди (конфликт Капуста спросит в чате); Мак молчит — ждём
+  // при открытии: очередь по порядку; ответил — из очереди (конфликт Капуста спросит в чате); Мак молчит — ждём.
+  // Капуста ошиблась (fault) — смена остаётся до следующего открытия, остальные уходят
   const out = { done: 0, conflicts: 0, left: 0 };
   const jobs = await queue.load(cs);
+  const kept = [];
   for (let i = 0; i < jobs.length; i += 1) {
     const r = await send(jobs[i]);
     const kind = result(r, jobs[i]).kind;
     if (kind === 'queued' || kind === 'stale' || kind === 'stranger') {
-      out.left = jobs.length - i;
-      await queue.store(cs, jobs.slice(i));
+      out.left = kept.length + jobs.length - i;
+      await queue.store(cs, [...kept, ...jobs.slice(i)]);
       return out;
     }
+    if (kind === 'fault') kept.push(jobs[i]);
     if (kind === 'done') out.done += 1;
     if (kind === 'conflict') out.conflicts += 1;
   }
-  if (jobs.length) await queue.store(cs, []);
+  out.left = kept.length;
+  if (jobs.length) await queue.store(cs, kept);
   return out;
 }
