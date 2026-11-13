@@ -3,6 +3,7 @@
 import { fmt } from './health.js';
 import { periodInText, periodTitle, rangeText } from './period.js';
 import { tileOf } from './tiles.js';
+import { colorOf, glyphOf, OTHER } from './catcolor.js';
 
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь',
   'Ноябрь', 'Декабрь'];
@@ -114,10 +115,18 @@ function repeatsStart(c) {
   return Math.abs(n - start[0]) < 0.005;
 }
 
+// плитка строки (правка 4, ui-ux-pro-max 13.11): трата — тон цвета категории самой большой доли (key) и её значок;
+// перевод и обмен — серая со стрелками; доход — зелёная. Прежний сервер без key — серая с точками
+function tileOfOp(op) {
+  if (op.kind === 'transfer' || op.kind === 'exchange') return { color: OTHER, glyph: 'transfer' };
+  if (op.kind === 'income') return { color: '#3f9d5f', glyph: 'income' };
+  return op.key ? { color: colorOf(op.key), glyph: glyphOf(op.key) } : { color: OTHER, glyph: 'dots' };
+}
+
 export function opRow(op, { inCategory = false, account = '' } = {}) {
   const marks = [op.receipt && 'чек', op.flag && '!', op.secret && 'секрет'].filter(Boolean);
   const base = { ref: op.ref, where: op.count > 1 ? `${op.where} · ${records(op.count)}` : op.where, marks, note: op.hit || '', noteTone: '', gray: false,
-    group: (op.group || []).map(opRow), count: op.count || 1 };
+    group: (op.group || []).map((g) => opRow(g)), count: op.count || 1, tile: tileOfOp(op) };
   if (op.kind === 'exchange') return { ...base, gray: true, ...exchange(op) };
   if (op.kind === 'transfer') {
     const from = op.legs.filter((l) => l.number < 0).map((l) => l.name);

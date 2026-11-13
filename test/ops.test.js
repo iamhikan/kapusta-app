@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { accountView, cardView, dayLabel, emptyText, filters, headView, money, monthRange, opRow, txPath } from '../js/ops.js';
+import { colorOf, glyphOf, OTHER } from '../js/catcolor.js';
 
 const sp = (s) => s.replace(/(\d) (\d{3})/g, '$1 $2');   // разделитель тысяч — неразрывный пробел
 
@@ -374,4 +375,28 @@ test('правка 3: доли, другая валюта, перевод — «
   const move = cardView({ ...LIDL, kind: 'transfer', receipt: null, postings: SIMPLE,
     legs: [{ name: 'Райффайзен Ангелины', number: -158 }, { name: 'нал Ангелины', number: 158 }] });
   for (const c of [split, euro, move]) assert.deepEqual([c.simple, c.wallet], [false, null]);
+});
+
+// правка 4 (ui-ux-pro-max, 13.11.2026): цвет категории — и в строке «Операций» (спека: «цвет закреплён за категорией
+// на всех экранах»); плитка — тон цвета категории и её значок, у переводов — серая со стрелками
+test('правка 4: у траты — плитка цвета категории самой большой доли (key) и её значок', () => {
+  assert.deepEqual(opRow({ ...LIDL, key: 'Expenses:Family:Food' }).tile, { color: colorOf('Expenses:Family:Food'), glyph: 'Food' });
+  assert.deepEqual(opRow({ ...LIDL, key: 'Expenses:Angelina:PR' }).tile.glyph, 'scissors');
+  assert.deepEqual(opRow(LIDL).tile, { color: OTHER, glyph: 'dots' });          // прежний сервер без key
+});
+
+test('правка 4: у перевода и обмена — серая плитка со стрелками, у дохода — зелёная', () => {
+  const give = { ...LIDL, kind: 'transfer', cats: [], key: null,
+    legs: [{ name: 'нал Алексея', number: -5000 }, { name: 'нал Ангелины', number: 5000 }] };
+  assert.deepEqual(opRow(give).tile, { color: OTHER, glyph: 'transfer' });
+  assert.equal(opRow({ ...LIDL, kind: 'income', cats: [], key: null }).tile.glyph, 'income');
+});
+
+test('правка 4: у каждой категории fin — свой значок; подкатегория — значок категории; незнакомая — точки', () => {
+  const known = ['Food', 'Delivery', 'Outings', 'Restaurants', 'Transport', 'Car', 'Travel', 'Health', 'Pharmacy', 'Beauty',
+    'Clothes', 'Home', 'Electronics', 'Household', 'Pets', 'Sport', 'Supplements', 'Entertainment', 'Education',
+    'Subscriptions', 'Phone', 'Utilities', 'Rent', 'Bank', 'FX', 'Gifts', 'Taxes', 'CashSpent'];
+  for (const k of known) assert.notEqual(glyphOf(`Expenses:Family:${k}`), 'dots', k);
+  assert.equal(glyphOf('Expenses:Family:Transport:Taxi'), glyphOf('Expenses:Family:Transport'));
+  assert.equal(glyphOf('Expenses:Family:Нечто'), 'dots');
 });

@@ -2,6 +2,7 @@
 import { h, icon, tap, ICONS, tg } from './dom.js';
 import { FLAG, accountView, cardView, dayLabel, emptyText, filters, headView, money, monthRange, monthTitle, opRow, txPath } from './ops.js';
 import { tile, tileOf } from './tiles.js';
+import { GLYPHS } from './catcolor.js';
 import { shiftMonth } from './health.js';
 import { canNext, periodEnd, shiftPeriod } from './period.js';
 import { offline } from './snapshot.js';
@@ -67,8 +68,16 @@ function sum(text, cls = '') {
   return h('span', { class: cls }, num, unit ? [' ', h('span', { class: 'unit' }, unit)] : null);
 }
 
-function opLine(r, nav, opts = {}) {
+// плитка категории (правка 4): тон цвета и значок; украшение — категория уже есть словом в строке
+function catTile(t) {
+  return h('span', { class: 'cat-tile', 'aria-hidden': 'true', style: {
+    background: `color-mix(in srgb, ${t.color} 16%, var(--card))`,
+    color: `color-mix(in srgb, ${t.color} var(--tile-ink), var(--fg))` } }, icon(GLYPHS[t.glyph], 18));
+}
+
+export function opLine(r, nav, opts = {}) {
   const inner = [
+    r.tile ? catTile(r.tile) : null,
     h('span', { class: 'grow' },
       h('span', { class: 'op-where' }, h('span', { class: 'ellipsis' }, r.where),
         ...r.marks.map((m) => h('span', { class: `mark${m === '!' ? ' bad' : m === 'секрет' ? ' secret' : ''}` }, m))),

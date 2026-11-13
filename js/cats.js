@@ -3,32 +3,15 @@
 import { fmt } from './health.js';
 import { dayLabel, money } from './ops.js';
 import { prevText } from './period.js';
+import { colorOf, OTHER } from './catcolor.js';
 
-export const OTHER = '#a1a1a6';     // «прочее» — серый на любой теме
-const COLORS = {
-  'Expenses:Family:Food': '#2481cc', 'Expenses:Family:Travel': '#e8833a', 'Expenses:Family:Gifts': '#9b59b6',
-  'Expenses:Family:Household': '#2a9d8f', 'Expenses:Family:Pets': '#d4a400', 'Expenses:Family:Health': '#5aa84f',
-  'Expenses:Family:Restaurants': '#e05a8a', 'Expenses:Family:Clothes': '#5e60ce', 'Expenses:Family:Rent': '#8d6e63',
-  'Expenses:Family:CashSpent': '#607d8b', 'Expenses:Family:Outings': '#00a6c8', 'Expenses:Family:Delivery': '#c0392b',
-  'Expenses:Family:Pharmacy': '#7cb342', 'Expenses:Family:Education': '#ad1457', 'Expenses:Family:FX': '#a1887f',
-  'Expenses:Family:Entertainment': '#f4511e', 'Expenses:Family:Beauty': '#ec407a', 'Expenses:Family:Transport': '#827717',
-  'Expenses:Family:Car': '#455a64', 'Expenses:Family:Home': '#6d4c41', 'Expenses:Family:Electronics': '#3949ab',
-  'Expenses:Family:Sport': '#43a047', 'Expenses:Family:Subscriptions': '#8e24aa', 'Expenses:Family:Utilities': '#795548',
-  'Expenses:Angelina:PR': '#c2185b', 'Expenses:Family:Other': OTHER,
-};
-const SPARE = ['#1e88e5', '#fb8c00', '#8e24aa', '#00acc1', '#7cb342', '#e53935', '#5e35b1', '#c0ca33', '#6d4c41'];
+export { colorOf, OTHER };   // цвет категории живёт в catcolor.js (правка 4): им же красит строки «Операций»
+
 const SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 const NAMES = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь',
   'декабрь'];
 const SHADES = [100, 80, 66, 54, 44, 36, 28, 20];
 const STRIP = 5;                    // полоса долей: 5 самых больших и «ещё N» (правка 2; было кольцо: 7 и «прочее»)
-
-export function colorOf(key) {
-  if (COLORS[key]) return COLORS[key];
-  let hash = 0;
-  for (const ch of key) hash = (hash * 31 + ch.codePointAt(0)) >>> 0;
-  return SPARE[hash % SPARE.length];
-}
 
 const upper = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const signed = (n) => (Math.round(n) > 0 ? `+${fmt(n)}` : fmt(n));

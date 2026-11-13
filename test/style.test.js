@@ -285,3 +285,10 @@ test('правка 1 (ui-ux-pro-max): перерасход на полоске �
   }
   assert.ok(decls('.limit-mark').width, 'метка лимита');
 });
+
+test('правка 4: имя в строке «Операций» — до двух строк, потом многоточие (было: одна строка, «Flying Tiger Sr…»)', () => {
+  const d = decls('.op .op-where .ellipsis');
+  assert.equal(d['-webkit-line-clamp'], '2');
+  assert.equal(d['white-space'], 'normal');
+  assert.ok(Number.parseInt(decls('.cat-tile').width, 10) >= 32, 'плитка 32 px');
+});

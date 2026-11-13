@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import { all, one, seen } from './fakedom.js';
 import { limitLegend, limitRow } from '../js/limitrow.js';
 import { catRow, stripChart } from '../js/catscreen.js';
-import { cardScreen } from '../js/screens.js';
+import { cardScreen, opLine } from '../js/screens.js';
+import { opRow } from '../js/ops.js';
 
 const OVER = { name: 'транспорт', spent: '24 900', limit: '5 800', over: '+19 100', fill: 5800 / 24900, limitAt: 5800 / 24900,
   color: 'var(--bar-orange)', state: 'сверх лимита, покрыто резервом', hint: 'покрыто резервом', covered: true };
@@ -88,4 +89,16 @@ test('правка 3: позиция чека — с шевроном, без п
   assert.ok(!seen(el).includes('тап —'));
   const item = all(el, 'op').find((b) => b.getAttribute('data-focus') === 'item:0');
   assert.ok(all(item, '<svg').length === 1, 'шеврон у позиции');
+});
+
+const TAXI = { ref: 'add:t', date: '2026-11-12', where: 'Такси', kind: 'spend', cats: ['такси'], src: 'нал Алексея',
+  amount: { number: 320, currency: 'RSD' }, rsd: 320, receipt: false, flag: false, key: 'Expenses:Family:Transport' };
+
+test('правка 4: строка операции — плитка категории слева: тон цвета и значок; для диктора — украшение', () => {
+  const row = opLine(opRow(TAXI), NAV);
+  const t = one(row, 'cat-tile');
+  assert.equal(row.kids[0], t, 'плитка — первой в строке');
+  assert.equal(t.getAttribute('aria-hidden'), 'true');
+  assert.match(t.style.background, /#827717/);
+  assert.equal(all(t, '<svg').length, 1);
 });

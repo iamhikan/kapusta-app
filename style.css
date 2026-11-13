@@ -24,6 +24,7 @@
   --bar-yellow: #ffcc00;
   --bar-orange: #ff9500;
   --track: color-mix(in srgb, var(--muted) 20%, transparent);
+  --tile-ink: 100%;          /* значок плитки категории: в светлой — цвет категории, в тёмной — светлее (правка 4) */
   --skel: color-mix(in srgb, var(--muted) 16%, transparent);
   color-scheme: light;
 }
@@ -45,6 +46,7 @@
   --bar-green: #30d158;
   --bar-yellow: #ffd60a;
   --bar-orange: #ff9f0a;
+  --tile-ink: 65%;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -230,6 +232,9 @@ h1, h2, p { margin: 0; }
 .op.nested { padding-left: 32px; background: color-mix(in srgb, var(--muted) 6%, transparent); }
 .op.gray .op-where, .op.gray .op-amount > :first-child { color: var(--muted); }
 .op-where { display: flex; align-items: center; gap: 6px; min-width: 0; }
+/* правка 4 (ui-ux-pro-max): плитка категории слева; имя — до двух строк, потом многоточие */
+.cat-tile { flex-shrink: 0; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; }
+.op .op-where .ellipsis { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .op-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .op-note { font-weight: 600; }
 .op-amount { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; text-align: right;
