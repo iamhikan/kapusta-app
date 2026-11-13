@@ -112,3 +112,13 @@ test('«Операции» и «Категории» без Мака — «По�
   assert.equal(none.text, 'Операции приходят с Мака. Мак спит или Капуста перезапускается.');
   assert.equal(none.link, null);
 });
+
+test('без Мака — «… приходит / приходят с Мака» в согласии с именем экрана (было: «Бюджет приходят с Мака»)', () => {
+  const said = (kind) => offline(kind, false).text.split('.')[0];
+  assert.equal(said('budget'), 'Бюджет приходит с Мака');
+  assert.equal(said('ops'), 'Операции приходят с Мака');
+  assert.equal(said('cats'), 'Категории приходят с Мака');
+  assert.equal(said('price'), 'Цены приходят с Мака');
+  assert.equal(said('basket'), 'Покупки приходят с Мака');
+  assert.equal(said('days'), 'Траты по дням приходят с Мака');
+});
