@@ -1,5 +1,5 @@
 // «Категории»: ответы /api/categories и /api/series -> что видит человек. Суммы, доли, лимит периода и прошлый период
-// считает сервер (fin api); страница раскладывает кольцо, список и столбцы. Цвет закреплён за категорией (спека, «Графики»).
+// считает сервер (fin api); страница раскладывает полосу долей, список и столбцы. Цвет закреплён за категорией (спека, «Графики»).
 import { fmt } from './health.js';
 import { dayLabel, money } from './ops.js';
 import { prevText } from './period.js';
@@ -21,8 +21,7 @@ const SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'ию
 const NAMES = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь',
   'декабрь'];
 const SHADES = [100, 80, 66, 54, 44, 36, 28, 20];
-const DONUT = 7;
-export const R = 56;                // радиус кольца в SVG 150×150
+const STRIP = 5;                    // полоса долей: 5 самых больших и «ещё N» (правка 2; было кольцо: 7 и «прочее»)
 
 export function colorOf(key) {
   if (COLORS[key]) return COLORS[key];
@@ -49,7 +48,17 @@ function limitText(l, name) {
   // свой лимит (и общий с тем же именем: «транспорт» с машиной) — «лимит N»; общий под другим именем — чей он
   // (Алексей 12.11: «хозяйство» на «Категориях» и «дом и хозяйство» на «Здоровье» — одна сумма, разные имена)
   if (!l) return '';
-  return l.own || l.name === name ? `лимит ${fmt(l.limit)}` : `лимит «${l.name}»`;
+  return mine(l, name) ? `лимит ${fmt(l.limit)}` : `в лимите «${l.name}»`;
+}
+
+const mine = (l, name) => !!l && (l.own || l.name === name);
+
+// полоска к своему лимиту — как на «Здоровье» (правка 2): сверх — до потраченного, лимит — метка (limitAt).
+// Цвет — категории: «в плане / выше плана» у недели, квартала, года не считается
+function barOf(l, color) {
+  if (!(l.limit > 0)) return { fill: l.spent > 0 ? 1 : 0, limitAt: null, color };
+  const share = l.spent / l.limit;
+  return share > 1 ? { fill: l.limit / l.spent, limitAt: l.limit / l.spent, color } : { fill: Math.max(0, share), limitAt: null, color };
 }
 
 function head(body) {
@@ -71,26 +80,23 @@ export function catsView(body) {
     delta: c.prev == null ? '' : signed(c.rsd - c.prev), deltaTone: c.prev == null ? '' : tone(c.rsd - c.prev),
     color: sub ? `color-mix(in srgb, ${base} ${SHADES[Math.min(i, SHADES.length - 1)]}%, var(--track))` : colorOf(c.key),
     limit: sub ? '' : limitText(c.limit, c.name), exact: !!c.exact,
+    bar: !sub && mine(c.limit, c.name) ? barOf(c.limit, colorOf(c.key)) : null,
+    of: !sub && mine(c.limit, c.name) ? `из ${fmt(c.limit.limit)}` : '',
   }));
-  // кольцо: 7 самых больших и «прочее»; минусовые (возвраты больше трат) — только в списке
+  // полоса долей (правка 2): 5 самых больших и «ещё N»; минусовые (возвраты больше трат) — только в списке
   const plus = body.cats.map((c, i) => ({ ...c, color: rows[i].color })).filter((c) => c.rsd > 0);
-  const parts = plus.slice(0, DONUT);
-  const rest = plus.slice(DONUT).reduce((s, c) => s + c.rsd, 0);
-  if (rest > 0) parts.push({ name: 'прочее', rsd: rest, color: OTHER });
-  const whole = parts.reduce((s, c) => s + c.rsd, 0) || 1;
-  const C = 2 * Math.PI * R;
-  let acc = 0;
-  const segments = parts.map((c) => {
-    const len = (c.rsd / whole) * C;
-    const dash = Math.max(0, len - (parts.length > 1 ? 2 : 0));
-    const seg = { name: c.name, color: c.color, dash: `${dash.toFixed(2)} ${(C - dash).toFixed(2)}`, offset: (-acc).toFixed(2) };
-    acc += len;
-    return seg;
-  });
+  const many = plus.length > STRIP + 1;
+  const parts = many ? plus.slice(0, STRIP) : plus;
+  const others = many ? plus.slice(STRIP) : [];
+  const rest = others.reduce((s, c) => s + c.rsd, 0);
+  const whole = parts.reduce((s, c) => s + c.rsd, 0) + rest || 1;
+  const part = (name, rsd, color) => ({ name, color, share: rsd / whole, pct: `${Math.round((rsd / whole) * 100)} %` });
+  const strip = parts.map((c) => part(c.name, c.rsd, c.color));
+  if (rest > 0) strip.push(part(`ещё ${others.length}`, rest, OTHER));
   const prev = body.prev;
   const out = {
-    total: fmt(body.total), rows, segments,
-    aria: `Траты: ${parts.map((c) => `${c.name} ${fmt(c.rsd)}`).join(', ')}`,
+    total: fmt(body.total), rows, strip,
+    aria: `Траты: ${[...parts.map((c) => `${c.name} ${fmt(c.rsd)}`), rest > 0 ? `прочее ${fmt(rest)}` : null].filter(Boolean).join(', ')}`,
     cmp: prev ? { label: `к ${prevText(prev, body.from)}`, value: signed(body.total - prev.total),
       tone: tone(body.total - prev.total), sub: `было ${fmt(prev.total)}` } : null,
     cmpHead: prev ? cmpHead(prev, body.from) : '',

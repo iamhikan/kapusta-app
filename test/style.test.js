@@ -273,9 +273,9 @@ test('строка «Категорий» без сравнения — три �
   assert.deepEqual(tracks('cat-row no-cmp'), tracks('cat-row').slice(0, 3), 'имя, сумма и доля — как со сравнением');
 });
 
-test('кольцо без сравнения — по центру карточки (решение 76): справа нет карточки «к …», пустая половина не видна', () => {
-  assert.equal(styleOf('donut-row no-cmp')['justify-content'], 'center');
-  assert.notEqual(styleOf('donut-row')['justify-content'], 'center', 'со сравнением — кольцо слева, «к …» справа');
+test('правка 2: итог «Категорий» со сравнением — по краям; полоса долей есть', () => {
+  assert.equal(styleOf('cats-hero')['justify-content'], 'space-between', 'итог слева, «к …» справа');
+  assert.ok(styleOf('strip').height, 'полоса долей');
 });
 
 test('правка 1 (ui-ux-pro-max): перерасход на полоске и в легенде — штриховка, цвет не единственный признак', () => {

@@ -1,7 +1,8 @@
-// Экран «Категории» (DOM): период, кольцо 7 + «прочее», список, «В лимитах / Все траты», столбцы по месяцам;
+// Экран «Категории» (DOM): период, итог и полоса долей (5 + «ещё N»), список, «В лимитах / Все траты», столбцы по месяцам;
 // тап — подкатегории, затем операции категории за период. Данные — только из /api/categories и /api/series, в памяти.
 import { h, icon, tap, ICONS } from './dom.js';
-import { barsView, BARS, catsView, R } from './cats.js';
+import { barsView, BARS, catsView } from './cats.js';
+import { limitBar } from './limitrow.js';
 import { barsRange, canNext, KINDS, periodEnd, periodInText, periodOf, periodSub, periodTitle, shiftPeriod } from './period.js';
 import { DIALOG, newOps, offlineBody, stepKey, TITLE } from './screens.js';
 
@@ -74,16 +75,35 @@ function scopeSwitch(entry, nav) {
     opt('scale', 'В лимитах'), opt('all', 'Все траты'));   // решение 51: было «Шкала градусника»
 }
 
-function donut(v) {
-  return h('div', { class: v.cmp ? 'donut-row' : 'donut-row no-cmp' },
-    h('svg:svg', { width: 150, height: 150, viewBox: '0 0 150 150', role: 'img', 'aria-label': v.aria, class: 'chart donut' },
-      h('svg:g', { transform: 'rotate(-90 75 75)' }, h('svg:circle', { cx: 75, cy: 75, r: R, class: 'donut-track' }),
-        ...v.segments.map((s) => h('svg:circle', { cx: 75, cy: 75, r: R, fill: 'none', stroke: s.color,
-          'stroke-width': 22, 'stroke-dasharray': s.dash, 'stroke-dashoffset': s.offset }))),
-      h('svg:text', { x: 75, y: 72, 'text-anchor': 'middle', class: 'donut-total' }, v.total),
-      h('svg:text', { x: 75, y: 90, 'text-anchor': 'middle', class: 'tick' }, 'RSD')),
-    v.cmp ? h('div', { class: 'cmp' }, h('span', { class: 'muted small' }, v.cmp.label),
-      h('span', { class: `cmp-value ${v.cmp.tone}` }, v.cmp.value), h('span', { class: 'muted small' }, v.cmp.sub)) : null);
+const pct = (x) => `${(x * 100).toFixed(1)}%`;
+
+// итог периода, сравнение и полоса долей с подписями (правка 2, ui-ux-pro-max: кольцо из 8 долей без подписей —
+// no-pie-overuse); диктор слышит полосу одной фразой (aria-label), подписи под ней — для глаз
+export function stripChart(v) {
+  return h('div', { class: 'stack' },
+    h('div', { class: v.cmp ? 'cats-hero' : 'cats-hero no-cmp' },
+      h('div', { class: 'stack-0' }, h('span', { class: 'cats-total' }, v.total), h('span', { class: 'muted small' }, 'RSD')),
+      v.cmp ? h('div', { class: 'cmp' }, h('span', { class: `cmp-value ${v.cmp.tone}` }, v.cmp.value),
+        h('span', { class: 'muted small' }, v.cmp.label), h('span', { class: 'muted small' }, v.cmp.sub)) : null),
+    h('div', { class: 'strip', role: 'img', 'aria-label': v.aria },
+      ...v.strip.map((s) => h('span', { class: 'strip-part', style: { width: pct(s.share), background: s.color } }))),
+    h('div', { class: 'legend strip-legend small', 'aria-hidden': 'true' },
+      ...v.strip.map((s) => h('span', { class: 'legend-item' }, h('span', { class: 'dot', style: { background: s.color } }),
+        `${s.name} `, h('b', {}, s.pct)))));
+}
+
+// строка категории: имя, сумма, доля, «к …»; свой лимит — полоской «Здоровья» и «из N» (правка 2), лимит группы —
+// подписью «в лимите «…»»
+export function catRow(v, r, onClick) {
+  return h('button', { type: 'button', class: v.rowClass, 'aria-label': [`${r.name}${r.limit ? `, ${r.limit}` : ''}: `
+    + `${r.sum} RSD`, `доля ${r.share}`, r.delta ? `${v.cmpHead} ${r.delta}` : ''].filter(Boolean).join(', '),
+    'data-focus': `cat:${r.key}`, on: { click: () => onClick(r) } },
+  h('span', { class: 'cat-name' }, h('span', { class: 'dot', style: { background: r.color } }),
+    h('span', { class: 'grow' }, h('span', { class: 'ellipsis' }, r.name),
+      !r.bar && r.limit ? h('span', { class: 'muted small limit-of' }, r.limit) : null)),   // «в лимите «дом и хозяйство»» переносится
+  h('span', { class: 'num' }, r.sum), h('span', { class: 'num muted small' }, r.share),
+  v.cmpHead ? h('span', { class: `num small ${r.deltaTone}` }, r.delta) : null,
+  r.bar ? h('span', { class: 'cat-bar' }, limitBar(r.bar), h('span', { class: 'muted small' }, r.of)) : null);
 }
 
 function list(entry, nav, v) {
@@ -99,14 +119,7 @@ function list(entry, nav, v) {
   return h('section', { class: 'card list cats' },
     h('div', { class: `${v.rowClass} cat-head muted small` }, h('span', {}, entry.cat ? 'подкатегория' : 'категория'),
       h('span', {}, 'сумма'), h('span', {}, 'доля'), v.cmpHead ? h('span', {}, v.cmpHead) : null),
-    ...v.rows.map((r) => h('button', { type: 'button', class: v.rowClass, 'aria-label': [`${r.name}${r.limit ? `, ${r.limit}` : ''}: `
-      + `${r.sum} RSD`, `доля ${r.share}`, r.delta ? `${v.cmpHead} ${r.delta}` : ''].filter(Boolean).join(', '),
-      'data-focus': `cat:${r.key}`, on: { click: () => open(r) } },
-    h('span', { class: 'cat-name' }, h('span', { class: 'dot', style: { background: r.color } }),
-      h('span', { class: 'grow' }, h('span', { class: 'ellipsis' }, r.name),
-        r.limit ? h('span', { class: 'muted small limit-of' }, r.limit) : null)),   // «лимит «дом и хозяйство»» переносится
-    h('span', { class: 'num' }, r.sum), h('span', { class: 'num muted small' }, r.share),
-    v.cmpHead ? h('span', { class: `num small ${r.deltaTone}` }, r.delta) : null)));
+    ...v.rows.map((r) => catRow(v, r, open)));
 }
 
 function bars(entry) {
@@ -200,7 +213,7 @@ export function catsScreen(entry, nav) {
   } else if (entry.cat) {
     body = [subHead(entry, nav, v), extra(entry, nav), list(entry, nav, v), ...top(nav, v)];
   } else {
-    body = [h('section', { class: 'card pad' }, donut(v)), list(entry, nav, v), bars(entry), extra(entry, nav)];
+    body = [h('section', { class: 'card pad' }, stripChart(v)), list(entry, nav, v), bars(entry), extra(entry, nav)];
   }
   return h('div', { class: 'screen with-tabs' },
     entry.cat ? null : chips(entry, nav), periodHead(entry, nav, sub), entry.cat ? null : scopeSwitch(entry, nav),

@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { all, one, seen } from './fakedom.js';
 import { limitLegend, limitRow } from '../js/limitrow.js';
+import { catRow, stripChart } from '../js/catscreen.js';
 
 const OVER = { name: 'транспорт', spent: '24 900', limit: '5 800', over: '+19 100', fill: 5800 / 24900, limitAt: 5800 / 24900,
   color: 'var(--bar-orange)', state: 'сверх лимита, покрыто резервом', hint: 'покрыто резервом', covered: true };
@@ -34,4 +35,29 @@ test('правка 1: легенда — штриховка у перерасх�
   assert.equal(one(lg, 'swatch-hatch').style.color, 'var(--bar-orange)');
   assert.equal(all(lg, 'swatch-mark').length, 1);
   assert.equal(one(lg, 'swatch-bar').style.background, 'var(--bar-green)');
+});
+
+const STRIP = { total: '10 000', aria: 'Траты: продукты 3 000, прочее 7 000', cmp: null,
+  strip: [{ name: 'продукты', pct: '30 %', share: 0.3, color: '#2481cc' }, { name: 'ещё 4', pct: '70 %', share: 0.7, color: '#a1a1a6' }] };
+
+test('правка 2: полоса долей — доли по ширине и цвету, подписи «имя процент» под ней; диктору — одна фраза', () => {
+  const el = stripChart(STRIP);
+  assert.deepEqual(all(el, 'strip-part').map((s) => [s.style.width, s.style.background]), [['30.0%', '#2481cc'], ['70.0%', '#a1a1a6']]);
+  assert.deepEqual(all(el, 'legend-item').map(seen), ['продукты 30 %', 'ещё 4 70 %']);
+  assert.equal(one(el, 'strip').getAttribute('aria-label'), STRIP.aria);
+  assert.equal(all(el, '<svg').length, 0);                              // кольца нет
+});
+
+test('правка 2: строка категории со своим лимитом — полоска лимита и «из N»; с лимитом группы — подпись', () => {
+  const own = catRow({ rowClass: 'cat-row', cmpHead: 'к 1–11.10' }, { key: 'k', name: 'транспорт', sum: '6 000', share: '60 %',
+    delta: '+1', deltaTone: 'warn', color: '#827717', limit: 'лимит 2 000', of: 'из 2 000',
+    bar: { fill: 1 / 3, limitAt: 1 / 3, color: '#827717' } }, () => {});
+  assert.equal(one(own, 'limit-mark').style.left, '33.3%');
+  assert.ok(seen(own).includes('из 2 000'));
+  assert.ok(!seen(own).includes('лимит 2 000'));
+  assert.match(own.getAttribute('aria-label'), /транспорт, лимит 2 000: 6 000 RSD/);
+  const group = catRow({ rowClass: 'cat-row', cmpHead: '' }, { key: 'r', name: 'рестораны', sum: '1 500', share: '15 %',
+    delta: '', color: '#e05a8a', limit: 'в лимите «еда вне дома»', of: '', bar: null }, () => {});
+  assert.equal(one(group, 'bar'), null);
+  assert.ok(seen(group).includes('в лимите «еда вне дома»'));
 });

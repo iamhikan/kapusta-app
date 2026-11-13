@@ -30,14 +30,23 @@ test('цвет закреплён за категорией: один и тот 
   assert.match(colorOf('Expenses:Family:Нечто'), /^#[0-9a-f]{6}$/);
 });
 
-test('кольцо: 7 самых больших и «прочее» — остальные вместе', () => {
+// правка 2 (ui-ux-pro-max, 13.11.2026): кольцо из 8 долей без подписей — полосой долей с подписями (no-pie-overuse)
+test('правка 2: вместо кольца — полоса долей: 5 самых больших и «ещё N», у каждой — процент', () => {
   const v = catsView(BODY);
-  assert.equal(v.segments.length, 8);
-  assert.deepEqual(v.segments.slice(0, 2).map((s) => s.color), [colorOf('Expenses:Family:Food'),
-    colorOf('Expenses:Family:Restaurants')]);
-  assert.equal(v.segments[7].color, OTHER);
+  assert.deepEqual(v.strip.map((s) => [s.name, s.pct]), [['продукты', '30 %'], ['рестораны', '15 %'],
+    ['путешествия', '12 %'], ['питомцы', '10 %'], ['здоровье', '9 %'], ['ещё 4', '24 %']]);
+  assert.deepEqual([v.strip[0].color, v.strip[5].color], [colorOf('Expenses:Family:Food'), OTHER]);
+  assert.equal(v.strip.reduce((s, x) => s + x.share, 0).toFixed(6), '1.000000');
   assert.equal(v.total, sp('10 000'));
-  assert.match(v.aria, /продукты 3\s000.*прочее 900/);
+  assert.match(v.aria, /продукты 3\s000.*прочее 2\s400/);
+  assert.equal(v.segments, undefined);
+});
+
+test('правка 2: категорий шесть и меньше — все по именам, без «ещё»; минусовые — только в списке', () => {
+  const six = catsView({ ...BODY, cats: BODY.cats.slice(0, 6) });
+  assert.deepEqual(six.strip.map((s) => s.name), ['продукты', 'рестораны', 'путешествия', 'питомцы', 'здоровье', 'подарки']);
+  const back = catsView({ ...BODY, cats: [...BODY.cats.slice(0, 2), cat('Expenses:Family:Gifts', 'подарки', -300)] });
+  assert.deepEqual(back.strip.map((s) => s.name), ['продукты', 'рестораны']);
 });
 
 test('список: сумма, доля, лимит периода и изменение к прошлому периоду на те же дни', () => {
@@ -47,7 +56,7 @@ test('список: сумма, доля, лимит периода и изме�
   assert.deepEqual([food.name, food.sum, food.share, food.delta, food.deltaTone],
     ['продукты', sp('3 000'), '30 %', '+500', 'warn']);
   assert.equal(food.limit, sp('лимит 9 000'));
-  assert.equal(rest.limit, 'лимит «еда вне дома»');               // общий лимит — подписью (Алексей 12.11)
+  assert.equal(rest.limit, 'в лимите «еда вне дома»');               // общий лимит — подписью (Алексей 12.11)
   assert.deepEqual([rest.delta, rest.deltaTone], ['0', '']);
   assert.deepEqual([travel.delta, travel.deltaTone], [sp('−4 800'), 'good']);
   assert.equal(pets.limit, '');
@@ -123,7 +132,7 @@ test('категория из общего лимита — «лимит «…»
     cat('Expenses:Family:Transport', 'транспорт', 600, { limit: { name: 'транспорт', own: false, limit: 2000, spent: 650 } }),
     cat('Expenses:Family:Food', 'продукты', 500, { limit: { name: 'продукты', own: true, limit: 9000, spent: 500 } }),
   ] });
-  assert.deepEqual(v.rows.map((r) => r.limit), ['лимит «дом и хозяйство»', 'лимит 2 000', 'лимит 9 000']);
+  assert.deepEqual(v.rows.map((r) => r.limit), ['в лимите «дом и хозяйство»', 'лимит 2 000', 'лимит 9 000']);
 });
 
 test('«В лимитах» вместо «Шкала градусника» (решение 51): подпись столбцов по месяцам', () => {
@@ -144,4 +153,21 @@ test('прошлый период в столбце и в карточке: ме
   assert.deepEqual(cmp('2026-01-01', '2026-01-31', { from: '2025-12-01', to: '2025-12-11' }),
     ['к 1–11.12', 'к 1–11 декабря 2025']);
   assert.deepEqual(cmp('2026-11-12', '2026-11-12', { from: '2026-11-11', to: '2026-11-11' }), ['к 11.11', 'к 11 ноября']);
+});
+
+test('правка 2: у своего лимита — полоска к лимиту (вид «Здоровья») и «из N»; лимит группы — без полоски', () => {
+  const v = catsView({ ...BODY, cats: [
+    cat('Expenses:Family:Food', 'продукты', 3000, { limit: { name: 'продукты', own: true, limit: 9000, spent: 3000 } }),
+    cat('Expenses:Family:Transport', 'транспорт', 6000, { limit: { name: 'транспорт', own: false, limit: 2000, spent: 6000 } }),
+    cat('Expenses:Family:Restaurants', 'рестораны', 1500, { limit: { name: 'еда вне дома', own: false, limit: 5000, spent: 2000 } }),
+    cat('Expenses:Family:Pets', 'питомцы', 1000),
+  ] });
+  const [food, transport, rest, pets] = v.rows;
+  assert.deepEqual(food.bar, { fill: 3000 / 9000, limitAt: null, color: colorOf('Expenses:Family:Food') });
+  assert.equal(food.of, sp('из 9 000'));
+  assert.deepEqual(transport.bar, { fill: 2000 / 6000, limitAt: 2000 / 6000, color: colorOf('Expenses:Family:Transport') });
+  assert.deepEqual([rest.bar, rest.of], [null, '']);
+  assert.deepEqual([pets.bar, pets.limit], [null, '']);
+  const sub = catsView({ ...BODY, cat: 'Expenses:Family:Food', name: 'продукты', limit: null });
+  assert.ok(sub.rows.every((r) => r.bar === null));                  // в подкатегориях лимита нет
 });
