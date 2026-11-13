@@ -7,7 +7,7 @@ export function summary(v) {
   const at = !v.bar || v.bar.plan == null ? null : pct(Math.min(1, v.bar.plan));
   return h('section', { class: 'card pad stack' },
     // решение 49: доля нормы — у «Потрачено»; план на сегодня — подписью у черты; норма — только в «из N»
-    h('div', { class: 'row' }, h('span', { class: 'muted small' }, v.scale ? `${v.big.label} · ${v.scale.pct}` : v.big.label),
+    h('div', { class: 'row' }, h('span', { class: 'muted small' }, v.scale && v.scale.pct ? `${v.big.label} · ${v.scale.pct}` : v.big.label),
       h('span', { class: `chip ${v.zone.tone}` }, v.zone.word)),
     h('div', { class: 'big' }, h('span', { class: `big-num ${v.big.tone}` }, v.big.value),
       h('span', { class: 'muted' }, [v.big.of, 'RSD'].filter(Boolean).join(' '))),

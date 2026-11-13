@@ -112,8 +112,10 @@ function curveNote(h) {
 function scaleOf(h) {
   // решение 49: под полоской — доля нормы; план на сегодня — подписью у черты. Норма — уже в «из N» у крупного числа
   // доля — у «Потрачено» коротко («Потрачено · 50 %»): рядом плашка, «из N» — строкой ниже
+  // М9: норма 0 или меньше (обязательные съели доход) — доли и плана нет, как в градуснике чата (было: «Infinity %»)
+  if (!(h.norm > 0)) return { pct: '', plan: '', aria: h.spent > h.norm ? 'сверх нормы' : 'в пределах нормы' };
   const pct = `${Math.round((h.spent / h.norm) * 100)} %`;
-  const plan = h.closed || !h.norm ? '' : `план на сегодня ${fmt(h.plan_today)}`;
+  const plan = h.closed ? '' : `план на сегодня ${fmt(h.plan_today)}`;
   return { pct, plan, aria: [`${pct} нормы`, plan].filter(Boolean).join(', ') };
 }
 
@@ -168,7 +170,7 @@ export function view(h) {
     big: { label: 'Потрачено', value: fmt(h.spent), of: rated ? `из ${fmt(h.norm)}` : '', tone: over ? 'bad' : '' },
     // нормы нет — нет и полосы, доли нормы, плана на сегодня и чисел под чертой (решение 81)
     bar: rated ? { fill: h.norm > 0 ? Math.max(0, Math.min(1, h.spent / h.norm)) : 1,
-      plan: h.closed || !h.norm ? null : h.plan_today / h.norm } : null,
+      plan: h.closed || !(h.norm > 0) ? null : h.plan_today / h.norm } : null,
     scale: rated ? scaleOf(h) : null,
     stats: rated ? [left, first, second] : [],
     curve: { note: curveNote(h), chart: rated && h.curve.length > 0 },   // кривая — с чертой нормы и планом

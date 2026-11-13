@@ -2,6 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fmt, amounts, shiftMonth, view } from '../js/health.js';
+import { seen } from './fakedom.js';
+import { summary } from '../js/summary.js';
 
 const sp = (s) => s.replace(/(\d) (\d{3})/g, '$1\u00a0$2');
 
@@ -297,4 +299,17 @@ test('правка 1: в легенде перерасход — штрихов�
   assert.deepEqual(view(SHORT).legend.filter((l) => l.hatch).map((l) => l.text), ['сверх лимита']);
   const calm = { ...NOW, limits: NOW.limits.filter((l) => !l.over && !l.eaten) };
   assert.ok(!view(calm).legend.some((l) => l.mark || l.hatch));
+});
+
+test('норма 0 или меньше (обязательные съели доход) — без «Infinity %» и «−1600 %»: «Потрачено» без доли нормы, полоса'
+  + ' полная, черты и подписи плана нет — как в градуснике чата (gauge.bar) (М9)', () => {
+  for (const norm of [0, -5000]) {
+    const v = view({ ...NOW, norm, left: norm - NOW.spent, plan_today: Math.round((norm * 11) / 30), per_day: null,
+      zone: { status: 'over', word: 'сверх нормы' } });
+    assert.deepEqual(v.scale, { pct: '', plan: '', aria: 'сверх нормы' }, String(norm));
+    assert.deepEqual(v.bar, { fill: 1, plan: null }, String(norm));
+    const text = seen(summary(v));
+    assert.match(text, /^Потрачено/);
+    assert.doesNotMatch(text, /%|Infinity|NaN|план на сегодня/, String(norm));
+  }
 });
