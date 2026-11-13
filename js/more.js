@@ -165,7 +165,7 @@ export function planCard(p) {
       h('div', { class: 'stack-0' }, h('span', { class: 'muted small' }, p.need.label), h('b', { class: 'stat' }, p.need.value))),
     h('span', { class: 'bar', 'aria-hidden': 'true' }, h('span', { class: 'fill plan-fill', style: { width: `${(p.fill * 100).toFixed(1)}%` } })),
     h('span', { class: 'muted small' }, p.ratio),
-    h('details', { class: 'plan-more' }, h('summary', {}, 'Из чего суммы'),
+    h('details', { class: 'plan-more' }, h('summary', {}, 'Из чего суммы', icon(ICONS.down, 16)),
       h('div', { class: 'stack-s' }, h('span', { class: 'small' }, `${p.have.label}: ${p.have.sub}`),
         h('span', { class: 'small' }, `${p.need.label}: ${p.parts.join(', ')}`))),
     p.salary ? h('span', { class: 'muted small' }, p.salary) : null);

@@ -118,6 +118,7 @@ test('правка 5: карточка «Деньги на …» — снача�
   assert.equal(all(one(el, 'pill'), '<svg').length, 1, 'у плашки — значок, не только цвет');
   const more = one(el, '<details');
   assert.equal(seen(one(more, '<summary')), 'Из чего суммы');
+  assert.equal(all(one(more, '<summary'), '<svg').length, 1, 'значок раскрытия');
   assert.ok(seen(more).includes('жильё 180 000') && seen(more).includes('по курсу НБС'));
   assert.equal(one(el, 'fill').style.width, '25.0%');
 });

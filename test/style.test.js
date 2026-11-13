@@ -320,3 +320,9 @@ test('правка 7: нажатие видно — подложка у стро
   const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
   assert.match(app, /addEventListener\('touchstart'/);
 });
+
+test('стенд p34a: штриховка текущего месяца не перекрыта заливкой; кошелёк — строкой; «есть / нужно» — на одной высоте', () => {
+  assert.equal(decls('.chart.bars .bar-col.partial').fill, 'url(#bars-partial)');
+  assert.equal(decls('.line.kv > .grow.kv-val')['flex-direction'], 'row');
+  assert.equal(decls('.plan-cols > div')['justify-content'], 'space-between', 'подпись сверху, число снизу');
+});
