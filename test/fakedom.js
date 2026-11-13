@@ -6,6 +6,7 @@ class El {
   getAttribute(k) { return this.attrs[k] ?? null; }
   addEventListener(ev, fn) { this.handlers[ev] = fn; }
   append(...kids) { this.kids.push(...kids); }
+  querySelector(sel) { return sel.startsWith('.') ? one(this, sel.slice(1)) : null; }   // только «.класс»
   get classes() { return (this.attrs.class || '').split(/\s+/).filter(Boolean); }
 }
 if (!globalThis.document) {

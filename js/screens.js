@@ -31,7 +31,9 @@ function query(entry, today, cursor = null) {
 }
 
 export async function loadOps(entry, nav, more = false) {
-  if (entry.loading) return;
+  // М1: новая загрузка идёт всегда — фильтр, поиск, месяц сменили во время подгрузки; ответ старой, пришедший позже,
+  // отбрасывает номер запроса seq. «Показать ещё», пока список грузится, ждёт: те же 50 уже в пути
+  if (more && entry.loading) return;
   entry.loading = true;
   const cursor = more ? entry.pages[entry.pages.length - 1].next : null;
   const mine = (entry.seq = (entry.seq || 0) + 1);
@@ -234,7 +236,9 @@ export function opsScreen(entry, nav) {
 }
 
 export async function loadCard(entry, nav) {
+  const mine = (entry.seq = (entry.seq || 0) + 1);   // М1: поздний ответ прежней загрузки карточку не трогает
   const r = await nav.get(`/api/tx/${encodeURIComponent(entry.ref)}`);
+  if (mine !== entry.seq) return;
   if (r.error === 'stale' || r.error === 'stranger') return nav.problem(r.error);
   entry.data = r.data || null;
   entry.error = r.error ? (r.detail || 'нет такой операции') : null;
