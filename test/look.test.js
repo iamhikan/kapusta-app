@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { all, one, seen } from './fakedom.js';
 import { limitLegend, limitRow } from '../js/limitrow.js';
 import { catRow, stripChart } from '../js/catscreen.js';
+import { cardScreen } from '../js/screens.js';
 
 const OVER = { name: 'транспорт', spent: '24 900', limit: '5 800', over: '+19 100', fill: 5800 / 24900, limitAt: 5800 / 24900,
   color: 'var(--bar-orange)', state: 'сверх лимита, покрыто резервом', hint: 'покрыто резервом', covered: true };
@@ -60,4 +61,31 @@ test('правка 2: строка категории со своим лимит
     delta: '', color: '#e05a8a', limit: 'в лимите «еда вне дома»', of: '', bar: null }, () => {});
   assert.equal(one(group, 'bar'), null);
   assert.ok(seen(group).includes('в лимите «еда вне дома»'));
+});
+
+const NAV = { queued: () => [], focus() {}, render() {}, push() {}, unqueue() {} };
+const DM = { ref: 'add:1', date: '2026-11-12', at: '2026-11-12 13:33', where: 'dm', what: 'чек', kind: 'spend', cats: ['хозяйство'],
+  src: 'Райффайзен Ангелины', amount: { number: 172, currency: 'RSD' }, rsd: 172, receipt: true, flag: false, by: 'Ангелина',
+  account: 'Expenses:Family:Household', change: { accounts: ['Expenses:Family:Household'], choices: [{ account: 'Expenses:Family:Household', name: 'хозяйство' }] },
+  postings: [{ name: 'Райффайзен Ангелины', account: 'Assets:Family:Raiffeisen:RSD', number: -172, currency: 'RSD' },
+    { name: 'хозяйство', account: 'Expenses:Family:Household', number: 172, currency: 'RSD' }],
+  receipt: { shop: 'DM', total: 172, url: null, items: [{ name: 'Profissimo papir', kind: null, qty: 1, unit: 'шт', price: 109,
+    total: 109, cat: 'хозяйство' }] } };
+
+test('правка 3: карточка простой траты — под суммой только дата; категория, кошелёк, автор — по одному разу', () => {
+  const el = cardScreen({ kind: 'card', ref: 'add:1', data: DM }, NAV);
+  const text = seen(el);
+  assert.equal(text.split('хозяйство').length - 1, 2);           // строка «Категория» и позиция чека
+  assert.equal(text.split('Райффайзен Ангелины').length - 1, 1);  // строка «Кошелёк»
+  assert.ok(!text.includes('Откуда и куда'));
+  assert.ok(!text.includes('записала Ангелина'));
+  assert.deepEqual(all(el, 'kv-key').map(seen), ['Категория', 'Кошелёк', 'Записала']);
+  assert.ok(text.includes('12 ноября, чт · 13:33'));
+});
+
+test('правка 3: позиция чека — с шевроном, без подсказки «тап — …» в шапке чека', () => {
+  const el = cardScreen({ kind: 'card', ref: 'add:1', data: DM }, NAV);
+  assert.ok(!seen(el).includes('тап —'));
+  const item = all(el, 'op').find((b) => b.getAttribute('data-focus') === 'item:0');
+  assert.ok(all(item, '<svg').length === 1, 'шеврон у позиции');
 });

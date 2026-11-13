@@ -279,17 +279,22 @@ function notice(entry, nav) {
     cancel);
 }
 
-function categoryRow(entry, nav) {
+// правка 3 (ui-ux-pro-max, 13.11): у траты под суммой — только дата; категория, кошелёк (у простой траты) и кто записал —
+// строками «название — значение», каждый по одному разу
+function factsCard(entry, nav, v) {
   const card = entry.data;
   const waiting = nav.queued(card.ref).find((j) => j.n == null);
   const c = category(card, waiting);
-  return h('section', { class: 'card list' }, h('div', { class: 'line' },
-    h('span', { class: 'grow' }, h('span', { class: 'muted small' }, 'Категория'),
-      h('span', { class: c.queued ? 'muted' : '' }, c.text), c.why ? h('span', { class: 'muted small why' }, c.why) : null),
+  const kv = (key, ...rest) => h('div', { class: 'line kv' }, h('span', { class: 'kv-key muted small' }, key), ...rest);
+  return h('section', { class: 'card list' },
+    kv('Категория', h('span', { class: 'grow' }, h('span', { class: c.queued ? 'muted' : '' }, c.text),
+      c.why ? h('span', { class: 'muted small why' }, c.why) : null),
     c.queued ? h('span', { class: 'mark secret' }, 'в очереди') : null,
     c.can ? h('button', { type: 'button', class: 'link', 'data-focus': 'recat', on: { click: () => {
       tap(); entry.picker = { item: null, q: '', chosen: null, all: false, group: null, from: 'recat' }; nav.focus('sheet');
-      nav.render(); } } }, 'Сменить') : null));
+      nav.render(); } } }, 'Сменить', icon(ICONS.right, 14)) : null),
+    v.wallet ? kv('Кошелёк', h('span', { class: 'grow kv-val' }, tile(v.wallet.tile, 22), v.wallet.name)) : null,
+    kv(v.who.label, h('span', { class: 'grow' }, v.who.value)));
 }
 
 function pickerSheet(entry, nav) {
@@ -356,13 +361,14 @@ export function cardScreen(entry, nav) {
   const r = c.row;
   const [bigNum, bigUnit] = splitSum(r.amount);
   const canItems = !!entry.data.change;
+  const spend = entry.data.kind === 'spend';
   const waitingItems = new Set(nav.queued(entry.data.ref).filter((j) => j.n != null).map((j) => j.n));
   const item = (it, n) => {
     const changed = entry.changed && entry.changed.n === n;
     const sub = changed ? entry.changed.text : waitingItems.has(n) ? `${it.sub} · в очереди`
       : [it.line, it.sub].filter(Boolean).join(' · ');
     const kids = [h('span', { class: 'grow' }, h('span', {}, it.name),
-      h('span', { class: `small ${changed ? 'good' : 'muted'}` }, sub)), h('span', { class: 'nowrap' }, it.value)];
+      h('span', { class: `small ${changed ? 'good' : 'muted'}` }, sub)), h('span', { class: 'nowrap' }, it.value), icon(ICONS.right, 16)];
     if (!canItems) {   // сменить нельзя — тап сразу открывает историю цены (решение 37)
       return h('button', { type: 'button', class: 'line op', 'data-focus': `item:${n}`,
         on: { click: () => { tap(); nav.push({ kind: 'price', q: itemPrice(entry.data, n) }); } } }, ...kids);
@@ -380,17 +386,17 @@ export function cardScreen(entry, nav) {
       h('div', { class: 'big' }, h('span', { class: `big-num${r.gray ? ' muted' : ''}` }, bigNum),
         bigUnit ? h('span', { class: 'muted' }, bigUnit) : null, r.amountSub ? h('span', { class: 'muted' }, r.amountSub) : null),
       r.note ? h('div', { class: `small ${r.noteTone}` }, r.note) : null,
-      h('div', { class: 'muted small' }, `${r.sub ? `${r.sub} · ` : ''}${c.when} · ${c.by}`)),
-    entry.data.kind === 'spend' ? categoryRow(entry, nav) : null,
+      h('div', { class: 'muted small' }, spend ? c.when : `${r.sub ? `${r.sub} · ` : ''}${c.when} · ${c.by}`)),
+    spend ? factsCard(entry, nav, c) : null,
     // решение 51: было «Проводки»; решение 65: «Откуда» и «Куда» подписями, суммы без знаков, валюты счёта — в одной строке
-    c.flow.length ? [h('div', { class: 'section-head' }, h('h2', {}, 'Откуда и куда')),
+    c.flow.length && !c.simple ? [h('div', { class: 'section-head' }, h('h2', {}, 'Откуда и куда')),
       h('section', { class: 'card list' }, ...c.flow.map((s) => h('div', { class: 'flow' },
         h('span', { class: 'flow-label muted small' }, s.label),
         ...s.lines.map((l) => h('div', { class: 'line' }, h('span', {}, l.name),
           h('span', { class: 'bal-amounts' }, h('span', {}, l.value), l.more ? h('span', { class: 'muted small' }, l.more) : null))))))]
       : null,
-    c.receipt ? [h('div', { class: 'section-head' }, h('h2', {}, `Чек · ${c.receipt.shop}`),
-      h('span', { class: 'muted small' }, canItems ? 'тап — цена и категория позиции' : 'тап — история цены')),
+    // правка 3: позиция нажимается — у неё шеврон; подсказки «тап — …» в шапке чека нет
+    c.receipt ? [h('div', { class: 'section-head' }, h('h2', {}, `Чек · ${c.receipt.shop}`)),
     h('section', { class: 'card list' }, ...c.receipt.items.map(item),
       h('div', { class: 'line' }, h('b', {}, 'Итого'), h('b', {}, c.receipt.total)),
       c.receipt.url ? h('button', { type: 'button', class: 'more', 'data-focus': 'receipt-url', on: { click: () => {

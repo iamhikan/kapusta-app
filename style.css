@@ -170,6 +170,12 @@ h1, h2, p { margin: 0; }
 .flow > .line { min-height: 40px; }
 .note-text { padding: 0 4px; margin-top: -6px; text-wrap: pretty; }
 .why { text-wrap: pretty; }
+/* правка 3: карточка траты — строки «название — значение» */
+.line.kv { justify-content: flex-start; }
+.kv-key { flex: 0 0 88px; }
+.line.kv > .grow { text-align: left; }
+.kv-val { display: flex; align-items: center; gap: 8px; }
+.line .link > svg { vertical-align: -2px; margin-left: 2px; }
 .fresh { text-align: center; padding-top: 6px; }
 
 .skel { display: block; border-radius: 6px; background: var(--skel); }

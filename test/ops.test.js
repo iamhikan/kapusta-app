@@ -350,3 +350,28 @@ test('SMS банка и расчёт Капусты (решение 71): не «
   assert.deepEqual(filters()[2].chips, [['все', ''], ['чек', 'receipt'], ['словами', 'words'], ['из банка', 'bank'],
     ['SMS банка', 'sms'], ['выписка РФ', 'raif'], ['Walt', 'walt'], ['посчитала Капуста', 'calc']]);
 });
+
+// правка 3 (ui-ux-pro-max, 13.11.2026): у простой траты категория и кошелёк были по три раза — под суммой, в
+// «Категория» и в «Откуда и куда». Простая — одна сторона «откуда», одна «куда», одна сумма
+const SIMPLE = [{ name: 'Райффайзен Ангелины', account: 'Assets:Family:Raiffeisen:RSD', number: -158, currency: 'RSD' },
+  { name: 'хозяйство', account: 'Expenses:Family:Household', number: 158, currency: 'RSD' }];
+
+test('правка 3: простая трата — без «Откуда и куда», кошелёк и автор — строками под категорией', () => {
+  const c = cardView({ ...LIDL, cats: ['хозяйство'], src: 'Райффайзен Ангелины', receipt: null, by: 'Ангелина', postings: SIMPLE });
+  assert.equal(c.simple, true);
+  assert.deepEqual([c.wallet.name, c.wallet.tile.text], ['Райффайзен Ангелины', 'R']);
+  assert.deepEqual(c.who, { label: 'Записала', value: 'Ангелина' });
+  assert.deepEqual(cardView({ ...LIDL, receipt: null, postings: SIMPLE }).who, { label: 'Записал', value: 'Алексей' });
+  assert.deepEqual(cardView({ ...LIDL, by: null, receipt: null, postings: SIMPLE }).who, { label: 'Запись', value: 'из выписки банка' });
+  assert.deepEqual(cardView({ ...LIDL, by: null, source: 'walt', receipt: null, postings: SIMPLE }).who,
+    { label: 'Запись', value: 'из кошелька Walt' });
+});
+
+test('правка 3: доли, другая валюта, перевод — «Откуда и куда» остаётся, кошелька строкой нет', () => {
+  const split = flowOf([{ name: 'Freedom', number: -1500, currency: 'RSD' }, { name: 'супермаркеты', number: 1100, currency: 'RSD' },
+    { name: 'алкоголь', number: 400, currency: 'RSD' }]);
+  const euro = flowOf([{ name: 'Freedom', number: -10, currency: 'EUR' }, { name: 'продукты', number: 1170, currency: 'RSD' }]);
+  const move = cardView({ ...LIDL, kind: 'transfer', receipt: null, postings: SIMPLE,
+    legs: [{ name: 'Райффайзен Ангелины', number: -158 }, { name: 'нал Ангелины', number: 158 }] });
+  for (const c of [split, euro, move]) assert.deepEqual([c.simple, c.wallet], [false, null]);
+});

@@ -2,6 +2,7 @@
 // считает сервер (fin api); страница только подписывает и раскладывает строки.
 import { fmt } from './health.js';
 import { periodInText, periodTitle, rangeText } from './period.js';
+import { tileOf } from './tiles.js';
 
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь',
   'Ноябрь', 'Декабрь'];
@@ -222,16 +223,34 @@ function similarRow(s) {
   return { ref: s.ref, label: dayLabel(s.date), value: r.amount, sub: r.amountSub };
 }
 
+// правка 3 (ui-ux-pro-max, 13.11): простая трата — одна сторона «откуда», одна «куда», одна сумма. У неё блока «Откуда
+// и куда» нет: кошелёк — строкой под категорией (было: категория и кошелёк по три раза)
+function simpleOf(kind, sides) {
+  if (kind !== 'spend' || sides.length !== 2 || sides.some((s) => s.lines.length !== 1)) return false;
+  const [[from], [to]] = sides.map((s) => s.lines);
+  return !from.more && !to.more && from.value === to.value;
+}
+
+function whoOf(c) {
+  if (c.by) return { label: `Записал${c.by === 'Ангелина' ? 'а' : ''}`, value: c.by };
+  return { label: 'Запись', value: FROM[c.origin || c.source] || 'из выписки банка' };
+}
+
 export function cardView(c) {
   const check = c.opening === 'check';
   const postings = (c.postings || []).map((p) => (check && p.account === OPENING ? { ...p, name: 'сверка остатка' } : p));
   const time = clock(c.at);
+  const sides = flow(postings);
+  const simple = simpleOf(c.kind, sides);
+  const payer = simple ? postings.find((p) => p.number < 0) : null;
   return {
+    simple, who: whoOf(c),
+    wallet: payer ? { name: payer.name, tile: tileOf(payer.account || '', payer.name) } : null,
     title: c.where, what: c.what && c.what !== c.where && !repeatsStart(c) ? c.what : '',
     when: dayLabel(c.date) + (time ? ` · ${time}` : ''),
     by: c.by ? `записал${c.by === 'Ангелина' ? 'а' : ''} ${c.by}` : FROM[c.origin || c.source] || 'из выписки банка',   // origin — без учёта чека (решение 71)
     row: check && c.after ? checkHead(opRow(c), c.after) : opRow(c),
-    flow: flow(postings),
+    flow: sides,
     receipt: c.receipt && {
       shop: c.receipt.shop, total: money(c.receipt.total), url: c.receipt.url,
       items: c.receipt.items.map((it) => ({ name: it.name,

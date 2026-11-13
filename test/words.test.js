@@ -19,10 +19,12 @@ const text = (el) => (typeof el === 'string' ? el : el.kids.map(text).join(' '))
 const nav = { today: () => '2026-11-11', push() {}, render() {}, queued: () => [], accounts: () => [], savePeriod() {} };
 
 test('карточка: «Откуда и куда» вместо «Проводки», ref не виден; сумма — с RSD', () => {
-  const card = { ref: 'sms:1', date: '2026-11-10', where: 'Lidl', what: 'чек', kind: 'spend', cats: ['алкоголь'], src: 'Freedom',
-    amount: { number: 400, currency: 'RSD' }, rsd: 400, receipt: false, flag: false, by: 'Алексей', at: '2026-11-10 18:40',
-    refs: ['sms:1', 'rcpt:XYZ-1'], similar: [],
-    postings: [{ name: 'Freedom', number: -400, currency: 'RSD' }, { name: 'алкоголь', number: 400, currency: 'RSD' }] };
+  // правка 3: «Откуда и куда» — у траты с долями; у простой траты его нет
+  const card = { ref: 'sms:1', date: '2026-11-10', where: 'Lidl', what: 'чек', kind: 'spend', cats: ['алкоголь', 'продукты'],
+    src: 'Freedom', amount: { number: 400, currency: 'RSD' }, rsd: 400, receipt: false, flag: false, by: 'Алексей',
+    at: '2026-11-10 18:40', refs: ['sms:1', 'rcpt:XYZ-1'], similar: [],
+    postings: [{ name: 'Freedom', number: -400, currency: 'RSD' }, { name: 'алкоголь', number: 300, currency: 'RSD' },
+      { name: 'продукты', number: 100, currency: 'RSD' }] };
   const said = text(cardScreen({ kind: 'card', ref: 'sms:1', data: card }, nav));
   assert.match(said, /Откуда и куда/);
   assert.doesNotMatch(said, /Проводки/);
