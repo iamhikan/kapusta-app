@@ -248,11 +248,12 @@ export function opsScreen(entry, nav) {
 
 export async function loadCard(entry, nav) {
   const mine = (entry.seq = (entry.seq || 0) + 1);   // М1: поздний ответ прежней загрузки карточку не трогает
+  if (!entry.data && entry.error) { entry.error = null; nav.render(); }   // «Повторить» (М6): скелет, пока ждём
   const r = await nav.get(`/api/tx/${encodeURIComponent(entry.ref)}`);
   if (mine !== entry.seq) return;
   if (r.error === 'stale' || r.error === 'stranger') return nav.problem(r.error);
   entry.data = r.data || null;
-  entry.error = r.error ? (r.detail || 'нет такой операции') : null;
+  [entry.error, entry.fail] = r.error ? [r.detail || r.error, r.error] : [null, null];
   const waiting = nav.queued(entry.ref);          // смена ждёт в очереди с прошлого раза (холст card-error)
   if (waiting.length && !entry.notice) entry.notice = { tone: 'warn', text: result({ error: 'down' }, waiting[0]).text };
   nav.render();
@@ -389,9 +390,8 @@ function pickerSheet(entry, nav) {
 
 export function cardScreen(entry, nav) {
   if (!entry.data) {
-    return h('div', { class: 'screen' }, entry.error
-      ? h('div', { class: 'empty', 'data-say': `Операцию не открыть: ${entry.error}` }, h('h2', {}, 'Операцию не открыть'),
-        h('p', { class: 'muted small' }, entry.error))
+    // М6: карточка не открылась — тот же вид, что у экранов (М2), и «Повторить» — новая загрузка карточки
+    return h('div', { class: 'screen' }, entry.error ? failBody('card', entry, nav, () => loadCard(entry, nav))
       : h('section', { class: 'card', style: { height: '220px' }, 'aria-busy': 'true' }));
   }
   const c = cardView(entry.data);

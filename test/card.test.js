@@ -3,8 +3,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { all, seen } from './fakedom.js';
-import { post } from '../js/api.js';
-import { cardScreen } from '../js/screens.js';
+import { get, post } from '../js/api.js';
+import { cardScreen, loadCard } from '../js/screens.js';
 
 const BASE = 'https://mac.tail0.ts.net';
 const NOBODY = Symbol('тело не JSON');
@@ -105,5 +105,40 @@ for (const [what, make] of [['сеть', () => navOf(['down'])], ['прокси 
     const text = seen(cardScreen(entry, nav));
     assert.match(text, /Капуста не отвечает\. Смена в очереди/);
     assert.ok(button(cardScreen(entry, nav), 'Отменить'));
+  });
+}
+
+// nav загрузки карточки: GET идёт через настоящий get(); ответы — по очереди
+function loader(...answers) {
+  const nav = navOf([200, {}]);
+  nav.asked = 0;
+  const fetch = async () => { nav.asked += 1; return answer(...answers.shift()); };
+  nav.get = (path) => get(path, { base: BASE, initData: 'x', fetch, timeout: 50 });
+  return nav;
+}
+
+const CARD_FAILS = [
+  ['Капуста ошиблась (503 со словами fin)', [503, { error: 'ledger не грузится' }], 'Капуста ошиблась',
+    'Мак на связи, но Капуста не смогла ответить. Попробуйте ещё раз через минуту.'],
+  ['отказ fin (404)', [404, { error: 'нет такой операции' }], 'Капуста не может это показать', 'Нет такой операции.'],
+  ['Мак молчит (сеть)', ['down'], 'Капуста не отвечает', 'Операции приходят с Мака. Мак спит или Капуста перезапускается.'],
+];
+
+for (const [what, first, title, said] of CARD_FAILS) {
+  test(`карточка не открылась: ${what} — вид М2 и «Повторить»; нажатие — новая загрузка, карточка открылась (М6)`, async () => {
+    const nav = loader(first, [200, CARD]);
+    const entry = { kind: 'card', ref: 'sms:1' };
+    await loadCard(entry, nav);
+    const tree = cardScreen(entry, nav);
+    assert.equal(seen(all(tree, '<h2')[0]), title);
+    assert.match(seen(tree), new RegExp(said.replace(/[.]/g, '\\.')));
+    const again = button(tree, 'Повторить');
+    assert.ok(again, '«Повторить» есть');
+    press(again);
+    for (let i = 0; i < 5; i += 1) await tick();
+    assert.equal(nav.asked, 2, 'карточка запрошена заново');
+    const text = seen(cardScreen(entry, nav));
+    assert.match(text, /Lidl/);
+    assert.doesNotMatch(text, /Повторить|не отвечает|ошиблась/);
   });
 }
