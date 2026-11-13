@@ -16,6 +16,9 @@ import { backStep, escapes, returnTo, showBack } from './back.js';
 import { painter } from './a11y.js';
 import { startAt } from './start.js';
 
+// правка 7: на iOS :active у кнопок срабатывает, только если на странице есть слушатель touchstart
+document.addEventListener('touchstart', () => {}, { passive: true });
+
 const root = document.getElementById('app');
 // фаза 15: фокус после перерисовки — по ключу data-focus, листы модальные, диктор — только сообщения из #say
 const paint = painter(root, document, document.getElementById('say'));

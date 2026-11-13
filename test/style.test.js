@@ -298,3 +298,25 @@ test('правка 6: подписи «По месяцам» — не мельч
     assert.ok(Number.parseInt(decls(sel)['font-size'], 10) >= 12, sel);
   }
 });
+
+// правка 7 (ui-ux-pro-max, 13.11.2026): текст ссылок и белый на кнопке — 4,13:1 на запасных цветах темы; нажатие не видно
+const LINKS = [['ссылка «Сменить», «Отменить»', 'link', ''], ['«Показать все N»', 'more', ''], ['выбранная вкладка', 'tab on', ''],
+  ['выбранный вариант в листе', 'choice on', ''], ['кнопка «Показать»', 'button']];
+for (const theme of ['light', 'dark']) {
+  test(`правка 7, ${theme === 'light' ? 'светлая' : 'тёмная'} тема: ссылки и кнопки — не ниже 4,5:1`, () => {
+    const low = LINKS.map(([name, fg, bg]) => [name, contrast(theme, fg, bg)]).filter(([, r]) => r < 4.5)
+      .map(([name, r]) => `${name} ${r.toFixed(2)}:1`);
+    assert.deepEqual(low, []);
+  });
+}
+
+test('правка 7: нажатие видно — подложка у строк, чипов и кнопок, без сдвига; на iOS :active — со слушателем touchstart', () => {
+  const pressed = RULES.filter((r) => r.sels.some((s) => s.endsWith(':active')));
+  const sels = pressed.flatMap((r) => r.sels);
+  for (const el of ['.op:active', '.limit:active', '.cat-row:active', '.more:active', '.chip-btn:active', '.button:active']) {
+    assert.ok(sels.includes(el), el);
+  }
+  for (const r of pressed) assert.ok(!r.decls.transform && !r.decls.margin && !r.decls.padding && !r.decls.border, 'без сдвига');
+  const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+  assert.match(app, /addEventListener\('touchstart'/);
+});
