@@ -9,7 +9,8 @@ const OF_MONTH = ['января', 'февраля', 'марта', 'апреля'
 const SYMBOL = { EUR: '€', RUB: '₽' };
 const FOR_MONTH = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь',
   'ноябрь', 'декабрь'];
-const ZONE = { ok: 'good', fast: 'fast', savings: 'warn', over: 'bad' };   // fast — выше плана на сегодня (решение 46)
+// fast — выше плана на сегодня (решение 46); none — месяц без курса, нормы нет (решение 81): плашка серая, как ⚪️ в чате
+const ZONE = { ok: 'good', fast: 'fast', savings: 'warn', over: 'bad', none: 'muted' };
 // решение 50: «тратим быстрее плана» шлёт сервер; прежний сервер (и снимок до p14a) — «быстрее плана»
 const OLD_WORD = { 'быстрее плана': 'тратим быстрее плана' };
 // решение 49: легенда цветов полосок — одной строкой у «Лимиты»; решение 69: один цвет — один смысл, в легенде —
@@ -91,6 +92,8 @@ function reserveNote(r) {
 }
 
 function curveNote(h) {
+  // решение 81: нормы нет — итог или прогноз без сравнения с нормой
+  if (h.norm == null) return { text: h.closed ? `итог ${fmt(h.spent)}` : `прогноз ${fmt(h.forecast)}`, tone: '' };
   if (h.closed) {
     if (!h.curve.length) {   // кривая отрезана в снимке (решение 32) — по итогу
       return h.spent > h.norm ? { text: `итог ${fmt(h.spent)} · сверх нормы на ${fmt(h.spent - h.norm)}`, tone: 'bad' }
@@ -116,6 +119,7 @@ function scaleOf(h) {
 
 export function view(h) {
   const [y, m] = h.month.split('-').map(Number);
+  const rated = h.norm != null;   // решение 81: месяц без курса (до начала учёта) — нормы, плана и лимитов нет
   const plan = h.closed ? 1 : h.day / h.days;
   const over = h.left < 0;
   const overCount = h.limits.filter((l) => l.state === 'over' || l.state === 'covered').length;
@@ -161,12 +165,13 @@ export function view(h) {
     title: `${MONTHS[m - 1]} ${y}`,
     sub: h.closed ? 'итог месяца' : `на ${h.day} ${OF_MONTH[m - 1]}, день ${h.day} из ${h.days}`,
     zone: { word: OLD_WORD[h.zone.word] || h.zone.word, tone: ZONE[h.zone.status] },
-    big: { label: 'Потрачено', value: fmt(h.spent), of: `из ${fmt(h.norm)}`, tone: over ? 'bad' : '' },
-    bar: { fill: h.norm > 0 ? Math.max(0, Math.min(1, h.spent / h.norm)) : 1,
-      plan: h.closed || !h.norm ? null : h.plan_today / h.norm },
-    scale: scaleOf(h),
-    stats: [left, first, second],
-    curve: { note: curveNote(h), chart: h.curve.length > 0 },
+    big: { label: 'Потрачено', value: fmt(h.spent), of: rated ? `из ${fmt(h.norm)}` : '', tone: over ? 'bad' : '' },
+    // нормы нет — нет и полосы, доли нормы, плана на сегодня и чисел под чертой (решение 81)
+    bar: rated ? { fill: h.norm > 0 ? Math.max(0, Math.min(1, h.spent / h.norm)) : 1,
+      plan: h.closed || !h.norm ? null : h.plan_today / h.norm } : null,
+    scale: rated ? scaleOf(h) : null,
+    stats: rated ? [left, first, second] : [],
+    curve: { note: curveNote(h), chart: rated && h.curve.length > 0 },   // кривая — с чертой нормы и планом
     plan,
     limits,
     // решение 63: строка резерва видна сразу — под горячими лимитами, даже если по порядку она дальше первых TOP

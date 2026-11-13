@@ -87,6 +87,9 @@ function basketBody(entry, nav) {
 
 function budgetBody(entry, nav) {
   const v = budgetView(entry.data);
+  if (v.empty) {   // месяц без курса (решение 81): ни долей дохода, ни «Денег на месяц», ни лимитов
+    return [head(v.title, v.sub), h('div', { class: 'empty' }, h('h2', {}, v.empty.title), h('p', { class: 'muted small' }, v.empty.text))];
+  }
   const row = (name, sum, note, cls = '') => h('div', { class: `line ${cls}` },
     h('span', { class: 'grow' }, h('span', {}, name), note ? h('span', { class: 'muted small' }, note) : null),
     h('span', { class: 'nowrap' }, sum));

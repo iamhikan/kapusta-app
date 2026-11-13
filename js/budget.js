@@ -20,8 +20,15 @@ const strip = (s) => (s || '').replace(/^\(|\)$/g, '');
 // решение 61: «в ср. с 05.2026» сервера — «в среднем с мая 2026», «в ср.» — «в среднем»
 const avg = (s) => s.replace(/^в ср\.(?: с (\d\d)\.(\d{4}))?/, (_, m, y) => (m ? `в среднем с ${OF_MONTH[Number(m) - 1]} ${y}` : 'в среднем'));
 
+// решение 81: месяц без курса (до начала учёта) — сервер шлёт пустой бюджет: дохода, групп, лимитов, нормы и плана нет.
+// Слово — как плашка «Здоровья» (zone.word): /api/budget zone не шлёт
+const NONE = { sub: 'нормы нет', title: 'Бюджета нет', text: 'Месяц до начала учёта.' };
+
 export function budgetView(b) {
   const word = FOR_MONTH[Number(b.month.slice(5)) - 1];
+  if (b.norm == null && !b.income && !b.groups.length && !b.limits.rows.length && !b.plan) {
+    return { title: `Бюджет · ${monthTitle(b.month)}`, sub: NONE.sub, empty: { title: NONE.title, text: NONE.text } };
+  }
   const income = b.income ? { label: 'Доход ПР', value: fmt(b.income.rsd), set: b.income.set || '' } : null;
   let alloc = [];
   if (b.income) {
