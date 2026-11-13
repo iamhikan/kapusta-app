@@ -5,18 +5,22 @@ import { fmt, amounts, shiftMonth, view } from '../js/health.js';
 
 const sp = (s) => s.replace(/(\d) (\d{3})/g, '$1\u00a0$2');
 
+// лимит в форме ответа fin (решение 82): key — имя budget.yaml, label — подпись, state — точка градусника
+const L = (key, spent, limit, state, extra = {}) =>
+  ({ key, name: key, label: key, state, spent, limit, over: Math.max(0, spent - limit), ...extra });
+
 const NOW = {
   month: '2026-11', date: '2026-11-11', day: 11, days: 30, closed: false,
   zone: { status: 'ok', word: 'в норме' }, norm: 200000, spent: 80000, left: 120000, plan_today: 73333, per_day: 6000,
   regular: 0, oneoff: 0,
   limits: [
-    { name: 'питомцы', spent: 6000, limit: 4000, over: 2000 },
-    { name: 'путешествия', spent: 14000, limit: 16000, over: 0 },
-    { name: 'еда вне дома', spent: 5000, limit: 25000, over: 0 },
-    { name: 'резерв', spent: 2000, limit: 30000, over: 0, eaten: 2000 },
-    { name: 'транспорт', spent: 0, limit: 5000, over: 0 },
-    { name: 'спорт', spent: 0, limit: 8000, over: 0 },
-    { name: 'одежда', spent: 0, limit: 12000, over: 0 },
+    L('питомцы', 6000, 4000, 'covered'),            // перерасход покрыл резерв
+    L('путешествия', 14000, 16000, 'fast'),         // 87,5 % при плане 37 %
+    L('еда вне дома', 5000, 25000, 'ok'),
+    L('резерв', 2000, 30000, 'ok', { eaten: 2000 }),
+    L('транспорт', 0, 5000, 'ok'),
+    L('спорт', 0, 8000, 'ok'),
+    L('одежда', 0, 12000, 'ok'),
   ],
   balances: [
     { account: 'Assets:Family:Cash:Aleksey', name: 'нал Алексея', amounts: { EUR: 1000, RSD: 150000 } },
@@ -35,6 +39,7 @@ const OCT = {
   zone: { status: 'over', word: 'сверх дохода' }, norm: 200000, spent: 500000, left: -300000,
   plan_today: null, per_day: null, forecast: null,
   regular: 90000,
+  limits: NOW.limits.map((l) => (l.state === 'fast' ? { ...l, state: 'ok' } : l)),   // итог месяца: плана на сегодня нет
   curve: [[1, 50000], [2, 210000], [3, 250000], [31, 500000]],
   available: { total: 260000, left: -240000 },
 };
@@ -77,34 +82,35 @@ test('Ангелине — без «Весь доход» (сервер его �
   const v = view(ANGELINA);
   // решение 63: перерасход «питомцев» покрыт резервом — не красный счётчик, а остаток резерва (30 000 − 2 000)
   assert.deepEqual(v.stats[2], { label: 'Резерв, осталось', value: sp('28 000'), tone: '' });
-  const bare = { ...ANGELINA, limits: ANGELINA.limits.filter((l) => !l.eaten) };     // резерва нет — счётчик, как был
+  const bare = { ...ANGELINA, limits: ANGELINA.limits.filter((l) => !l.eaten)        // резерва нет — счётчик, как был
+    .map((l) => (l.state === 'covered' ? { ...l, state: 'over' } : l)) };
   assert.deepEqual(view(bare).stats[2], { label: 'Лимитов сверх', value: '1 из 6', tone: 'bad' });
   assert.ok(!JSON.stringify(v).includes('Весь доход'));
 });
 
-test('лимиты: горячие сверху, «+N» сверх лимита; полоска зелёная до плана, выше — жёлтая (решение 69), красная — сверх', () => {
+test('лимиты: горячие сверху, «+N» сверх лимита; цвет полоски — по state сервера (решения 69, 82)', () => {
   const v = view(NOW);
   const [pets, travel, food] = v.limits;
   assert.equal(pets.name, 'питомцы');
   assert.deepEqual(pets.ops, { limit: 'питомцы' });               // тап — операции лимита за месяц (решение 3)
   assert.equal(pets.over, '+2 000');
-  assert.equal(pets.color, 'var(--bar-orange)');                 // решение 63: перерасход покрыл резерв — не красная
-  const bare = { ...NOW, limits: NOW.limits.filter((l) => !l.eaten) };
-  assert.equal(view(bare).limits[0].color, 'var(--bad)');        // резерва нет — красная
+  assert.equal(pets.color, 'var(--bar-orange)');                 // covered — решение 63: перерасход покрыл резерв
+  const bare = { ...NOW, limits: [{ ...NOW.limits[0], state: 'over' }] };
+  assert.equal(view(bare).limits[0].color, 'var(--bad)');        // over — резерв не покрыл: красная
   assert.equal(pets.fill, 4000 / 6000);                          // правка 1: сплошная часть — до лимита, дальше штриховка
   assert.equal(travel.over, '');
-  assert.equal(travel.color, 'var(--bar-yellow)');            // 87,5 % при плане 37 %: у самого лимита — не оранжевая
-  assert.equal(view({ ...NOW, day: 30 }).limits[1].color, 'var(--bar-green)');                   // к концу месяца — в плане
-  assert.equal(food.color, 'var(--bar-green)');                 // 20 % при плане 37 %
+  assert.equal(travel.color, 'var(--bar-yellow)');               // fast — выше плана на сегодня; у самого лимита — не оранжевая
+  assert.equal(food.color, 'var(--bar-green)');                  // ok — в плане
   assert.deepEqual([food.spent, food.limit], ['5 000', '25 000']);
   assert.equal(v.limitsShown, 6);                                // остальные — по «Все 7»
   assert.equal(v.plan, 11 / 30);
 });
 
-test('состояние полоски лимита — словами для диктора (фаза 12): в плане, выше плана, сверх лимита; итог месяца — в лимите', () => {
+test('состояние полоски лимита — словами для диктора (фаза 12) по state: в плане, выше плана, сверх лимита; итог месяца — в лимите', () => {
   const [pets, travel, food] = view(NOW).limits;
   assert.deepEqual([pets.state, travel.state, food.state], ['сверх лимита, покрыто резервом', 'выше плана', 'в плане']);
   assert.equal(view(NOW).limits.find((l) => l.name === 'транспорт').state, 'в плане');      // трат нет
+  assert.equal(view({ ...NOW, limits: [{ ...NOW.limits[0], state: 'over' }] }).limits[0].state, 'сверх лимита');
   assert.deepEqual(view(OCT).limits.slice(0, 3).map((l) => l.state), ['сверх лимита, покрыто резервом', 'в лимите', 'в лимите']);
 });
 
@@ -174,11 +180,9 @@ test('норма исчерпана в текущем месяце — «мож�
 
 test('резерв: под лимитами — из чего он (свои + перерасход других, решение 51) и чей перерасход покрыт', () => {
   assert.equal(view(NOW).reserve, 'Резерв: свои 0 + перерасход других 2 000 — покрыл «питомцы».');
-  const short = { ...NOW, limits: [...NOW.limits.slice(0, 3), { name: 'резерв', spent: 3000, limit: 3000, over: 0, eaten: 3000 },
-    { name: 'одежда', spent: 15000, limit: 12000, over: 3000 }] };
-  assert.equal(view(short).reserve,
+  assert.equal(view(SHORT).reserve,
     'Резерв: свои 0 + перерасход других 3 000 — покрыл «питомцы», «одежда» частично.');
-  assert.ok(!JSON.stringify(view(short)).includes('перевал'));
+  assert.ok(!JSON.stringify(view(SHORT)).includes('перевал'));
   const calm = { ...NOW, limits: NOW.limits.filter((l) => !l.eaten && !l.over) };
   assert.equal(view(calm).reserve, '');
 });
@@ -208,7 +212,7 @@ test('остатки нажимаются: операции этого счёт�
 });
 
 test('скрытые лимиты — отдельной кнопкой (решение 40): сколько, полоски, «виден от N %»; нет — кнопки нет', () => {
-  const v = view({ ...NOW, hidden: [{ name: 'образование', spent: 5000, limit: 20000, hot: 90 }] });
+  const v = view({ ...NOW, hidden: [{ key: 'образование', name: 'образование', label: 'образование', spent: 5000, limit: 20000, hot: 90 }] });
   assert.equal(v.hidden.label, 'Скрытые лимиты · 1');
   assert.deepEqual(v.hidden.rows.map((r) => [r.name, r.spent, r.limit, r.fill, r.hint, r.ops.limit]),
     [['образование', sp('5 000'), sp('20 000'), 0.25, 'в градуснике — от 90 % лимита', 'образование']]);
@@ -242,16 +246,17 @@ test('решения 49, 69: легенда у «Лимиты» — только
   for (const l of view(NOW).limits) assert.ok(legend.includes(l.color), `${l.name}: ${l.color} нет в легенде`);
 });
 
-test('резерв не кончился — он покрыл весь перерасход, хотя округлённые суммы расходятся на 1 (critique 12.11)', () => {
+test('резерв не кончился — он покрыл весь перерасход (сервер: covered), хотя округлённые суммы расходятся на 1 (critique 12.11)', () => {
   // сервер округляет каждый перерасход отдельно: 2 000 + 1 001 = 3 001 против «перерасход других» 3 000
-  const room = { ...NOW, limits: [NOW.limits[0], { name: 'резерв', spent: 3500, limit: 30000, over: 0, eaten: 3000 },
-    { name: 'одежда', spent: 13001, limit: 12000, over: 1001 }] };
+  const room = { ...NOW, limits: [NOW.limits[0], L('резерв', 3500, 30000, 'ok', { eaten: 3000 }),
+    L('одежда', 13001, 12000, 'covered')] };
   assert.equal(view(room).reserve, 'Резерв: свои 500 + перерасход других 3 000 — покрыл «питомцы», «одежда».');
 });
 
-// решение 63 (critique 12.11, повтор, P1): покрытый резервом перерасход — спокойно; тревога — когда резерв кончился
-const SHORT = { ...NOW, limits: [...NOW.limits.slice(0, 3), { name: 'резерв', spent: 3000, limit: 3000, over: 0, eaten: 3000 },
-  { name: 'одежда', spent: 15000, limit: 12000, over: 3000 }] };
+// решение 63 (critique 12.11, повтор, P1): покрытый резервом перерасход — спокойно; тревога — когда резерв кончился:
+// тогда сервер не ставит covered никому — перерасход у всех over
+const SHORT = { ...NOW, limits: [{ ...NOW.limits[0], state: 'over' }, ...NOW.limits.slice(1, 3),
+  L('резерв', 3000, 3000, 'fast', { eaten: 3000 }), L('одежда', 15000, 12000, 'over')] };
 
 test('решение 63: перерасход, который покрыл резерв, — оранжевая полоска и «покрыто резервом»; резерв кончился — красная', () => {
   const pets = view(NOW).limits.find((l) => l.name === 'питомцы');
@@ -264,7 +269,7 @@ test('решение 63: перерасход, который покрыл ре�
 });
 
 test('решение 63: строка резерва видна сразу, под горячими лимитами; в ней — из чего он и что покрыл', () => {
-  const many = { ...NOW, limits: [...NOW.limits.filter((l) => !l.eaten), { name: 'красота', spent: 0, limit: 5000, over: 0 },
+  const many = { ...NOW, limits: [...NOW.limits.filter((l) => !l.eaten), L('красота', 0, 5000, 'ok'),
     NOW.limits.find((l) => l.eaten)] };
   const v = view(many);
   assert.equal(v.limits.length, 8);
@@ -281,7 +286,7 @@ test('правка 1: сверх лимита полоска — до потра
   assert.deepEqual([pets.fill, pets.limitAt], [4000 / 6000, 4000 / 6000]);
   const travel = v.limits.find((l) => l.name === 'путешествия');    // 14 000 из 16 000
   assert.deepEqual([travel.fill, travel.limitAt], [14000 / 16000, null]);
-  const big = view({ ...NOW, limits: [{ name: 'транспорт', spent: 25000, limit: 5000, over: 20000 }] }).limits[0];
+  const big = view({ ...NOW, limits: [L('транспорт', 25000, 5000, 'over')] }).limits[0];
   assert.deepEqual([big.fill, big.limitAt], [0.2, 0.2]);              // ×5 — метка на пятой части полоски
 });
 

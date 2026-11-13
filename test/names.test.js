@@ -10,12 +10,21 @@ import { FLAG, filters } from '../js/ops.js';
 
 const sp = (s) => s.replace(/(\d) (\d{3})/g, '$1 $2');
 
-test('решение 58: «учёба» — «образование», «курс» и «курсовые разницы» — «обмен валюты» на всех экранах', () => {
+test('решение 58: «учёба» — «образование», «курс» и лимит «курсовые разницы» — «обмен валюты» на всех экранах', () => {
   const cats = words({ cats: [{ name: 'учёба', rsd: 4000 }, { name: 'курс', rsd: 300 }, { name: 'английский', rsd: 900 }] });
   assert.deepEqual(cats.cats.map((c) => c.name), ['образование', 'обмен валюты', 'английский']);
-  assert.equal(words({ name: 'курсовые разницы' }).name, 'обмен валюты');
   // описание, которое написал человек, не меняется: подменяется только значение целиком
   assert.equal(words({ what: 'курс английского' }).what, 'курс английского');
+  // лимит (решение 82): слово — label сервера на «Здоровье»; key страница не трогает — он уходит назад в limit=
+  const fx = { key: 'курсовые разницы', name: 'курсовые разницы', label: 'обмен валюты', state: 'ok', spent: 0, limit: 5000, over: 0 };
+  const h = view(words({ month: '2026-11', date: '2026-11-11', day: 11, days: 30, norm: 100, spent: 10, left: 90, per_day: 5,
+    plan_today: 37, zone: { status: 'ok', word: 'в норме' }, closed: false, regular: 0, oneoff: 0, limits: [fx], curve: [],
+    empty: [], balances: [], fresh: { last: '2026-11-11 08:11', now: '2026-11-11T11:13' } }));
+  assert.deepEqual([h.limits[0].name, h.limits[0].ops.limit], ['обмен валюты', 'курсовые разницы']);
+  // «Бюджет»: label сервер не шлёт — строка словом приложения, key — имя budget.yaml
+  const b = budgetView(words({ ...BUDGET, limits: { ...BUDGET.limits, rows: [{ name: 'курсовые разницы', rsd: 5000, set: null,
+    hot: 80, off_norm: true }] } }));
+  assert.deepEqual([b.limits.rows[0].name, b.limits.rows[0].key], ['обмен валюты', 'курсовые разницы']);
 });
 
 const BUDGET = {

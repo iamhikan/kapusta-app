@@ -13,10 +13,12 @@ export function apiBase(search) {
 
 // Слова приложения (решение 51; Алексей 11–12.11): сервер и ответы бота говорят по-своему (names.py не трогаем),
 // страница подменяет только целое значение — описание, которое написал человек, не меняется. Одно и то же — одним
-// словом на всех экранах (решения 58, 61): «учёба» («Категории») и «образование» («Бюджет»), «курс» и «курсовые разницы»
+// словом на всех экранах (решения 58, 61): «учёба» («Категории») и «образование» («Бюджет»), «курс» — «обмен валюты».
+// Лимиты — словами сервера (решение 82): key — имя, которое страница шлёт назад в limit=, label — подпись; их не трогаем
 const WORDS = { неразобранное: 'без категории', 'Raiffeisen Ангелина': 'Райффайзен Ангелины',
-  'Opening-Balances': 'начальный остаток', учёба: 'образование', курс: 'обмен валюты', 'курсовые разницы': 'обмен валюты',
+  'Opening-Balances': 'начальный остаток', учёба: 'образование', курс: 'обмен валюты',
   'Регулярные по карте': 'Регулярные платежи' };
+const OWN = new Set(['key', 'label']);
 
 // Служебные счета (решение 67): у счёта без своего слова сервер отдаёт последнюю часть имени («cashunrecorded»,
 // «DROIT», «USDT») или одно имя на два счёта («кредит РФ»). Подменяем по полному имени счёта — имя проводки или ноги
@@ -29,7 +31,7 @@ export function words(x) {
   if (typeof x === 'string') return Object.hasOwn(WORDS, x) ? WORDS[x] : x;
   if (Array.isArray(x)) return x.map(words);
   if (x && typeof x === 'object') {
-    const out = Object.fromEntries(Object.entries(x).map(([k, v]) => [k, words(v)]));
+    const out = Object.fromEntries(Object.entries(x).map(([k, v]) => [k, OWN.has(k) ? v : words(v)]));
     const own = typeof x.account === 'string' && Object.hasOwn(ACCOUNTS, x.account) ? ACCOUNTS[x.account] : null;
     if (own && typeof x.name === 'string') out.name = own;
     if (own && typeof x.src === 'string') out.src = own;

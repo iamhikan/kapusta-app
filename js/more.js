@@ -109,7 +109,7 @@ function budgetBody(entry, nav) {
     h('div', { class: 'section-head' }, h('h2', {}, v.limits.title), h('span', { class: 'muted small' }, v.limits.sub)),
     h('section', { class: 'card list' }, ...v.limits.rows.map((r) => h('button', { type: 'button', class: 'line op',
       'data-focus': `limit:${r.name}`, on: { click: () => open(nav, newOps(entry.month, { title: r.name.charAt(0).toUpperCase()
-        + r.name.slice(1), params: { limit: r.name } })) } },
+        + r.name.slice(1), params: { limit: r.key } })) } },
     h('span', { class: 'grow' }, h('span', {}, r.name), r.note ? h('span', { class: 'muted small' }, r.note) : null),
     h('span', { class: 'nowrap' }, r.sum), icon(ICONS.right, 16)))),
     v.free ? h('p', { class: `note-text small ${v.free.tone || 'muted'}` }, v.free.text) : null];

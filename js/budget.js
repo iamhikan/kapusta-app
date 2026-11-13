@@ -12,6 +12,10 @@ const NORM = 'Норма — переменные траты';   // решени
 const OF_MONTH = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября',
   'ноября', 'декабря'];
 
+// решение 82: /api/budget label лимита не шлёт (его шлёт только /api/health) — строка лимита словом приложения, в
+// «Операции» уходит имя budget.yaml (key)
+const LABEL = { 'курсовые разницы': 'обмен валюты' };
+
 const strip = (s) => (s || '').replace(/^\(|\)$/g, '');
 // решение 61: «в ср. с 05.2026» сервера — «в среднем с мая 2026», «в ср.» — «в среднем»
 const avg = (s) => s.replace(/^в ср\.(?: с (\d\d)\.(\d{4}))?/, (_, m, y) => (m ? `в среднем с ${OF_MONTH[Number(m) - 1]} ${y}` : 'в среднем'));
@@ -44,7 +48,7 @@ export function budgetView(b) {
     limits: {
       title: `Лимиты — ${fmt(lim.rsd)}`,
       sub: lim.eur ? `${fmt(lim.eur)} €` : '',
-      rows: lim.rows.map((r) => ({ name: r.name, sum: fmt(r.rsd),
+      rows: lim.rows.map((r) => ({ key: r.name, name: LABEL[r.name] ?? r.name, sum: fmt(r.rsd),
         note: [r.set, r.hot != null ? `скрытый, виден от ${r.hot} %` : '', r.off_norm ? 'вне нормы' : '']
           .filter(Boolean).join(' · ') })),
     },

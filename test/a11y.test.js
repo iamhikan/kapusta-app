@@ -95,12 +95,13 @@ const NOW = {
   month: '2026-11', date: '2026-11-11', day: 11, days: 30, closed: false,
   zone: { status: 'ok', word: 'в норме' }, norm: 200000, spent: 80000, left: 120000, plan_today: 73333, per_day: 6000,
   regular: 0, oneoff: 0,
+  // лимиты — в форме ответа fin (решение 82): key, label, state
   limits: [
-    { name: 'питомцы', spent: 6000, limit: 4000, over: 2000 },
-    { name: 'путешествия', spent: 14000, limit: 16000, over: 0 },
-    { name: 'еда вне дома', spent: 5000, limit: 25000, over: 0 },
+    { key: 'питомцы', name: 'питомцы', label: 'питомцы', state: 'over', spent: 6000, limit: 4000, over: 2000 },
+    { key: 'путешествия', name: 'путешествия', label: 'путешествия', state: 'fast', spent: 14000, limit: 16000, over: 0 },
+    { key: 'еда вне дома', name: 'еда вне дома', label: 'еда вне дома', state: 'ok', spent: 5000, limit: 25000, over: 0 },
   ],
-  hidden: [{ name: 'образование', spent: 1000, limit: 20000, hot: 90 }],
+  hidden: [{ key: 'образование', name: 'образование', label: 'образование', spent: 1000, limit: 20000, hot: 90 }],
   balances: [], empty: [], curve: [[1, 2000], [11, 80000]], forecast: 218182,
   fresh: { last: '2026-11-11 08:11', now: '2026-11-11T11:13' },
 };
@@ -116,7 +117,8 @@ test('строка лимита: диктор слышит имя, потрач�
   // после v3 (critique 12.11, P2 № 4): числа — словами, а не «+2 000 6 000 / 4 000»
   assert.equal(said[0], 'питомцы: 6 000 из 4 000, сверх на 2 000');
   // решение 63: перерасход покрыл резерв — без красного: «+N» и сумма спокойным цветом, подпись видна глазами
-  const res = view({ ...NOW, limits: [...NOW.limits, { name: 'резерв', spent: 2000, limit: 30000, over: 0, eaten: 2000 }] });
+  const res = view({ ...NOW, limits: [{ ...NOW.limits[0], state: 'covered' }, ...NOW.limits.slice(1),
+    { key: 'резерв', name: 'резерв', label: 'резерв', state: 'ok', spent: 2000, limit: 30000, over: 0, eaten: 2000 }] });
   const pets = limitRow(res.limits[0], { plan: res.plan, open() {} });
   const all = [];
   walk(pets, (e) => all.push((e.attrs.class || '').split(' ')));

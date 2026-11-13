@@ -18,6 +18,10 @@ const COVERED = 'var(--bar-orange)';   // перерасход, который �
 const LEGEND = [{ text: 'в плане', color: 'var(--bar-green)' }, { text: 'выше плана', color: 'var(--bar-yellow)' },
   { text: 'покрыто резервом', color: COVERED }, { text: 'сверх лимита', color: 'var(--bad)' }];
 const LEGEND_CLOSED = [{ text: 'в лимите', color: 'var(--bar-green)' }, ...LEGEND.slice(2)];
+// решение 82 (Б6, М5): цвет полоски и слово диктору — по state лимита, точке градусника в чате (gauge.state): свои
+// пороги и своё «покрыто резервом» страница больше не считает. Итог месяца: в плане — «в лимите»
+const COLOR = { ok: 'var(--bar-green)', fast: 'var(--bar-yellow)', over: 'var(--bad)', covered: COVERED };
+const SAY = { ok: 'в плане', fast: 'выше плана', over: 'сверх лимита', covered: 'сверх лимита, покрыто резервом' };
 export const TOP = 6;   // лимитов сразу; остальные — по «Все N»
 // группы остатков (решение 48), порядок показа; прежний сервер без group — одна группа без заголовка
 const GROUPS = [['cash', 'Наличные'], ['cards', 'Карты и счета'], ['business', 'Бизнес'], ['debts', 'Долги']];
@@ -59,13 +63,6 @@ function when(stamp) {
   return `${d}.${m}` + (time ? ` в ${time.slice(0, 5)}` : '');
 }
 
-function limitColor(share, plan) {
-  // полоска: до плана на сегодня — зелёная, выше — жёлтая и у самого лимита (решение 69: оранжевый — только
-  // «покрыто резервом»), сверх — красная
-  if (share > 1) return 'var(--bad)';
-  return share <= plan ? 'var(--bar-green)' : 'var(--bar-yellow)';
-}
-
 // легенда: только цвета полосок месяца (решение 69); у цвета перерасхода — образец штриховкой, метка «лимит» —
 // если есть строка сверх лимита (правка 1)
 function legendOf(limits, closed) {
@@ -75,27 +72,22 @@ function legendOf(limits, closed) {
   return over.length ? [...items, { text: 'лимит', mark: true }] : items;
 }
 
-function limitState(share, plan, closed) {
-  // те же пороги, что у цвета полоски, — словами для диктора (фаза 12); итог месяца — без плана на сегодня
-  if (share > 1) return 'сверх лимита';
-  if (closed) return 'в лимите';
-  return share <= plan ? 'в плане' : 'выше плана';
-}
-
-function reserveOf(limits) {
-  // резерв сжимается на перерасход других лимитов (fin budget, решения 28, 51); gone — резерв кончился и покрыл не всё.
-  // Суммы с сервера округлены по одной и могут разойтись на 1 — поэтому «кончился» смотрим и по самому резерву
+function reserveHit(limits) {
+  // резерв — строка с eaten: его сжал перерасход других лимитов (fin budget, решения 28, 51); hit — чей перерасход.
+  // short — резерв кончился и покрыл не всё: сервер тогда не ставит covered никому, и перерасход — over (решение 82)
   const res = limits.find((l) => l.eaten);
   if (!res) return null;
-  const over = limits.filter((l) => l.over > 0 && l !== res);
-  return { res, over, gone: res.spent >= res.limit && over.reduce((s, l) => s + l.over, 0) > res.eaten };
+  const hit = limits.filter((l) => l.over > 0 && l !== res);
+  return { res, hit, short: hit.some((l) => l.state === 'over') };
 }
+
+const quoted = (rows) => rows.map((l) => `«${l.label}»`).join(', ');
 
 function reserveNote(r) {
   // из чего резерв и чей перерасход покрыл (решение 51); частично — только когда он кончился (critique 12.11)
   if (!r) return '';
   return `Резерв: свои ${fmt(r.res.spent - r.res.eaten)} + перерасход других ${fmt(r.res.eaten)} — покрыл `
-    + `${r.over.map((l) => `«${l.name}»`).join(', ')}${r.gone ? ' частично' : ''}.`;
+    + `${quoted(r.hit)}${r.short ? ' частично' : ''}.`;
 }
 
 function curveNote(h) {
@@ -126,9 +118,8 @@ export function view(h) {
   const [y, m] = h.month.split('-').map(Number);
   const plan = h.closed ? 1 : h.day / h.days;
   const over = h.left < 0;
-  const overCount = h.limits.filter((l) => l.spent > l.limit).length;
-  const rv = reserveOf(h.limits);
-  const covered = (l) => Boolean(rv && !rv.gone && l !== rv.res && l.over > 0);   // решение 63
+  const overCount = h.limits.filter((l) => l.state === 'over' || l.state === 'covered').length;
+  const rv = reserveHit(h.limits);
 
   // решение 26: крупно — потрачено; осталось (или сверх нормы) — первым в строке чисел
   const left = over ? { label: 'Сверх нормы', value: fmt(-h.left), tone: 'bad' }
@@ -143,25 +134,24 @@ export function view(h) {
     ? (h.available.left >= 0
       ? { label: 'Весь доход, осталось', value: fmt(h.available.left), tone: '' }
       : { label: 'Сверх дохода', value: fmt(-h.available.left), tone: 'bad' })
-    : rv && !rv.gone ? { label: 'Резерв, осталось', value: fmt(rv.res.limit - rv.res.spent), tone: '' }
+    : rv && !rv.short ? { label: 'Резерв, осталось', value: fmt(rv.res.limit - rv.res.spent), tone: '' }
       : { label: 'Лимитов сверх', value: `${overCount} из ${h.limits.length}`, tone: overCount ? 'bad' : 'good' };
   const note = reserveNote(rv);
 
   const limits = h.limits.map((l) => {
     const share = l.limit ? l.spent / l.limit : 0;
-    const calm = covered(l);
+    const calm = l.state === 'covered';   // решение 63: перерасход покрыл резерв — так сказал сервер
     // правка 1 (ui-ux-pro-max, 13.11): сверх лимита шкала — до потраченного; limitAt — метка лимита и начало штриховки
     const limitAt = share > 1 ? l.limit / l.spent : null;
-    const row = { name: l.name, ops: { limit: l.name }, spent: fmt(l.spent), limit: fmt(l.limit), over: l.over ? `+${fmt(l.over)}` : '',
-      fill: limitAt ?? Math.max(0, Math.min(1, share)), limitAt, color: calm ? COVERED : limitColor(share, plan),
-      state: calm ? 'сверх лимита, покрыто резервом' : limitState(share, plan, h.closed) };
-    if (l.over > 0 && rv && l !== rv.res) row.covered = calm;
+    // решение 82: подпись — label, в «Операции» — key (имя budget.yaml)
+    const row = { key: l.key, name: l.label, ops: { limit: l.key }, spent: fmt(l.spent), limit: fmt(l.limit),
+      over: l.over ? `+${fmt(l.over)}` : '', fill: limitAt ?? Math.max(0, Math.min(1, share)), limitAt,
+      color: COLOR[l.state], state: h.closed && l.state === 'ok' ? 'в лимите' : SAY[l.state], covered: calm };
     if (calm) row.hint = 'покрыто резервом';
     // резерв: операции перерасхода других лимитов, в шапке — чей перерасход и сколько покрыто (решение 51);
     // в самой строке — из чего он и что покрыл (решение 63: раньше — серым абзацем под списком)
     if (l.eaten) {
-      row.note = `перерасход ${h.limits.filter((x) => x.over > 0 && x !== l).map((x) => `«${x.name}»`).join(', ')}`
-        + ` · резерв покрыл ${fmt(l.eaten)}`;
+      row.note = `перерасход ${quoted(rv.hit)} · резерв покрыл ${fmt(l.eaten)}`;
       row.hint = note.replace(/^Резерв: /, '');
     }
     return row;
@@ -186,7 +176,7 @@ export function view(h) {
     reserve: note,
     // решение 40: скрытые лимиты (show: hot) — отдельной кнопкой; дошли до порога — уже в общем списке (сервер)
     hidden: h.hidden && h.hidden.length ? { label: `Скрытые лимиты · ${h.hidden.length}`,
-      rows: h.hidden.map((l) => ({ name: l.name, spent: fmt(l.spent), limit: fmt(l.limit), ops: { limit: l.name },
+      rows: h.hidden.map((l) => ({ key: l.key, name: l.label, spent: fmt(l.spent), limit: fmt(l.limit), ops: { limit: l.key },
         fill: l.limit ? Math.max(0, Math.min(1, l.spent / l.limit)) : 0, hint: `в градуснике — от ${l.hot} % лимита` })) }
       : null,
     budgetLabel: `Весь бюджет на ${FOR_MONTH[m - 1]}`,

@@ -99,7 +99,7 @@ const nav = {
     // резерв: чей перерасход и сколько покрыто — из «Здоровья» того же месяца
     if (!ctx.reserve) return '';
     const hh = cache.get(m);
-    const l = hh && view(hh).limits.find((x) => x.name === ctx.params.limit);
+    const l = hh && view(hh).limits.find((x) => x.key === ctx.params.limit);
     return (l && l.note) || 'перерасход других лимитов';
   },
   savePeriod(p) {
@@ -110,7 +110,7 @@ const nav = {
     if (ctx.limitValue != null) return ctx.limitValue;
     if (!ctx.params.limit) return null;
     const hh = cache.get(m);
-    const l = hh && hh.limits.find((x) => x.name === ctx.params.limit);
+    const l = hh && hh.limits.find((x) => x.key === ctx.params.limit);   // решение 82: в limit= — key
     return l ? l.limit : null;
   },
 };
