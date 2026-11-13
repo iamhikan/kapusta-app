@@ -122,18 +122,29 @@ function list(entry, nav, v) {
     ...v.rows.map((r) => catRow(v, r, open)));
 }
 
-function bars(entry) {
+function bars(entry, today) {
   if (!entry.bars || !entry.bars.points.length) return null;
-  const v = barsView(entry.bars);
+  return barsChart(barsView(entry.bars, today));
+}
+
+// «По месяцам» (правка 6): текущий месяц — штриховкой и «по 13.11», черта нормы — с подписью «норма N» справа
+export function barsChart(v) {
+  const n = v.norm;
   return h('section', { class: 'card pad stack' },
     h('div', { class: 'stack-s' }, h('span', { class: 'title' }, 'По месяцам'), h('span', { class: 'muted small' }, v.note)),
-    h('svg:svg', { viewBox: `0 0 ${BARS.width} ${BARS.height}`, width: '100%', role: 'img', 'aria-label': v.aria, class: 'chart' },
+    h('svg:svg', { viewBox: `0 0 ${BARS.width} ${BARS.height}`, width: '100%', role: 'img', 'aria-label': v.aria, class: 'chart bars' },
+      h('svg:defs', {}, h('svg:pattern', { id: 'bars-partial', width: 6, height: 6, patternUnits: 'userSpaceOnUse',
+        patternTransform: 'rotate(45)' }, h('svg:rect', { width: 6, height: 6, class: 'hatch-bg' }),
+      h('svg:rect', { width: 3, height: 6, class: 'hatch-fg' }))),
       ...v.bars.map((b) => [
-        h('svg:rect', { x: b.x, y: b.y, width: b.w, height: Math.max(0, b.h), rx: 4, class: `bar-col${b.partial ? ' partial' : ''}` }),
+        h('svg:rect', { x: b.x, y: b.y, width: b.w, height: Math.max(0, b.h), rx: 4, class: `bar-col${b.partial ? ' partial' : ''}`,
+          fill: b.partial ? 'url(#bars-partial)' : null }),
         b.normY == null ? null : h('svg:line', { x1: b.x - 3, x2: b.x + b.w + 3, y1: b.normY, y2: b.normY, class: 'norm-mark' }),
-        h('svg:text', { x: b.cx, y: b.y - 4, 'text-anchor': 'middle', class: 'bar-value' }, b.v),
-        h('svg:text', { x: b.cx, y: BARS.height - 6, 'text-anchor': 'middle', class: 'tick' }, b.m)])),
-    v.bars.some((b) => b.partial) ? h('p', { class: 'muted small' }, 'Текущий месяц — по сегодня, светлее.') : null);
+        h('svg:text', { x: b.cx, y: b.y - 5, 'text-anchor': 'middle', class: 'bar-value' }, b.v),
+        h('svg:text', { x: b.cx, y: BARS.bottom + 18, 'text-anchor': 'middle', class: 'tick' }, b.m),
+        b.upto ? h('svg:text', { x: b.cx, y: BARS.bottom + 36, 'text-anchor': 'middle', class: 'tick' }, b.upto) : null]),
+      n ? [h('svg:text', { x: n.x, y: n.y - 3, class: 'norm-label' }, 'норма'),
+        h('svg:text', { x: n.x, y: n.y + 12, class: 'norm-label' }, n.value)] : null));
 }
 
 const FOOD = 'Expenses:Family:Food';
@@ -213,7 +224,7 @@ export function catsScreen(entry, nav) {
   } else if (entry.cat) {
     body = [subHead(entry, nav, v), extra(entry, nav), list(entry, nav, v), ...top(nav, v)];
   } else {
-    body = [h('section', { class: 'card pad' }, stripChart(v)), list(entry, nav, v), bars(entry), extra(entry, nav)];
+    body = [h('section', { class: 'card pad' }, stripChart(v)), list(entry, nav, v), bars(entry, today), extra(entry, nav)];
   }
   return h('div', { class: 'screen with-tabs' },
     entry.cat ? null : chips(entry, nav), periodHead(entry, nav, sub), entry.cat ? null : scopeSwitch(entry, nav),

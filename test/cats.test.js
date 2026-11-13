@@ -104,7 +104,7 @@ test('столбцы по месяцам: подписи в тысячах, те
   assert.equal(v.bars[0].normY != null, true);
   assert.ok(v.bars[0].normY < v.bars[0].y);                      // норма 200 выше столбца 150
   assert.match(v.aria, /сентябрь 150, октябрь 250, ноябрь 40 на сегодня/);
-  assert.equal(v.note, 'в лимитах, тыс. RSD · черта — норма');
+  assert.equal(v.note, 'в лимитах, тыс. RSD');                    // правка 6: «норма N» — подписью у черты
   const all = barsView({ by: 'month', scope: 'all', points: [{ from: '2026-11-01', to: '2026-11-30', rsd: 0, partial: true, norm: null }] });
   assert.equal(all.bars[0].normY, null);
   assert.equal(all.note, 'все траты, тыс. RSD');
@@ -137,8 +137,8 @@ test('категория из общего лимита — «лимит «…»
 
 test('«В лимитах» вместо «Шкала градусника» (решение 51): подпись столбцов по месяцам', () => {
   const pts = [{ from: '2026-10-01', rsd: 100000, norm: 200000 }, { from: '2026-11-01', rsd: 50000, norm: 200000, partial: true }];
-  assert.equal(barsView({ scope: 'scale', points: pts }).note, 'в лимитах, тыс. RSD · черта — норма');
-  assert.equal(barsView({ scope: 'all', points: pts }).note, 'все траты, тыс. RSD · черта — норма');
+  assert.equal(barsView({ scope: 'scale', points: pts }).note, 'в лимитах, тыс. RSD');   // правка 6: черта подписана сама
+  assert.equal(barsView({ scope: 'all', points: pts }).note, 'все траты, тыс. RSD');
 });
 
 test('прошлый период в столбце и в карточке: месяц у обоих концов, у года — «к 2025» и год в карточке (долг 12.11)', () => {
@@ -170,4 +170,18 @@ test('правка 2: у своего лимита — полоска к лим�
   assert.deepEqual([pets.bar, pets.limit], [null, '']);
   const sub = catsView({ ...BODY, cat: 'Expenses:Family:Food', name: 'продукты', limit: null });
   assert.ok(sub.rows.every((r) => r.bar === null));                  // в подкатегориях лимита нет
+});
+
+// правка 6 (ui-ux-pro-max, 13.11.2026): подписи 10 px, черта нормы без числа, «текущий месяц светлее» — сноской
+test('правка 6: «норма N» — подписью справа у черты последнего месяца, столбцы — левее; у текущего месяца — «по 13.11»', () => {
+  const pts = [{ from: '2026-09-01', to: '2026-09-30', rsd: 150000, partial: false, norm: 200000 },
+    { from: '2026-10-01', to: '2026-10-31', rsd: 250000, partial: false, norm: 200000 },
+    { from: '2026-11-01', to: '2026-11-30', rsd: 40000, partial: true, norm: 210000 }];
+  const v = barsView({ scope: 'scale', points: pts }, '2026-11-13');
+  assert.deepEqual(v.bars.map((b) => b.upto), ['', '', 'по 13.11']);
+  assert.deepEqual([v.norm.value, v.norm.y], ['210', v.bars[2].normY]);
+  assert.ok(v.bars.every((b) => b.x + b.w + 4 <= v.norm.x), 'подпись не наезжает на столбцы');
+  const plain = barsView({ scope: 'all', points: pts.map((p) => ({ ...p, norm: null })) }, '2026-11-13');
+  assert.equal(plain.norm, null);
+  assert.ok(plain.bars[2].x > v.bars[2].x, 'без нормы — столбцы на всю ширину');
 });

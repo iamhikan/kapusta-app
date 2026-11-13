@@ -292,3 +292,9 @@ test('правка 4: имя в строке «Операций» — до дв�
   assert.equal(d['white-space'], 'normal');
   assert.ok(Number.parseInt(decls('.cat-tile').width, 10) >= 32, 'плитка 32 px');
 });
+
+test('правка 6: подписи «По месяцам» — не мельче 12 px (было 10 px)', () => {
+  for (const sel of ['.chart.bars .tick', '.chart.bars .bar-value', '.chart.bars .norm-label']) {
+    assert.ok(Number.parseInt(decls(sel)['font-size'], 10) >= 12, sel);
+  }
+});

@@ -4,7 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { all, one, seen } from './fakedom.js';
 import { limitLegend, limitRow } from '../js/limitrow.js';
-import { catRow, stripChart } from '../js/catscreen.js';
+import { barsChart, catRow, stripChart } from '../js/catscreen.js';
+import { barsView } from '../js/cats.js';
 import { cardScreen, opLine } from '../js/screens.js';
 import { opRow } from '../js/ops.js';
 import { planCard } from '../js/more.js';
@@ -119,4 +120,18 @@ test('правка 5: карточка «Деньги на …» — снача�
   assert.equal(seen(one(more, '<summary')), 'Из чего суммы');
   assert.ok(seen(more).includes('жильё 180 000') && seen(more).includes('по курсу НБС'));
   assert.equal(one(el, 'fill').style.width, '25.0%');
+});
+
+test('правка 6: «По месяцам» — текущий месяц штриховкой и «по 13.11», у черты — «норма 210», сноски «светлее» нет', () => {
+  const v = barsView({ scope: 'scale', points: [{ from: '2026-10-01', to: '2026-10-31', rsd: 250000, partial: false, norm: 200000 },
+    { from: '2026-11-01', to: '2026-11-30', rsd: 40000, partial: true, norm: 210000 }] }, '2026-11-13');
+  const el = barsChart(v);
+  const svg = one(el, '<svg');
+  assert.ok(svg.getAttribute('class').includes('bars'));
+  const now = all(svg, 'bar-col').find((r) => r.getAttribute('class').includes('partial'));
+  assert.equal(now.getAttribute('fill'), 'url(#bars-partial)');
+  assert.equal(all(svg, '<pattern').length, 1);
+  const words = all(svg, '<text').map(seen);
+  assert.ok(words.includes('по 13.11') && words.includes('норма') && words.includes('210'), words.join('|'));
+  assert.ok(!seen(el).includes('светлее'));
 });

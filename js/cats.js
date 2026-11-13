@@ -94,25 +94,31 @@ export function catsView(body) {
   return out;
 }
 
-export const BARS = { width: 330, height: 160, top: 18, bottom: 138 };
+// правка 6 (ui-ux-pro-max, 13.11): подписи 12 px; справа — поле под «норма N» у черты последнего месяца; у текущего
+// месяца — «по 13.11» под именем (было: 10 px, черта без числа, «текущий месяц светлее» — сноской)
+export const BARS = { width: 330, height: 186, top: 20, bottom: 140, label: 50 };
 
-export function barsView(s) {
+export function barsView(s, today = '') {
   const pts = s.points;
   const max = Math.max(1, ...pts.map((p) => p.rsd), ...pts.map((p) => p.norm || 0)) * 1.08;
-  const step = BARS.width / Math.max(pts.length, 1);
+  const last = [...pts].reverse().find((p) => p.norm != null);
+  const plot = BARS.width - (last ? BARS.label : 0);
+  const step = plot / Math.max(pts.length, 1);
   const w = Math.min(30, step * 0.66);
   const y = (v) => +(BARS.bottom - (Math.max(0, v) / max) * (BARS.bottom - BARS.top)).toFixed(1);
+  const upto = today ? `по ${Number(today.slice(8))}.${today.slice(5, 7)}` : '';
   const bars = pts.map((p, i) => {
     const m = Number(p.from.slice(5, 7)) - 1;
     const x = +(i * step + (step - w) / 2).toFixed(1);
     return { m: SHORT[m], v: String(Math.round(p.rsd / 1000)), x, w: +w.toFixed(1), cx: +(x + w / 2).toFixed(1),
-      y: y(p.rsd), h: +(BARS.bottom - y(p.rsd)).toFixed(1), partial: p.partial, normY: p.norm == null ? null : y(p.norm) };
+      y: y(p.rsd), h: +(BARS.bottom - y(p.rsd)).toFixed(1), partial: p.partial, normY: p.norm == null ? null : y(p.norm),
+      upto: p.partial ? upto : '' };
   });
-  const norm = pts.some((p) => p.norm != null);
   return {
     bars,
-    note: `${s.scope === 'scale' ? 'в лимитах' : 'все траты'}, тыс. RSD${norm ? ' · черта — норма' : ''}`,
+    norm: last ? { x: plot + 4, y: y(last.norm), value: String(Math.round(last.norm / 1000)) } : null,
+    note: `${s.scope === 'scale' ? 'в лимитах' : 'все траты'}, тыс. RSD`,
     aria: `Траты по месяцам, тысяч RSD: ${pts.map((p, i) => `${NAMES[Number(p.from.slice(5, 7)) - 1]} ${bars[i].v}`
-      + (p.partial ? ' на сегодня' : '')).join(', ')}`,
+      + (p.partial ? ' на сегодня' : '')).join(', ')}${last ? `; норма ${Math.round(last.norm / 1000)}` : ''}`,
   };
 }
