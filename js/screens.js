@@ -108,6 +108,7 @@ function head(entry, nav) {
   const ctx = entry.ctx;
   const today = nav.today();
   const v = headView({ title: ctx.title, limit: nav.limitOf(ctx, entry.month), note: nav.noteOf(ctx, entry.month),
+    limitWord: ctx.limitWord,
     month: entry.month, period: ctx.period, to: range(entry, today).to }, body);
   const shift = (dir) => {
     if (ctx.period) entry.ctx = { ...ctx, period: shiftPeriod(ctx.period, dir) };

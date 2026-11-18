@@ -160,8 +160,22 @@ export function view(h) {
       row.note = `перерасход ${quoted(rv.hit)} · резерв покрыл ${fmt(l.eaten)}`;
       row.hint = note.replace(/^Резерв: /, '');
     }
-    return row;
+    return { ...row, heat: share };
   });
+  // решение 86, вариант 2: перебор регулярной (связь, подписки, образование, спортпит) и коммуналки — строкой в списке, как лимит
+  // сверх; лимита у неё нет — «из» её сумма в норме (у спортпита — с конвертом), тап — её операции
+  const regulars = (h.regulars || []).map((r) => ({
+    key: `regular:${r.key}`, name: r.label, ops: { regular: r.key }, limitWord: 'В норме',
+    spent: fmt(r.spent), limit: fmt(r.limit), over: `+${fmt(r.over)}`, fill: r.limit / r.spent,
+    limitAt: r.limit / r.spent, color: COLOR.over, state: '', heat: r.limit ? r.spent / r.limit : Infinity,
+    // коммуналка (kind mandatory) — «обязательная»; основа суммы — словами сервера, прежний сервер — среднее за 3 месяца
+    hint: r.carry ? `регулярная: ${fmt(r.norm)} в норме + ${fmt(r.carry)} конверт`
+      : `${r.kind === 'mandatory' ? 'обязательная' : 'регулярная'}: сумма в норме — ${r.basis || 'среднее за 3 месяца'}` }));
+  // порядок лимитов — сервера (горячие первыми); строка регулярной встаёт перед первым лимитом холоднее её
+  for (const r of regulars.sort((a, b) => b.heat - a.heat)) {
+    const at = limits.findIndex((l) => !(l.ops && l.ops.regular) && l.heat < r.heat);
+    limits.splice(at < 0 ? limits.length : at, 0, r);
+  }
 
   return {
     title: `${MONTHS[m - 1]} ${y}`,
@@ -178,7 +192,7 @@ export function view(h) {
     limits,
     // решение 63: строка резерва видна сразу — под горячими лимитами, даже если по порядку она дальше первых TOP
     top: [...limits.slice(0, TOP), ...limits.slice(TOP).filter((l) => l.note)],
-    limitsShown: Math.min(TOP, h.limits.length),
+    limitsShown: Math.min(TOP, limits.length),
     legend: legendOf(limits, h.closed),
     reserve: note,
     // решение 40: скрытые лимиты (show: hot) — отдельной кнопкой; дошли до порога — уже в общем списке (сервер)

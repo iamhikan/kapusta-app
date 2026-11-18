@@ -109,8 +109,12 @@ const nav = {
   limitOf(ctx, m) {
     // лимит месяца — из «Здоровья» того же месяца, если оно уже загружено; у категории — лимит периода с «Категорий»
     if (ctx.limitValue != null) return ctx.limitValue;
-    if (!ctx.params.limit) return null;
     const hh = cache.get(m);
+    if (ctx.params.regular) {   // решение 86: регулярная — её сумма в норме (с конвертом), если месяц с перебором
+      const r = hh && (hh.regulars || []).find((x) => x.key === ctx.params.regular);
+      return r ? r.limit : null;
+    }
+    if (!ctx.params.limit) return null;
     const l = hh && hh.limits.find((x) => x.key === ctx.params.limit);   // решение 82: в limit= — key
     return l ? l.limit : null;
   },
@@ -274,10 +278,10 @@ function pace(v, data) {
       data.closed ? null : legend('forecast', 'прогноз'))));
 }
 
-function opsOf(title, params, data, reserve = false) {
-  // строка лимита -> операции этих трат за месяц (решение 3)
+function opsOf(title, params, data, reserve = false, limitWord = null) {
+  // строка лимита -> операции этих трат за месяц (решение 3); перебор регулярной — «В норме» вместо «Лимит»
   tap();
-  nav.push(newOps(data.month, { title: upper(title), params, reserve }));
+  nav.push(newOps(data.month, { title: upper(title), params, reserve, limitWord }));
 }
 
 function limits(v, data) {
@@ -295,7 +299,7 @@ function limits(v, data) {
     h('div', { class: 'section-head' }, h('h2', {}, 'Лимиты')),
     limitLegend(v.legend),
     h('section', { class: 'card list' }, ...shown.map((l) => limitRow(l, { plan: data.closed ? null : v.plan,
-      open: () => opsOf(l.name, l.ops, data, !!l.note) })), more),
+      open: () => opsOf(l.name, l.ops, data, !!l.note, l.limitWord) })), more),
     budgetLinks(v, data),
   ];
 }

@@ -13,7 +13,8 @@ const IN_MONTH = ['январе', 'феврале', 'марте', 'апреле'
   'ноябре', 'декабре'];
 const WEEKDAY = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
 const SYMBOL = { RSD: '', EUR: ' €', RUB: ' ₽', USD: ' $' };
-const KEYS = ['from', 'to', 'limit', 'cat', 'q', 'transfers', 'account', 'who', 'source', 'flag', 'cursor'];
+// regular — регулярная трата (решение 86): строка её перебора в списке лимитов «Здоровья»
+const KEYS = ['from', 'to', 'limit', 'regular', 'cat', 'q', 'transfers', 'account', 'who', 'source', 'flag', 'cursor'];
 
 // фильтры (холст «Операции» → «Фильтры»): значение — параметр /api/tx. Кошелёк или счёт — счета зрителя из остатков
 // «Здоровья» (решение 38); «Здоровье» ещё не грузилось — прежний список
@@ -184,7 +185,7 @@ export function headView(ctx, body) {
     title: ctx.title, period: ctx.period ? periodTitle(ctx.period) : monthTitle(ctx.month), sum: fmt(body.total),
     note: ctx.note || (lim == null ? '' : over ? `сверх ${fmt(body.total - lim)}` : `из ${fmt(lim)}`), tone: over ? 'bad' : '',
     fill: lim == null ? null : lim > 0 ? Math.min(1, body.total / lim) : 1,
-    sub: [lim == null ? '' : `Лимит ${fmt(lim)}`, records(body.count), days]
+    sub: [lim == null ? '' : `${ctx.limitWord || 'Лимит'} ${fmt(lim)}`, records(body.count), days]
       .filter(Boolean).join(' · '),
   };
 }
