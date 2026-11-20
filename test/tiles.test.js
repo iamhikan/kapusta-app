@@ -14,6 +14,20 @@ test('банк — буква в цвете банка: два счёта Рай
   assert.equal(tileOf('Assets:Family:ALTA', 'карта ALTA').text, 'A');
 });
 
+test('UniCredit — банк: белая «U» на красном, как в логотипе банка; у счетов RSD и EUR — одна плитка; ПР — портфель', () => {
+  // долг 18.11: плитка была «новым счётом» — зелёная по имени, рядом с зелёными Freedom и налом
+  const uc = tileOf('Assets:Family:UniCredit', 'UniCredit');
+  assert.equal(uc.text, 'U');
+  assert.equal(uc.glyph, undefined);
+  assert.equal(uc.fg, '#ffffff');
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(uc.bg.slice(i, i + 2), 16));
+  assert.ok(uc.bg.startsWith('#') && r > 200 && g < 40 && b < 40, `красный: ${uc.bg}`);
+  assert.deepEqual(tileOf('Assets:Family:UniCredit:RSD', 'UniCredit'), uc);   // кошелёк в карточке — счёт с валютой
+  assert.deepEqual(tileOf('Assets:Family:UniCredit:EUR', 'UniCredit'), uc);
+  assert.notEqual(uc.bg, tileOf('Assets:Angelina:PR:Bank', 'счёт салона').bg);
+  assert.equal(tileOf('Assets:PR:UniCredit', 'UniCredit').glyph, 'briefcase');  // счёт ПР в UniCredit — бизнес
+});
+
 test('нал обоих — купюра; ПР — портфель, а не банк ALTA; салон — ножницы; Walt, «нам должны», другая карта', () => {
   assert.equal(tileOf('Assets:Family:Cash:Aleksey', 'нал Алексея').glyph, 'cash');
   assert.equal(tileOf('Assets:Family:Cash:Angelina', 'нал Ангелины').glyph, 'cash');
@@ -22,8 +36,8 @@ test('нал обоих — купюра; ПР — портфель, а не б�
   assert.equal(tileOf('Assets:Family:Walt', 'Walt').glyph, 'wallet');
   assert.equal(tileOf('Assets:Family:Receivable', 'нам должны').glyph, 'inbound');
   assert.equal(tileOf('Assets:Family:OtherCard', 'другая карта').glyph, 'card');
-  const tiles = ['Assets:Family:Cash:Aleksey', 'Assets:Family:ALTA', 'Assets:Family:Freedom', 'Assets:Family:Raiffeisen:RSD',
-    'Assets:PR:ALTA', 'Assets:Angelina:PR:Bank', 'Assets:Family:Walt'].map((a) => tileOf(a, a).bg);
+  const tiles = ['Assets:Family:Cash:Aleksey', 'Assets:Family:ALTA', 'Assets:Family:Freedom', 'Assets:Family:UniCredit',
+    'Assets:Family:Raiffeisen:RSD', 'Assets:PR:ALTA', 'Assets:Angelina:PR:Bank', 'Assets:Family:Walt'].map((a) => tileOf(a, a).bg);
   assert.equal(new Set(tiles).size, tiles.length);            // у каждого вида — свой цвет
 });
 

@@ -1,6 +1,6 @@
 // Плитки счетов (решение 47): банк — буква в цвете банка, остальное — значок; как цветные плитки в настройках
 // Telegram и iOS. Настоящих логотипов нет: при 30 px не читаются и не различают два счёта одного банка. Цвета Freedom и
-// ALTA — приблизительные: поправить здесь, если на телефоне не похоже.
+// ALTA — приблизительные: поправить здесь, если на телефоне не похоже. UniCredit — красный сайта и логотипа банка.
 import { h, icon } from './dom.js';
 
 const GLYPHS = {
@@ -23,6 +23,7 @@ const TILES = [
   ['Assets:Family:Raiffeisen:Kredit', { bg: '#8e8e93', glyph: 'percent' }],
   ['Assets:Family:Raiffeisen', { bg: '#fff200', fg: '#1c1c1e', text: 'R' }],
   ['Assets:Family:Freedom', { bg: '#00875a', text: 'F' }],
+  ['Assets:Family:UniCredit', { bg: '#e2001a', text: 'U' }],   // долг 18.11: была «новым счётом» — зелёная по имени
   ['Assets:PR:', { bg: '#5856d6', glyph: 'briefcase' }],
   ['Assets:Family:ALTA', { bg: '#1f3a68', text: 'A' }],
   ['Assets:Angelina:PR', { bg: '#e0245e', glyph: 'scissors' }],
