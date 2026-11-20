@@ -1,6 +1,6 @@
 // Mini App «Капуста»: вкладки «Здоровье», «Операции» и «Категории», карточка операции. Тема — themeParams Telegram (CSS-переменные
 // --tg-theme-*), отступы — safeAreaInset. «Назад» — системная BackButton. Данные — только в памяти страницы.
-import { apiBase, get, post, screen } from './api.js';
+import { apiBase, get, healthPath, post, screen } from './api.js';
 import { fmt, shiftMonth, view } from './health.js';
 import { BOX, curve } from './chart.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
@@ -374,7 +374,7 @@ async function load(next) {
   // открыли не «Здоровье» (кнопка «Открыть в Капусте», решение 74) — грузим его в фоне: остатки нужны фильтру
   // «Операций»; скелет и ошибка «Здоровья» открытый экран не закрывают (кроме входа: 401, 403)
   if (retrying) render(); else if (onHealth()) skeleton();
-  const r = await get(`/api/health${month ? `?month=${month}` : ''}`, { base, initData: tg.initData });
+  const r = await get(healthPath(month), { base, initData: tg.initData });
   if (mine !== seq) return;
   retrying = false;
   if (r.error === 'down') return offlineHealth(mine, r.detail);
@@ -412,7 +412,7 @@ async function sendQueue() {
   if (!out.done) return;
   const m = month;
   stale();
-  const r = await nav.get(`/api/health?month=${m}`);
+  const r = await nav.get(healthPath(m));
   if (r.data) cache.set(m, r.data);
   if (stack[stack.length - 1].kind === 'health') render();
 }

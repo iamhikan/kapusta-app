@@ -40,6 +40,10 @@ export function words(x) {
   return x;
 }
 
+// запрос «Здоровья» месяца (null — текущий). envelopes=1 — все регулярные месяца для шапки их «Операций» (E13, решение
+// 95): без него fin поле не шлёт — выложенная p38a кладёт ответ в снимок целиком, и с полем он не влезал в 4096
+export const healthPath = (month) => `/api/health?${month ? `month=${month}&` : ''}envelopes=1`;
+
 export const TIMEOUT = 8000;   // решение 31: Мак спит — запрос не висит, через 8 с снимок или «не отвечает»
 
 const BROKEN = Symbol('тело не JSON');

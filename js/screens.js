@@ -1,5 +1,5 @@
 // Экраны «Операции» и карточка операции (DOM). Данные — только из /api/tx и /api/tx/{ref}, в памяти страницы.
-import { screen } from './api.js';
+import { healthPath, screen } from './api.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
 import { FLAG, accountView, cardView, dayLabel, emptyText, filters, headView, money, monthRange, monthTitle, opRow, taxLink,
   txPath } from './ops.js';
@@ -61,7 +61,7 @@ async function gaugeData(entry, nav) {
   const m = entry.month;
   let got = false;
   const fetched = async (kind) => {
-    const r = await nav.get(`/api/${kind}?month=${m}`);
+    const r = await nav.get(kind === 'health' ? healthPath(m) : `/api/${kind}?month=${m}`);
     const ok = !!(r.data && r.data.month === m);
     if (ok) { nav.keep(kind, r.data); got = true; }
     return ok ? r.data : null;

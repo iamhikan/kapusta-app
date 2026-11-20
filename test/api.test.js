@@ -1,7 +1,7 @@
 // Вход и ошибки: страница без данных; API — только из подписанного Telegram, адрес API — из ссылки кнопки.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { apiBase, get, post, screen, TIMEOUT } from '../js/api.js';
+import { apiBase, get, healthPath, post, screen, TIMEOUT } from '../js/api.js';
 
 test('адрес API — только https на ts.net из параметра ?api=, иначе нет', () => {
   assert.equal(apiBase('?api=https://mac.tail0.ts.net'), 'https://mac.tail0.ts.net');
@@ -185,4 +185,11 @@ test('слова приложения (решение 51, Алексей 12.11):
   const p = await post('/api/recat', {}, { base: 'https://mac.tail0.ts.net', initData: 'x',
     fetch: fake(200, { card: { cats: ['неразобранное'] } }) });
   assert.deepEqual(p.data, { card: { cats: ['без категории'] } });
+});
+
+// E13 (решение 95): envelopes (все регулярные месяца) fin шлёт только по ?envelopes=1 — выложенная p38a кладёт ответ в
+// снимок целиком, и с полем он не влезал в 4096. Страница p39a просит поле в каждом запросе «Здоровья»
+test('запрос «Здоровья» — с envelopes=1: месяц, если задан', () => {
+  assert.equal(healthPath('2026-11'), '/api/health?month=2026-11&envelopes=1');
+  assert.equal(healthPath(null), '/api/health?envelopes=1');
 });

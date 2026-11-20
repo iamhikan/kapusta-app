@@ -86,19 +86,23 @@ test('Ангелине: без дохода, ПР, «отложить», нор�
   assert.equal(budgetView(ALEKSEY).sub, 'куда идёт доход');
 });
 
-test('коммуналка: в «Обязательных» — средняя с долей ПР, в «Деньгах на месяц» — без неё (сервер: full); обе подписаны', () => {
+// решение 94 (Алексей 20.11.2026: «давай все по ПР в ПР»): коммуналка в «Обязательных» — только доля семьи, доля ПР —
+// своя строка «ПР коммуналка» в группе ПР. В «Деньгах на месяц» — та же доля семьи; full у частей плана сервер не шлёт
+test('коммуналка: доля семьи — одна сумма в «Обязательных» и в «Деньгах на месяц», без пометок о ПР; ПР — строкой группы ПР', () => {
+  const health = { month: '2026-11', envelopes: [{ key: 'коммуналка', label: 'коммуналка', kind: 'mandatory',
+    basis: 'доля семьи, среднее с 05.2026', spent: 13491, limit: 12045, norm: 12045, carry: 0, over: 1446 }] };
   const b = { ...ALEKSEY,
-    groups: [{ name: 'Обязательные', rsd: 99341, avg_months: null, rows: [{ name: 'жильё', rsd: 90000, note: '(770 €)' },
-      { name: 'коммуналка', rsd: 9341, note: '(в ср. с 05.2026)' }] }],
-    plan: { ...ALEKSEY.plan, parts: [{ name: 'жильё', rsd: 90000 }, { name: 'коммуналка', rsd: 8427, full: 9341 }] } };
-  const v = budgetView(b);
-  // E10: доля семьи в плане — значит, у коммуналки есть градусник: строка нажимается (её операции)
-  assert.deepEqual(v.groups[0].rows[1], { name: 'коммуналка', sum: '9 341', note: 'в среднем с мая 2026 · с долей ПР',
+    groups: [{ name: 'Обязательные', rsd: 102045, avg_months: null, rows: [{ name: 'жильё', rsd: 90000, note: '(770 €)' },
+      { name: 'коммуналка', rsd: 12045, note: '(в ср. с 05.2026)' }] },
+    { name: 'ПР', rsd: 915, avg_months: null, rows: [{ name: 'ПР коммуналка', rsd: 915, note: '(в ср. с 05.2026)' }] }],
+    plan: { ...ALEKSEY.plan, parts: [{ name: 'жильё', rsd: 90000 }, { name: 'коммуналка', rsd: 12045 }] } };
+  const v = budgetView(b, health);
+  // E10, E13: коммуналка нажимается (её операции и градусник против доли семьи), «ПР коммуналка» — нет
+  assert.deepEqual(v.groups[0].rows[1], { name: 'коммуналка', sum: sp('12 045'), note: 'в среднем с мая 2026',
     regular: 'коммуналка' });
-  assert.deepEqual(v.plan.parts, ['жильё 90 000', 'коммуналка без доли ПР 8 427']);
-  assert.equal(v.groups[0].rows[0].note, '770 €');               // жильё одно и то же — без пометки
-  const angelina = budgetView({ ...b, plan: null });
-  assert.equal(angelina.groups[0].rows[1].note, 'в среднем с мая 2026');   // плана нет — сравнивать не с чем
-  const old = budgetView({ ...b, plan: { ...b.plan, parts: [{ name: 'коммуналка', rsd: 8427 }] } });   // прежний сервер
+  assert.deepEqual(v.groups[1].rows, [{ name: 'ПР коммуналка', sum: '915', note: 'в среднем с мая 2026' }]);
+  assert.deepEqual(v.plan.parts, [sp('жильё 90 000'), sp('коммуналка 12 045')]);
+  // ответ до решения 94 (часть плана с full) — страница full не читает: пометок «с долей ПР» и «без доли ПР» нет
+  const old = budgetView({ ...b, plan: { ...b.plan, parts: [{ name: 'коммуналка', rsd: 8427, full: 12045 }] } }, health);
   assert.deepEqual([old.groups[0].rows[1].note, old.plan.parts[0]], ['в среднем с мая 2026', sp('коммуналка 8 427')]);
 });

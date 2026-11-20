@@ -3,6 +3,7 @@
 // (решение 40). Данные — только из /api/price, /api/basket, /api/budget, /api/days и «Здоровья» в памяти.
 import { h, icon, tap, ICONS } from './dom.js';
 import { basketView, PRICE_BOX, pricePath, priceView } from './shop.js';
+import { healthPath } from './api.js';
 import { budgetView } from './budget.js';
 import { daysView } from './days.js';
 import { failBody, newOps, TITLE } from './screens.js';
@@ -32,6 +33,13 @@ export async function loadMore(entry, nav) {
   if (entry.kind === 'budget' && r.data && nav.keep) nav.keep('budget', r.data);
   // позиции нет (или чек к секрету — зритель Ангелина): 404 цены; другой отказ — словами fin (М2: было — регэксп по «HTTP 404»)
   entry.missing = entry.kind === 'price' && r.error === 'refused' && r.status === 404;
+  nav.render();
+  // какие строки «Бюджета» нажимаются, решает «Здоровье» месяца (envelopes, E13). Его нет в памяти: кнопка «Открыть в
+  // Капусте» открыла «Бюджет» раньше, чем пришло «Здоровье», или смена категории сбросила память, — догружаем
+  if (entry.kind !== 'budget' || !r.data || !nav.health || !nav.keep || nav.health(r.data.month)) return;
+  const hr = await nav.get(healthPath(r.data.month));
+  if (mine !== entry.seq || !hr.data || hr.data.month !== r.data.month) return;
+  nav.keep('health', hr.data);
   nav.render();
 }
 
@@ -95,7 +103,7 @@ function budgetBody(entry, nav) {
   const row = (name, sum, note, cls = '') => h('div', { class: `line ${cls}` },
     h('span', { class: 'grow' }, h('span', {}, name), note ? h('span', { class: 'muted small' }, note) : null),
     h('span', { class: 'nowrap' }, sum));
-  // E10: регулярная (и коммуналка) — её операции за месяц, в шапке — потрачено против суммы в норме (решение 93)
+  // E10: регулярная (и коммуналка) — её операции за месяц, в шапке — потрачено против суммы в норме (решение 95)
   const regular = (r) => h('button', { type: 'button', class: 'line op', 'data-focus': `regular:${r.name}`,
     on: { click: () => open(nav, newOps(entry.month, { title: r.name.charAt(0).toUpperCase() + r.name.slice(1),
       params: { regular: r.regular }, limitWord: 'В норме' })) } },

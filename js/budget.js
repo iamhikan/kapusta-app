@@ -40,10 +40,8 @@ export function budgetView(b, health = null) {
       color: color || '#5ac8fa' }));
   }
   const lim = b.limits;
-  // коммуналка: в «Обязательных» — средняя вместе с долей ПР, в «Деньгах на месяц» — доля семьи (ревью: 9 341 и
-  // 8 427 без подписи). Часть плана с full — доля семьи; прежний сервер full не шлёт — без подписей
-  const shared = new Set(b.plan ? b.plan.parts.filter((x) => x.full != null).map((x) => x.name) : []);
-  const prShare = (r) => shared.has(r.name);
+  // коммуналка (решение 94): в «Обязательных» и в «Деньгах на месяц» — одна доля семьи, доля ПР — строка «ПР
+  // коммуналка» в группе ПР; пометок «с долей ПР» и «без доли ПР» больше нет
   const regular = regularOf(b, health);   // E10: строка регулярной нажимается — её операции и градусник
   return {
     title: `Бюджет · ${monthTitle(b.month)}`,
@@ -52,7 +50,7 @@ export function budgetView(b, health = null) {
     alloc,
     groups: b.groups.map((g) => ({ name: g.name, sum: fmt(g.rsd), sub: g.avg_months ? `в среднем за ${g.avg_months} мес.` : '',
       rows: g.rows.map((r) => ({ name: r.name, sum: fmt(r.rsd),
-        note: [avg(strip(r.note)), prShare(r) ? 'с долей ПР' : ''].filter(Boolean).join(' · '),
+        note: avg(strip(r.note)),
         ...(g.name !== 'ПР' && regular(r.name) ? { regular: regular(r.name) } : {}) })) })),
     savings: b.savings ? { name: 'Отложить', sum: fmt(b.savings.rsd), note: b.savings.set || '' } : null,
     norm: b.norm == null ? null : { name: NORM, sum: fmt(b.norm) },
@@ -74,7 +72,6 @@ export function budgetView(b, health = null) {
 function planView(p, word, month) {
   const m = Number(month.slice(5));
   const have = Object.fromEntries(Object.entries(p.have).filter(([, v]) => v));   // динары первыми, как в остатках
-  const label = (x) => (x.full != null ? `${x.name} без доли ПР` : x.name);
   const share = p.have_rsd > 0 ? p.need / p.have_rsd : 1;
   return {
     title: `Деньги на ${word}`,
@@ -88,7 +85,7 @@ function planView(p, word, month) {
     need: { label: 'Нужно на месяц', value: fmt(p.need) },
     fill: Math.max(0, Math.min(1, share)),
     ratio: `нужно — ${Math.round(share * 100)} % того, что есть`,
-    parts: p.parts.map((x) => `${label(x)} ${fmt(x.rsd)}`),
+    parts: p.parts.map((x) => `${x.name} ${fmt(x.rsd)}`),
     salary: p.salary ? `Зарплата ~${fmt(p.salary)} придёт в конце месяца и уйдёт в остаток к 1 ${OF_MONTH[m % 12]}.` : '',
   };
 }

@@ -83,32 +83,43 @@ test('коммуналка сверх своей доли — строкой «�
 
 // E10 (Алексей 20.11.2026): «нажать на категорию регулярных трат и увидеть все её транзакции, внутри — свой
 // градусник». Строки «Регулярных платежей» (и коммуналки) в «Бюджете» нажимаются: «Операции» с regular=<имя>, в шапке —
-// потрачено за месяц против суммы в норме, у спортпита — с конвертом, перебор — красным. Числа — сервера: строка
-// «Бюджета» (сумма в норме), regulars «Здоровья» (перебор: сумма с конвертом), envelopes — все регулярные месяца.
+// потрачено за месяц против суммы в норме, у спортпита — с конвертом, перебор — красным. Числа — сервера: envelopes
+// «Здоровья» — все регулярные месяца (E13, решение 95); ответ без них — regulars (перебор) и строка «Бюджета».
 import { all } from './fakedom.js';
 import { moreScreen } from '../js/more.js';
 import { loadOps, newOps, opsScreen } from '../js/screens.js';
 
-const NOV = { ...HEALTH, date: '2026-11-20', day: 20, regulars: [
-  { key: 'обмен валюты', label: 'обмен валюты', kind: 'regular', basis: '5 EUR в месяц', spent: 3699, limit: 588, norm: 588,
-    carry: 0, over: 3111 },
-  { key: 'коммуналка', label: 'коммуналка', kind: 'mandatory', basis: 'доля семьи, среднее с 05.2026', spent: 13491,
-    limit: 12045, norm: 12045, carry: 0, over: 1446 }] };
-const OCT = { ...HEALTH, month: '2026-10', date: '2026-10-31', day: 31, days: 31, closed: true, regulars: [
-  { key: 'спортпит', label: 'спортпит', kind: 'regular', basis: 'среднее за 3 мес.', spent: 16232, limit: 9733, norm: 2433,
-    carry: 7300, over: 6499 }] };
+// живой ответ Алексея 20.11.2026: решение 94 (коммуналка — доля семьи, «ПР коммуналка» — в группе ПР) и E13 (envelopes —
+// все регулярные месяца, с перебором и без; regulars — только перебор)
+const env = (key, basis, spent, norm, carry = 0, kind = 'regular') => ({ key, label: key, kind, basis, spent,
+  limit: norm + carry, norm, carry, over: Math.max(0, spent - norm - carry) });
+const NOV_ENV = [env('спортпит', 'среднее за 3 мес.', 0, 5411), env('подписки', 'медиана за 3 мес.', 12610, 20684),
+  env('связь', 'медиана за 3 мес.', 3068, 4272), env('образование', 'медиана за 3 мес.', 4643, 14322),
+  env('банк', 'медиана за 3 мес.', 1361, 2535), env('обмен валюты', '5 EUR в месяц', 3699, 588),
+  env('коммуналка', 'доля семьи, среднее с 05.2026', 13491, 12045, 0, 'mandatory')];
+const NOV = { ...HEALTH, date: '2026-11-20', day: 20, regulars: NOV_ENV.filter((e) => e.over > 0), envelopes: NOV_ENV };
+const OCT_SPORT = env('спортпит', 'среднее за 3 мес.', 16232, 2433, 7300);
+const OCT = { ...HEALTH, month: '2026-10', date: '2026-10-31', day: 31, days: 31, closed: true, regulars: [OCT_SPORT],
+  envelopes: [OCT_SPORT, env('связь', 'медиана за 3 мес.', 4272, 5734)] };
+// ответ до E13: envelopes нет
+const before = ({ envelopes, ...h }) => h;
 const row = (name, rsd, note) => ({ name, rsd, note });
-const budgetOf = (month, regular, extra = {}) => ({ month, savings: null, norm: 250000, free: 0,
+const budgetOf = (month, regular, { pr = [], ...extra } = {}) => ({ month, savings: null, norm: 250000, free: 0,
   limits: { rsd: 0, eur: 0, rows: [] },
   groups: [
-    { name: 'Обязательные', rsd: 122204, avg_months: null, rows: [row('жильё', 76390, '(650 €)'),
-      row('кредит РФ', 32855, '(25 000 ₽)'), row('коммуналка', 12959, '(в ср. с 05.2026)')] },
-    { name: 'Регулярные по карте', rsd: 47812, avg_months: null, rows: regular }], ...extra });
+    { name: 'Обязательные', rsd: 121290, avg_months: null, rows: [row('жильё', 76390, '(650 €)'),
+      row('кредит РФ', 32855, '(25 000 ₽)'), row('коммуналка', 12045, '(в ср. с 05.2026)')] },
+    { name: 'Регулярные по карте', rsd: 47812, avg_months: null, rows: regular },
+    ...pr], ...extra });
 const NOV_REG = [row('спортпит', 5411, '(в ср. за 3 мес.)'), row('подписки', 20684, '(медиана за 3 мес.)'),
-  row('связь', 4272, '(медиана за 3 мес.)'), row('обмен валюты', 588, '(5 €)')];
-// Алексею — «Деньги на месяц»: коммуналка в норме — доля семьи (full — с долей ПР, как в «Обязательных»)
+  row('связь', 4272, '(медиана за 3 мес.)'), row('образование', 14322, '(медиана за 3 мес.)'),
+  row('банк', 2535, '(медиана за 3 мес.)'), row('обмен валюты', 588, '(5 €)')];
+// Алексею — группа ПР («ПР коммуналка», решение 94) и «Деньги на месяц»: коммуналка — та же доля семьи, без full
+const PR = [{ name: 'ПР', rsd: 1426, avg_months: null, rows: [row('ПР коммуналка', 915, '(в ср. с 05.2026)'),
+  row('ПР банк', 511, '(в ср.)')] }];
 const PLAN = { have_rsd: 1, have: { RSD: 1 }, need: 1, transfer: 0, spare: 0, transfer_eur: null, salary: null,
-  parts: [{ name: 'коммуналка', rsd: 12045, full: 12959 }] };
+  parts: [{ name: 'коммуналка', rsd: 12045 }] };
+const ALEKSEY = { plan: PLAN, pr: PR };
 
 // «Капуста» на Маке: ответы по путям; «Здоровье» и «Бюджет» месяцев — в памяти страницы (nav.health, nav.budget)
 function navOf({ health = {}, budget = {}, tx = {} }) {
@@ -149,26 +160,30 @@ async function openFromBudget(nav, month, name) {
 
 test('E10: строка регулярной в «Бюджете» ведёт на экран её операций с градусником «потрачено / в норме»', async () => {
   const nav = navOf({ health: { '2026-11': await served(NOV) },
-    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, { plan: PLAN })) },
+    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, ALEKSEY)) },
     tx: { 'связь 2026-11': { total: 3068, count: 2 } } });
   const entry = await openFromBudget(nav, '2026-11', 'связь');
   assert.deepEqual([entry.ctx.title, entry.ctx.params, entry.ctx.limitWord], ['Связь', { regular: 'связь' }, 'В норме']);
   assert.equal(nav.asked.at(-1), `/api/tx?from=2026-11-01&to=2026-11-20&regular=${encodeURIComponent('связь')}`);
+  // E13: числа — envelopes «Здоровья», второй строкой — на чём сумма (basis)
   assert.deepEqual(header(opsScreen(entry, nav)), { sum: '3 068', note: 'из 4 272', tone: 'big-num ', fill: '71.8%',
-    sub: 'В норме 4 272 · 2 записи · 1–20 ноября', basis: '' });
+    sub: 'В норме 4 272 · 2 записи · 1–20 ноября', basis: 'сумма в норме — медиана за 3 мес.' });
 });
 
-test('E10: нажимаются регулярные и коммуналка; жильё и кредит РФ (сумма по договору, перебора нет) — строкой без перехода', async () => {
+test('E10, E13: нажимаются регулярные и коммуналка; жильё, кредит РФ и строки ПР («ПР коммуналка») — без перехода', async () => {
   const nav = navOf({ health: { '2026-11': await served(NOV) },
-    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, { plan: PLAN })) } });
+    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, ALEKSEY)) } });
   const screen = moreScreen({ kind: 'budget', month: '2026-11', data: nav.budget('2026-11') }, nav);
   assert.deepEqual(keys(screen).filter((k) => k.startsWith('regular:')),
-    ['regular:коммуналка', 'regular:спортпит', 'regular:подписки', 'regular:связь', 'regular:обмен валюты']);
+    ['regular:коммуналка', 'regular:спортпит', 'regular:подписки', 'regular:связь', 'regular:образование', 'regular:банк',
+      'regular:обмен валюты']);
+  // решение 94: траты ПР не в семейном «Потрачено» — у «ПР коммуналки» нет ни перебора, ни операций по regular=
+  assert.match(flat(seen(screen)), /ПР коммуналка/);
 });
 
-test('E10: коммуналка — против доли семьи (не средней с долей ПР из «Обязательных»), перебор — красным', async () => {
+test('E10: коммуналка — против доли семьи, перебор — красным', async () => {
   const nav = navOf({ health: { '2026-11': await served(NOV) },
-    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, { plan: PLAN })) },
+    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, ALEKSEY)) },
     tx: { 'коммуналка 2026-11': { total: 13491, count: 2 } } });
   const h = header(opsScreen(await openFromBudget(nav, '2026-11', 'коммуналка'), nav));
   assert.deepEqual(h, { sum: '13 491', note: 'сверх 1 446', tone: 'big-num bad', fill: '100.0%',
@@ -189,23 +204,26 @@ test('E10: спортпит — сумма в норме и конверт (на
   assert.equal(header(opsScreen(entry, nav)).sub, 'В норме 2 433 + конверт 7 300 · 1 запись · 1–31 октября');
 });
 
-test('E10: сервер шлёт envelopes (все регулярные месяца) — конверт виден и без перебора, нажимается и коммуналка без перебора', async () => {
-  const env = (key, spent, norm, carry, kind = 'regular') => ({ key, label: key, kind, basis: 'среднее за 3 мес.', spent, limit: norm + carry,
-    norm, carry, over: Math.max(0, spent - norm - carry) });
+test('E13: envelopes — конверт виден и без перебора, коммуналка без перебора нажимается и у Ангелины', async () => {
   const sep = { ...OCT, month: '2026-09', date: '2026-09-30', days: 30, regulars: [],
-    envelopes: [env('коммуналка', 9000, 9922, 0, 'mandatory'), env('спортпит', 3000, 2433, 7300)] };
+    envelopes: [env('спортпит', 'среднее за 3 мес.', 3000, 2433, 7300),
+      env('коммуналка', 'доля семьи, среднее с 05.2026', 9000, 9922, 0, 'mandatory')] };
+  // Ангелине — без ПР и без «Денег на месяц» (решение 11)
   const nav = navOf({ health: { '2026-09': await served(sep) },
     budget: { '2026-09': await served(budgetOf('2026-09', [row('спортпит', 2433, '(в ср. за 3 мес.)')])) },
-    tx: { 'спортпит 2026-09': { total: 3000, count: 1 } } });
+    tx: { 'спортпит 2026-09': { total: 3000, count: 1 }, 'коммуналка 2026-09': { total: 9000, count: 1 } } });
   const screen = moreScreen({ kind: 'budget', month: '2026-09', data: nav.budget('2026-09') }, nav);
   assert.deepEqual(keys(screen).filter((k) => k.startsWith('regular:')), ['regular:коммуналка', 'regular:спортпит']);
-  const h = header(opsScreen(await openFromBudget(nav, '2026-09', 'спортпит'), nav));
-  assert.deepEqual(h, { sum: '3 000', note: 'из 9 733', tone: 'big-num ', fill: '30.8%',
-    sub: 'В норме 2 433 + конверт 7 300 · 1 запись · 1–30 сентября', basis: 'сумма в норме — среднее за 3 мес.' });
+  assert.deepEqual(header(opsScreen(await openFromBudget(nav, '2026-09', 'спортпит'), nav)), { sum: '3 000',
+    note: 'из 9 733', tone: 'big-num ', fill: '30.8%', sub: 'В норме 2 433 + конверт 7 300 · 1 запись · 1–30 сентября',
+    basis: 'сумма в норме — среднее за 3 мес.' });
+  assert.deepEqual(header(opsScreen(await openFromBudget(nav, '2026-09', 'коммуналка'), nav)), { sum: '9 000',
+    note: 'из 9 922', tone: 'big-num ', fill: '90.7%', sub: 'В норме 9 922 · 1 запись · 1–30 сентября',
+    basis: 'сумма в норме — доля семьи, среднее с 05.2026' });
 });
 
-test('E10: прежний сервер, конверт неизвестен — потрачено больше суммы в норме, но перебора нет: «в пределах конверта», не красным', async () => {
-  const sep = { ...OCT, month: '2026-09', date: '2026-09-30', days: 30, regulars: [] };
+test('E10: ответ без envelopes, конверт неизвестен — потрачено больше суммы в норме, но перебора нет: «в пределах конверта», не красным', async () => {
+  const sep = { ...before(OCT), month: '2026-09', date: '2026-09-30', days: 30, regulars: [] };
   const nav = navOf({ health: { '2026-09': await served(sep) },
     budget: { '2026-09': await served(budgetOf('2026-09', [row('спортпит', 2433, '(в ср. за 3 мес.)')])) },
     tx: { 'спортпит 2026-09': { total: 3000, count: 1 } } });
@@ -214,11 +232,9 @@ test('E10: прежний сервер, конверт неизвестен — 
     sub: 'В норме 2 433 · 1 запись · 1–30 сентября', basis: '' });
 });
 
-test('E10: прошлый месяц стрелкой — градусник того месяца: «Здоровье» и «Бюджет» месяца грузятся, если их нет', async () => {
-  const oct = { ...OCT, regulars: [] };
-  const nav = navOf({ health: { '2026-11': await served(NOV), all: { '2026-10': oct } },
-    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, { plan: PLAN })),
-      all: { '2026-10': budgetOf('2026-10', [row('связь', 5734, '(медиана за 3 мес.)')]) } },
+test('E10, E13: прошлый месяц стрелкой — градусник того месяца: «Здоровье» месяца грузится, если его нет; числа — его envelopes', async () => {
+  const nav = navOf({ health: { '2026-11': await served(NOV), all: { '2026-10': OCT } },
+    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, ALEKSEY)) },
     tx: { 'связь 2026-11': { total: 3068, count: 2 }, 'связь 2026-10': { total: 4272, count: 3 } } });
   let drawn = 0;
   nav.render = () => { drawn += 1; };
@@ -226,11 +242,24 @@ test('E10: прошлый месяц стрелкой — градусник т�
   press(opsScreen(entry, nav), 'month:prev');
   assert.equal(entry.month, '2026-10');
   await new Promise((r) => setTimeout(r, 0));
-  assert.ok(nav.asked.includes('/api/health?month=2026-10'), nav.asked.join(' '));
+  assert.ok(nav.asked.includes('/api/health?month=2026-10&envelopes=1'), nav.asked.join(' '));
+  assert.ok(!nav.asked.includes('/api/budget?month=2026-10'), nav.asked.join(' '));   // строка «Бюджета» не нужна
+  assert.deepEqual(header(opsScreen(entry, nav)), { sum: '4 272', note: 'из 5 734', tone: 'big-num ', fill: '74.5%',
+    sub: 'В норме 5 734 · 3 записи · 1–31 октября', basis: 'сумма в норме — медиана за 3 мес.' });
+  assert.ok(drawn > 0);
+});
+
+test('E10: прошлый месяц стрелкой, «Здоровье» без envelopes — сумма в норме из «Бюджета» того месяца', async () => {
+  const nav = navOf({ health: { '2026-11': await served(NOV), all: { '2026-10': { ...before(OCT), regulars: [] } } },
+    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, ALEKSEY)),
+      all: { '2026-10': budgetOf('2026-10', [row('связь', 5734, '(медиана за 3 мес.)')]) } },
+    tx: { 'связь 2026-11': { total: 3068, count: 2 }, 'связь 2026-10': { total: 4272, count: 3 } } });
+  const entry = await openFromBudget(nav, '2026-11', 'связь');
+  press(opsScreen(entry, nav), 'month:prev');
+  await new Promise((r) => setTimeout(r, 0));
   assert.ok(nav.asked.includes('/api/budget?month=2026-10'), nav.asked.join(' '));
   assert.deepEqual(header(opsScreen(entry, nav)), { sum: '4 272', note: 'из 5 734', tone: 'big-num ', fill: '74.5%',
     sub: 'В норме 5 734 · 3 записи · 1–31 октября', basis: '' });
-  assert.ok(drawn > 0);
 });
 
 test('E10: вернули больше, чем потратили (обмен с выигрышем) — полоса пустая, не «−92 %»', () => {
@@ -239,15 +268,29 @@ test('E10: вернули больше, чем потратили (обмен с
   assert.deepEqual([h.sum, h.note, h.fill], ['−540', 'из 587', 0]);
 });
 
-test('E10: коммуналка без перебора у прежнего сервера — Алексею нажимается: доля семьи из «Денег на месяц», подписью «доля семьи»', async () => {
-  const quiet = { ...NOV, regulars: [] };
-  const nav = navOf({ health: { '2026-11': await served(quiet) },
-    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, { plan: PLAN })) },
-    tx: { 'коммуналка 2026-11': { total: 9000, count: 1 } } });
-  // Алексею её выдаёт часть «Денег на месяц» с full (доля семьи); Ангелине плана нет — строка без перехода, пока нет перебора
-  const angelina = budgetOf('2026-11', NOV_REG);
-  assert.ok(!keys(moreScreen({ kind: 'budget', month: '2026-11', data: await served(angelina) }, nav)).includes('regular:коммуналка'));
-  const entry = await openFromBudget(nav, '2026-11', 'коммуналка');
-  assert.deepEqual(header(opsScreen(entry, nav)), { sum: '9 000', note: 'из 12 045', tone: 'big-num ', fill: '74.7%',
-    sub: 'В норме 12 045 · 1 запись · 1–20 ноября', basis: 'сумма в норме — доля семьи' });
+test('E13: ответ без envelopes — коммуналка без перебора без перехода и у Алексея: full в плане страница не читает (решение 94)', async () => {
+  const old = { ...PLAN, parts: [{ name: 'коммуналка', rsd: 12045, full: 12959 }] };
+  const nav = navOf({ health: { '2026-11': await served({ ...before(NOV), regulars: [] }) },
+    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, { ...ALEKSEY, plan: old })) } });
+  const screen = moreScreen({ kind: 'budget', month: '2026-11', data: nav.budget('2026-11') }, nav);
+  assert.deepEqual(keys(screen).filter((k) => k.startsWith('regular:')),
+    ['regular:спортпит', 'regular:подписки', 'regular:связь', 'regular:образование', 'regular:банк', 'regular:обмен валюты']);
+});
+
+import { loadMore } from '../js/more.js';
+
+test('E13: «Бюджет» открыт раньше «Здоровья» месяца (кнопка «Открыть в Капусте») — «Здоровье» догружается: коммуналка нажимается', async () => {
+  const nav = navOf({ health: { all: { '2026-11': NOV } }, budget: { all: { '2026-11': budgetOf('2026-11', NOV_REG, ALEKSEY) } } });
+  let drawn = 0;
+  nav.render = () => { drawn += 1; };
+  const entry = { kind: 'budget', month: '2026-11' };
+  await loadMore(entry, nav);
+  assert.deepEqual(nav.asked, ['/api/budget?month=2026-11', '/api/health?month=2026-11&envelopes=1']);
+  assert.ok(keys(moreScreen(entry, nav)).includes('regular:коммуналка'));
+  assert.ok(drawn >= 3);                              // скелет, «Бюджет», «Бюджет» с переходами
+
+  // «Здоровье» месяца уже в памяти — второй раз не просим
+  const again = { kind: 'budget', month: '2026-11' };
+  await loadMore(again, nav);
+  assert.deepEqual(nav.asked.slice(2), ['/api/budget?month=2026-11']);
 });
