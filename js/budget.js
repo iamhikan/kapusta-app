@@ -2,6 +2,7 @@
 // (fin limits) и деньги на месяц (fin plan) — только Алексею: Ангелине сервер их не шлёт (решение 11).
 import { amountLines, fmt } from './health.js';
 import { monthTitle } from './ops.js';
+import { regularOf } from './regular.js';
 
 const FOR_MONTH = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь',
   'ноябрь', 'декабрь'];
@@ -24,7 +25,8 @@ const avg = (s) => s.replace(/^в ср\.(?: с (\d\d)\.(\d{4}))?/, (_, m, y) => 
 // Слово — как плашка «Здоровья» (zone.word): /api/budget zone не шлёт
 const NONE = { sub: 'нормы нет', title: 'Бюджета нет', text: 'Месяц до начала учёта.' };
 
-export function budgetView(b) {
+// health — «Здоровье» того же месяца (если в памяти): какие строки регулярные (E10), см. regular.js
+export function budgetView(b, health = null) {
   const word = FOR_MONTH[Number(b.month.slice(5)) - 1];
   if (b.norm == null && !b.income && !b.groups.length && !b.limits.rows.length && !b.plan) {
     return { title: `Бюджет · ${monthTitle(b.month)}`, sub: NONE.sub, empty: { title: NONE.title, text: NONE.text } };
@@ -42,6 +44,7 @@ export function budgetView(b) {
   // 8 427 без подписи). Часть плана с full — доля семьи; прежний сервер full не шлёт — без подписей
   const shared = new Set(b.plan ? b.plan.parts.filter((x) => x.full != null).map((x) => x.name) : []);
   const prShare = (r) => shared.has(r.name);
+  const regular = regularOf(b, health);   // E10: строка регулярной нажимается — её операции и градусник
   return {
     title: `Бюджет · ${monthTitle(b.month)}`,
     sub: b.income ? 'куда идёт доход' : 'обязательные траты и лимиты месяца',
@@ -49,7 +52,8 @@ export function budgetView(b) {
     alloc,
     groups: b.groups.map((g) => ({ name: g.name, sum: fmt(g.rsd), sub: g.avg_months ? `в среднем за ${g.avg_months} мес.` : '',
       rows: g.rows.map((r) => ({ name: r.name, sum: fmt(r.rsd),
-        note: [avg(strip(r.note)), prShare(r) ? 'с долей ПР' : ''].filter(Boolean).join(' · ') })) })),
+        note: [avg(strip(r.note)), prShare(r) ? 'с долей ПР' : ''].filter(Boolean).join(' · '),
+        ...(g.name !== 'ПР' && regular(r.name) ? { regular: regular(r.name) } : {}) })) })),
     savings: b.savings ? { name: 'Отложить', sum: fmt(b.savings.rsd), note: b.savings.set || '' } : null,
     norm: b.norm == null ? null : { name: NORM, sum: fmt(b.norm) },
     limits: {

@@ -28,6 +28,8 @@ export async function loadMore(entry, nav) {
   if (r.error === 'stale' || r.error === 'stranger') return nav.problem(r.error);
   if (r.error) [entry.error, entry.fail] = [r.detail || r.error, r.error];
   else entry.data = r.data;
+  // «Бюджет» месяца — в память страницы: сумма регулярной в норме для шапки её операций (E10)
+  if (entry.kind === 'budget' && r.data && nav.keep) nav.keep('budget', r.data);
   // позиции нет (или чек к секрету — зритель Ангелина): 404 цены; другой отказ — словами fin (М2: было — регэксп по «HTTP 404»)
   entry.missing = entry.kind === 'price' && r.error === 'refused' && r.status === 404;
   nav.render();
@@ -86,13 +88,19 @@ function basketBody(entry, nav) {
 }
 
 function budgetBody(entry, nav) {
-  const v = budgetView(entry.data);
+  const v = budgetView(entry.data, nav.health ? nav.health(entry.month) : null);
   if (v.empty) {   // месяц без курса (решение 81): ни долей дохода, ни «Денег на месяц», ни лимитов
     return [head(v.title, v.sub), h('div', { class: 'empty' }, h('h2', {}, v.empty.title), h('p', { class: 'muted small' }, v.empty.text))];
   }
   const row = (name, sum, note, cls = '') => h('div', { class: `line ${cls}` },
     h('span', { class: 'grow' }, h('span', {}, name), note ? h('span', { class: 'muted small' }, note) : null),
     h('span', { class: 'nowrap' }, sum));
+  // E10: регулярная (и коммуналка) — её операции за месяц, в шапке — потрачено против суммы в норме (решение 93)
+  const regular = (r) => h('button', { type: 'button', class: 'line op', 'data-focus': `regular:${r.name}`,
+    on: { click: () => open(nav, newOps(entry.month, { title: r.name.charAt(0).toUpperCase() + r.name.slice(1),
+      params: { regular: r.regular }, limitWord: 'В норме' })) } },
+  h('span', { class: 'grow' }, h('span', {}, r.name), r.note ? h('span', { class: 'muted small' }, r.note) : null),
+  h('span', { class: 'nowrap' }, r.sum), icon(ICONS.right, 16));
   const pct = (x) => `${(x * 100).toFixed(1)}%`;
   return [head(v.title, v.sub),
     v.income ? h('section', { class: 'card pad stack' },
@@ -105,7 +113,7 @@ function budgetBody(entry, nav) {
         h('span', { class: 'nowrap' }, a.sum))))) : null,
     v.plan ? planCard(v.plan) : null,
     ...v.groups.map((g) => [h('div', { class: 'section-head' }, h('h2', {}, g.name), h('span', { class: 'muted small' }, g.sum)),
-      h('section', { class: 'card list' }, ...g.rows.map((r) => row(r.name, r.sum, r.note))),
+      h('section', { class: 'card list' }, ...g.rows.map((r) => (r.regular ? regular(r) : row(r.name, r.sum, r.note)))),
       g.sub ? h('p', { class: 'note-text muted small' }, g.sub) : null]),
     v.savings || v.norm ? h('section', { class: 'card list' }, v.savings ? row(v.savings.name, v.savings.sum, v.savings.note) : null,
       v.norm ? row(v.norm.name, v.norm.sum, '', 'strong') : null) : null,

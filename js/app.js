@@ -24,6 +24,7 @@ const root = document.getElementById('app');
 // фаза 15: фокус после перерисовки — по ключу data-focus, листы модальные, диктор — только сообщения из #say
 const paint = painter(root, document, document.getElementById('say'));
 const cache = new Map();
+const budgets = new Map();             // «Бюджет» по месяцам: сумма регулярной в норме — шапке её операций (E10)
 let month = null;
 let curveOpen = false;   // решение 14: свёрнута у обоих
 let allLimits = false;
@@ -78,8 +79,15 @@ const nav = {
   accounts: () => accounts,
   balanceOf: (account) => balanceRows.get(account) || null,
   healthView(m) {
-    const d = cache.get(m) || (snap && snap.month === m ? snap : null);
+    const d = nav.health(m);
     return d ? view(d) : null;
+  },
+  // ответы «Здоровья» и «Бюджета» месяца в памяти страницы — градусник в шапке операций лимита и регулярной (E10)
+  health: (m) => cache.get(m) || (snap && snap.month === m ? snap : null),
+  budget: (m) => budgets.get(m) || null,
+  keep(kind, data) {
+    if (kind === 'health') cache.set(data.month, data);
+    else if (kind === 'budget') budgets.set(data.month, data);
   },
   render: () => render(),
   focus: (key) => paint.focus(key),
@@ -110,11 +118,7 @@ const nav = {
     // лимит месяца — из «Здоровья» того же месяца, если оно уже загружено; у категории — лимит периода с «Категорий»
     if (ctx.limitValue != null) return ctx.limitValue;
     const hh = cache.get(m);
-    if (ctx.params.regular) {   // решение 86: регулярная — её сумма в норме (с конвертом), если месяц с перебором
-      const r = hh && (hh.regulars || []).find((x) => x.key === ctx.params.regular);
-      return r ? r.limit : null;
-    }
-    if (!ctx.params.limit) return null;
+    if (!ctx.params.limit) return null;   // регулярная — своим градусником (regular.js, E10)
     const l = hh && hh.limits.find((x) => x.key === ctx.params.limit);   // решение 82: в limit= — key
     return l ? l.limit : null;
   },
@@ -390,6 +394,7 @@ async function load(next) {
 function stale() {
   // категория сменилась: цифры «Здоровья», списки и категории — заново при следующем показе
   cache.clear();
+  budgets.clear();
   for (const e of new Set([opsTab, catsTab, ...stack])) {
     if (e && e.kind === 'ops') e.pages = [];
     if (e && e.kind === 'cats') e.data = null;

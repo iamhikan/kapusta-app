@@ -10,6 +10,7 @@ import { canNext, periodEnd, shiftPeriod } from './period.js';
 import { offline } from './snapshot.js';
 import { body as jobBody, category, job, path as jobPath, picker, result } from './recat.js';
 import { itemPrice } from './shop.js';
+import { gaugeOf } from './regular.js';
 
 // фаза 15: ключи фокуса (js/a11y.js). Заголовок открытого экрана и лист принимают фокус скриптом; стрелка «вперёд»
 // неактивна у текущего месяца — фокус на «назад»
@@ -41,6 +42,7 @@ export async function loadOps(entry, nav, more = false) {
   const mine = (entry.seq = (entry.seq || 0) + 1);
   if (!more) { entry.pages = []; entry.error = null; nav.render(); }
   else if (entry.error) { entry.error = null; nav.render(); }   // М14: «Повторить» под списком — «Загружаю…», пока ждём
+  if (!more) gaugeData(entry, nav);
   const r = await nav.get(query(entry, nav.today(), cursor));
   if (mine !== entry.seq) return;
   entry.loading = false;
@@ -48,6 +50,27 @@ export async function loadOps(entry, nav, more = false) {
   if (r.error) [entry.error, entry.fail] = [r.detail || r.error, r.error];
   else entry.pages.push(r.data);
   nav.render();
+}
+
+// градусник в шапке операций лимита или регулярной (E10): «Здоровье» месяца (лимит, перебор, envelopes) и, у прежнего
+// сервера для регулярной без перебора, «Бюджет» месяца (её сумма в норме). Месяц сменили стрелкой — их ещё нет в памяти:
+// грузим и перерисовываем шапку; не пришли — шапка без градусника, как раньше
+async function gaugeData(entry, nav) {
+  const ctx = entry.ctx;
+  if (!ctx || ctx.period || !nav.health || !(ctx.params.limit || ctx.params.regular)) return;
+  const m = entry.month;
+  let got = false;
+  const fetched = async (kind) => {
+    const r = await nav.get(`/api/${kind}?month=${m}`);
+    const ok = !!(r.data && r.data.month === m);
+    if (ok) { nav.keep(kind, r.data); got = true; }
+    return ok ? r.data : null;
+  };
+  const health = nav.health(m) || await fetched('health');
+  const key = ctx.params.regular;
+  const known = health && ((health.envelopes || []).some((e) => e.key === key) || (health.regulars || []).some((e) => e.key === key));
+  if (key && !known && !nav.budget(m)) await fetched('budget');
+  if (got && entry.month === m) nav.render();
 }
 
 function days(entry) {
@@ -107,8 +130,11 @@ function head(entry, nav) {
   const body = entry.pages[0] || { total: 0, count: 0 };
   const ctx = entry.ctx;
   const today = nav.today();
-  const v = headView({ title: ctx.title, limit: nav.limitOf(ctx, entry.month), note: nav.noteOf(ctx, entry.month),
-    limitWord: ctx.limitWord,
+  // регулярная (E10): потрачено против суммы в норме и конверта — из «Здоровья» и «Бюджета» месяца в памяти
+  const g = ctx.params && ctx.params.regular && nav.health
+    ? gaugeOf(ctx.params.regular, nav.health(entry.month), nav.budget(entry.month)) : null;
+  const v = headView({ title: ctx.title, limit: g ? g.limit : nav.limitOf(ctx, entry.month), note: nav.noteOf(ctx, entry.month),
+    limitWord: ctx.limitWord, ...(g ? { norm: g.norm, carry: g.carry, over: g.over, basis: g.basis } : {}),
     month: entry.month, period: ctx.period, to: range(entry, today).to }, body);
   const shift = (dir) => {
     if (ctx.period) entry.ctx = { ...ctx, period: shiftPeriod(ctx.period, dir) };
@@ -125,7 +151,9 @@ function head(entry, nav) {
       h('span', { class: `muted ${v.tone}` }, v.note || 'RSD')),
     v.fill == null ? null : h('span', { class: 'bar thin' },
       h('span', { class: `fill ${v.tone}`, style: { width: `${(v.fill * 100).toFixed(1)}%` } })),
-    h('div', { class: 'muted small' }, v.sub));
+    // на чём сумма в норме (регулярная) — второй строкой вплотную к подписи
+    h('div', { class: 'stack-0' }, h('div', { class: 'muted small head-sub' }, v.sub),
+      v.basis ? h('div', { class: 'muted small basis' }, v.basis) : null));
 }
 
 function accountHead(entry, nav) {

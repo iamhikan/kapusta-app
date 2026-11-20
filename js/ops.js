@@ -180,13 +180,19 @@ export function headView(ctx, body) {
   const days = ctx.period ? rangeText(ctx.period.from, ctx.to)
     : `1–${Number(ctx.to.slice(8))} ${OF_MONTH[Number(ctx.month.slice(5)) - 1]}`;
   const lim = ctx.note ? null : ctx.limit;          // своя подпись (резерв) — вместо «из лимита»
-  const over = lim != null && body.total > lim;
+  // регулярная (E10): конверт неизвестен (carry null), а сервер сказал «перебора нет» — сверх суммы её покрыл конверт
+  const covered = lim != null && body.total > lim && ctx.over === false && ctx.carry == null;
+  const over = lim != null && body.total > lim && !covered;
+  // у спортпита — «В норме 2 433 + конверт 7 300»: limit — сумма с конвертом
+  const word = `${ctx.limitWord || 'Лимит'} ${ctx.carry ? `${fmt(ctx.norm ?? lim - ctx.carry)} + конверт ${fmt(ctx.carry)}` : fmt(lim)}`;
   return {
     title: ctx.title, period: ctx.period ? periodTitle(ctx.period) : monthTitle(ctx.month), sum: fmt(body.total),
-    note: ctx.note || (lim == null ? '' : over ? `сверх ${fmt(body.total - lim)}` : `из ${fmt(lim)}`), tone: over ? 'bad' : '',
-    fill: lim == null ? null : lim > 0 ? Math.min(1, body.total / lim) : 1,
-    sub: [lim == null ? '' : `${ctx.limitWord || 'Лимит'} ${fmt(lim)}`, records(body.count), days]
-      .filter(Boolean).join(' · '),
+    note: ctx.note || (lim == null ? '' : covered ? 'в пределах конверта' : over ? `сверх ${fmt(body.total - lim)}`
+      : `из ${fmt(lim)}`), tone: over ? 'bad' : '',
+    // возврат больше трат (обмен с выигрышем) — полоса пустая, а не отрицательной ширины
+    fill: lim == null ? null : lim > 0 ? Math.max(0, Math.min(1, body.total / lim)) : 1,
+    sub: [lim == null ? '' : word, records(body.count), days].filter(Boolean).join(' · '),
+    basis: lim != null && ctx.basis ? `сумма в норме — ${ctx.basis}` : '',
   };
 }
 

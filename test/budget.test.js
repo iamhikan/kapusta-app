@@ -92,7 +92,9 @@ test('коммуналка: в «Обязательных» — средняя �
       { name: 'коммуналка', rsd: 9341, note: '(в ср. с 05.2026)' }] }],
     plan: { ...ALEKSEY.plan, parts: [{ name: 'жильё', rsd: 90000 }, { name: 'коммуналка', rsd: 8427, full: 9341 }] } };
   const v = budgetView(b);
-  assert.deepEqual(v.groups[0].rows[1], { name: 'коммуналка', sum: '9 341', note: 'в среднем с мая 2026 · с долей ПР' });
+  // E10: доля семьи в плане — значит, у коммуналки есть градусник: строка нажимается (её операции)
+  assert.deepEqual(v.groups[0].rows[1], { name: 'коммуналка', sum: '9 341', note: 'в среднем с мая 2026 · с долей ПР',
+    regular: 'коммуналка' });
   assert.deepEqual(v.plan.parts, ['жильё 90 000', 'коммуналка без доли ПР 8 427']);
   assert.equal(v.groups[0].rows[0].note, '770 €');               // жильё одно и то же — без пометки
   const angelina = budgetView({ ...b, plan: null });
