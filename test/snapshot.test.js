@@ -122,3 +122,20 @@ test('без Мака — «… приходит / приходят с Мака�
   assert.equal(said('basket'), 'Покупки приходят с Мака');
   assert.equal(said('days'), 'Траты по дням приходят с Мака');
 });
+
+// E10: envelopes /api/health (все регулярные месяца, ~1 100 знаков) нужны только шапке «Операций» регулярной — в снимке
+// их нет: иначе ответ не влезал в 4096 и без кривой, и снимок пропадал
+test('E10: envelopes в снимок не идут — кривая и лимиты остаются', () => {
+  const env = Array.from({ length: 7 }, (_, i) => ({ key: `регулярная ${i}`, label: `регулярная ${i}`, kind: 'regular',
+    basis: 'медиана за 3 мес.', spent: 12610, limit: 20684, norm: 20684, carry: 0, over: 0 }));
+  // ответ у предела, как живой у Алексея 20.11 (3 789 знаков)
+  const big = { ...NOW, curve: Array.from({ length: 20 }, (_, i) => [i + 1, 10000 * i]),
+    balances: Array.from({ length: 30 }, (_, i) => ({ account: `Assets:Family:Card${i}:RSD`, name: `карта ${i}`,
+      amounts: { RSD: 150000 + i }, group: 'cards' })) };
+  const free = LIMIT - JSON.stringify(big).length;
+  const raw = pack({ ...big, envelopes: env }, LIMIT);
+  assert.ok(JSON.stringify(env).length > free, 'без отказа от envelopes кривая не влезла бы');
+  const back = unpack(raw);
+  assert.equal(back.envelopes, undefined);
+  assert.deepEqual(back.curve, big.curve);
+});

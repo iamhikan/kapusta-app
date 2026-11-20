@@ -14,9 +14,11 @@ function halve(curve) {
   return curve.filter((_, i) => i % 2 === 0 || i === curve.length - 1);
 }
 
-export function pack(h, max = LIMIT) {
+export function pack(full, max = LIMIT) {
   // решение 32: не влезло — каждая вторая точка кривой, потом кривая целиком, потом пустые счета; лимиты и остатки —
   // всегда целиком. И так не влезло — null: снимка нет, остаётся прошлый.
+  // E10: envelopes (все регулярные месяца) — только для шапки «Операций» регулярной, операций в снимке нет
+  const { envelopes, ...h } = full;
   const steps = [h, { ...h, curve: halve(h.curve) }, { ...h, curve: [] }, { ...h, curve: [], empty: [] }];
   for (const s of steps) {
     const raw = text(s);
