@@ -170,7 +170,7 @@ test('E10: строка регулярной в «Бюджете» ведёт н
     sub: 'В норме 4 272 · 2 записи · 1–20 ноября', basis: 'сумма в норме — медиана за 3 мес.' });
 });
 
-test('E10, E13: нажимаются регулярные и коммуналка; жильё, кредит РФ и строки ПР («ПР коммуналка») — без перехода', async () => {
+test('E10, E13: сервер до E14 — нажимаются регулярные и коммуналка; жильё, кредит РФ (их нет в envelopes) и строки ПР («ПР коммуналка») — без перехода', async () => {
   const nav = navOf({ health: { '2026-11': await served(NOV) },
     budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, ALEKSEY)) } });
   const screen = moreScreen({ kind: 'budget', month: '2026-11', data: nav.budget('2026-11') }, nav);
@@ -293,4 +293,45 @@ test('E13: «Бюджет» открыт раньше «Здоровья» ме�
   const again = { kind: 'budget', month: '2026-11' };
   await loadMore(again, nav);
   assert.deepEqual(nav.asked.slice(2), ['/api/budget?month=2026-11']);
+});
+
+// E14 (Алексей 20.11.2026 на вопрос «нужен ли переход у «жилья» и «кредита РФ»?»: «давай»): жильё и кредит РФ в
+// «Бюджете» тоже нажимаются — те же «Операции» с regular=<имя>. Сервер шлёт их в envelopes с contract: true: потрачено —
+// весь платёж месяца (у кредита — тело долга и проценты), сумма — в норме. «Сверх» у них — курс дня оплаты, а не
+// перебор: в «Потрачено» не идёт, поэтому не красным. Живые числа ноября 2026.
+const deal = (key, basis, spent, norm) => ({ ...env(key, basis, spent, norm, 0, 'mandatory'), contract: true });
+const NOV_DEALS = [...NOV_ENV, deal('жильё', 'по договору 650 €', 76460, 76390),
+  deal('кредит РФ', 'по графику 25 000 ₽', 32009, 32855)];
+const NOV14 = { ...NOV, envelopes: NOV_DEALS };
+
+test('E14: жильё и кредит РФ нажимаются, как коммуналка; строки ПР — по-прежнему без перехода', async () => {
+  for (const extra of [ALEKSEY, {}]) {          // Алексей и Ангелина: «Обязательные» видят оба
+    const nav = navOf({ health: { '2026-11': await served(NOV14) },
+      budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, extra)) } });
+    const screen = moreScreen({ kind: 'budget', month: '2026-11', data: nav.budget('2026-11') }, nav);
+    assert.deepEqual(keys(screen).filter((k) => k.startsWith('regular:')),
+      ['regular:жильё', 'regular:кредит РФ', 'regular:коммуналка', 'regular:спортпит', 'regular:подписки',
+        'regular:связь', 'regular:образование', 'regular:банк', 'regular:обмен валюты']);
+  }
+});
+
+test('E14: жильё — платёж против суммы по договору; «сверх» (курс дня оплаты) — не красным', async () => {
+  const nav = navOf({ health: { '2026-11': await served(NOV14) },
+    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, ALEKSEY)) },
+    tx: { 'жильё 2026-11': { total: 76460, count: 1 } } });
+  const entry = await openFromBudget(nav, '2026-11', 'жильё');
+  assert.deepEqual([entry.ctx.title, entry.ctx.params], ['Жильё', { regular: 'жильё' }]);
+  assert.deepEqual(header(opsScreen(entry, nav)), { sum: '76 460', note: 'сверх 70', tone: 'big-num ', fill: '100.0%',
+    sub: 'В норме 76 390 · 1 запись · 1–20 ноября', basis: 'сумма в норме — по договору 650 €' });
+});
+
+test('E14: кредит РФ — весь платёж месяца против суммы по графику', async () => {
+  const nav = navOf({ health: { '2026-11': await served(NOV14) },
+    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG)) },
+    tx: { 'кредит РФ 2026-11': { total: 32009, count: 1 } } });
+  const entry = await openFromBudget(nav, '2026-11', 'кредит РФ');
+  // пробел в имени — «+», как у URLSearchParams; fin (parse_qsl) читает его пробелом
+  assert.equal(nav.asked.at(-1), `/api/tx?from=2026-11-01&to=2026-11-20&${new URLSearchParams({ regular: 'кредит РФ' })}`);
+  assert.deepEqual(header(opsScreen(entry, nav)), { sum: '32 009', note: 'из 32 855', tone: 'big-num ', fill: '97.4%',
+    sub: 'В норме 32 855 · 1 запись · 1–20 ноября', basis: 'сумма в норме — по графику 25 000 ₽' });
 });

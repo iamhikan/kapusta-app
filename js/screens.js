@@ -134,7 +134,7 @@ function head(entry, nav) {
   const g = ctx.params && ctx.params.regular && nav.health
     ? gaugeOf(ctx.params.regular, nav.health(entry.month), nav.budget(entry.month)) : null;
   const v = headView({ title: ctx.title, limit: g ? g.limit : nav.limitOf(ctx, entry.month), note: nav.noteOf(ctx, entry.month),
-    limitWord: ctx.limitWord, ...(g ? { norm: g.norm, carry: g.carry, over: g.over, basis: g.basis } : {}),
+    limitWord: ctx.limitWord, ...(g ? { norm: g.norm, carry: g.carry, over: g.over, basis: g.basis, contract: g.contract } : {}),
     month: entry.month, period: ctx.period, to: range(entry, today).to }, body);
   const shift = (dir) => {
     if (ctx.period) entry.ctx = { ...ctx, period: shiftPeriod(ctx.period, dir) };
