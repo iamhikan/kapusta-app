@@ -1,6 +1,7 @@
 // Плитки счетов (решение 47): банк — буква в цвете банка, остальное — значок; как цветные плитки в настройках
 // Telegram и iOS. Настоящих логотипов нет: при 30 px не читаются и не различают два счёта одного банка. Цвета Freedom и
 // ALTA — приблизительные: поправить здесь, если на телефоне не похоже. UniCredit — красный сайта и логотипа банка.
+// Счёт ПР Алексея — плитка его банка и значок портфеля в углу (Алексей 20.11): карта и счёт ПР одного банка рядом.
 import { h, icon } from './dom.js';
 
 const GLYPHS = {
@@ -18,13 +19,12 @@ const GLYPHS = {
 };
 
 const WHITE = '#ffffff';
-// порядок важен: кредит РФ — до Райффайзена, ПР на ALTA — до карты ALTA
+// порядок важен: кредит РФ — до Райффайзена
 const TILES = [
   ['Assets:Family:Raiffeisen:Kredit', { bg: '#8e8e93', glyph: 'percent' }],
   ['Assets:Family:Raiffeisen', { bg: '#fff200', fg: '#1c1c1e', text: 'R' }],
   ['Assets:Family:Freedom', { bg: '#00875a', text: 'F' }],
   ['Assets:Family:UniCredit', { bg: '#e2001a', text: 'U' }],   // долг 18.11: была «новым счётом» — зелёная по имени
-  ['Assets:PR:', { bg: '#5856d6', glyph: 'briefcase' }],
   ['Assets:Family:ALTA', { bg: '#1f3a68', text: 'A' }],
   ['Assets:Angelina:PR', { bg: '#e0245e', glyph: 'scissors' }],
   ['Assets:Family:Walt', { bg: '#0088cc', glyph: 'wallet' }],
@@ -41,16 +41,26 @@ function hue(s) {
 export function tileOf(account, name) {
   // нал — по виду счёта у обоих: «…:Cash:<кто>»; новый счёт — первая буква имени, цвет по имени
   if (account.includes(':Cash:')) return { bg: '#3f9d5f', fg: WHITE, glyph: 'cash' };
+  // счёт ПР «Assets:PR:<банк>[:валюта]» — буква банка и портфель в углу; банк без плитки — портфель, как раньше
+  const pr = /^Assets:PR:([^:]+)/.exec(account);
+  if (pr) {
+    const bank = TILES.find(([prefix]) => prefix === `Assets:Family:${pr[1]}`);
+    return bank && bank[1].text ? { fg: WHITE, ...bank[1], badge: 'briefcase' } : { bg: '#5856d6', fg: WHITE, glyph: 'briefcase' };
+  }
   const hit = TILES.find(([prefix]) => account.startsWith(prefix));
   if (hit) return { fg: WHITE, ...hit[1] };
   return { bg: `hsl(${hue(name)} 42% 40%)`, fg: WHITE, text: name.trim().charAt(0).toUpperCase() };
 }
 
 export function tile(t, size = 30) {
-  // плитка рядом с именем счёта — украшение: имя уже в тексте строки (aria-hidden)
+  // плитка рядом с именем счёта — украшение: имя уже в тексте строки (aria-hidden); значок — кружок в правом нижнем углу
   const glyph = Math.round(size * 0.6);
+  const badge = Math.round(size * 0.44);
+  const off = `${-Math.round(size * 0.17)}px`;
   return h('span', { class: 'tile', 'aria-hidden': 'true',
     style: { width: `${size}px`, height: `${size}px`, background: t.bg, color: t.fg, fontSize: `${Math.round(size * 0.5)}px`,
       borderRadius: `${Math.round(size * 0.27)}px` } },
-  t.glyph ? icon(GLYPHS[t.glyph], glyph) : t.text);
+  t.glyph ? icon(GLYPHS[t.glyph], glyph) : t.text,
+  t.badge ? h('span', { class: 'tile-badge', style: { width: `${badge}px`, height: `${badge}px`, right: off, bottom: off } },
+    icon(GLYPHS[t.badge], Math.round(badge * 0.72))) : null);
 }

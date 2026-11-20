@@ -1,7 +1,8 @@
 // Плитки счетов (решение 47): банк — буква в цвете банка, остальное — значок; новый счёт — цвет по имени и буква.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { tileOf } from '../js/tiles.js';
+import { all, one } from './fakedom.js';
+import { tile, tileOf } from '../js/tiles.js';
 
 test('банк — буква в цвете банка: два счёта Райффайзена — одна жёлтая «R», кредит РФ — не банк, а значок', () => {
   const rsd = tileOf('Assets:Family:Raiffeisen:RSD', 'Raiffeisen Ангелина');
@@ -14,7 +15,7 @@ test('банк — буква в цвете банка: два счёта Рай
   assert.equal(tileOf('Assets:Family:ALTA', 'карта ALTA').text, 'A');
 });
 
-test('UniCredit — банк: белая «U» на красном, как в логотипе банка; у счетов RSD и EUR — одна плитка; ПР — портфель', () => {
+test('UniCredit — банк: белая «U» на красном, как в логотипе банка; у счетов RSD и EUR — одна плитка', () => {
   // долг 18.11: плитка была «новым счётом» — зелёная по имени, рядом с зелёными Freedom и налом
   const uc = tileOf('Assets:Family:UniCredit', 'UniCredit');
   assert.equal(uc.text, 'U');
@@ -25,20 +26,46 @@ test('UniCredit — банк: белая «U» на красном, как в л
   assert.deepEqual(tileOf('Assets:Family:UniCredit:RSD', 'UniCredit'), uc);   // кошелёк в карточке — счёт с валютой
   assert.deepEqual(tileOf('Assets:Family:UniCredit:EUR', 'UniCredit'), uc);
   assert.notEqual(uc.bg, tileOf('Assets:Angelina:PR:Bank', 'счёт салона').bg);
-  assert.equal(tileOf('Assets:PR:UniCredit', 'UniCredit').glyph, 'briefcase');  // счёт ПР в UniCredit — бизнес
 });
 
-test('нал обоих — купюра; ПР — портфель, а не банк ALTA; салон — ножницы; Walt, «нам должны», другая карта', () => {
+test('счёт ПР — плитка своего банка и значок портфеля в углу: рядом с картой того же банка видно, где ПР', () => {
+  // Алексей 20.11: «оставь с наименованием банка, только иконку … поменять, чем синий портфель» —
+  // было: оба счёта ПР — синий портфель, банк не виден
+  const card = tileOf('Assets:Family:UniCredit', 'UniCredit');
+  const pr = tileOf('Assets:PR:UniCredit', 'ПР Алексея · UniCredit');
+  assert.deepEqual([pr.text, pr.bg, pr.fg, pr.glyph], [card.text, card.bg, card.fg, undefined]);   // красная «U»
+  assert.equal(pr.badge, 'briefcase');
+  assert.equal(card.badge, undefined);
+  assert.deepEqual(tileOf('Assets:PR:UniCredit:EUR', 'ПР Алексея · UniCredit'), pr);   // кошелёк в карточке — с валютой
+  const alta = tileOf('Assets:PR:ALTA', 'ПР Алексея · ALTA');
+  const altaCard = tileOf('Assets:Family:ALTA', 'карта ALTA');
+  assert.deepEqual([alta.text, alta.bg, alta.fg, alta.badge], [altaCard.text, altaCard.bg, altaCard.fg, 'briefcase']);
+  assert.equal(altaCard.badge, undefined);
+
+  // на экране: у счёта ПР — буква банка и значок портфеля в углу; у карты — только буква
+  const [prEl, cardEl] = [tile(pr), tile(card)];
+  assert.ok(prEl.kids.includes('U') && cardEl.kids.includes('U'));
+  const badge = one(prEl, 'tile-badge');
+  assert.ok(badge, 'значок ПР в углу плитки');
+  assert.equal(all(badge, '<svg').length, 1);
+  assert.equal(one(cardEl, 'tile-badge'), null);
+  assert.equal(prEl.getAttribute('aria-hidden'), 'true');                     // имя «ПР Алексея · …» — в тексте строки
+
+  // ПР в банке без своей плитки — портфель, как раньше; салон Ангелины — ножницы, без значка
+  assert.equal(tileOf('Assets:PR:Revolut', 'ПР Алексея · Revolut').glyph, 'briefcase');
+  assert.equal(tileOf('Assets:Angelina:PR:Bank', 'счёт салона').badge, undefined);
+});
+
+test('нал обоих — купюра; салон — ножницы; Walt, «нам должны», другая карта', () => {
   assert.equal(tileOf('Assets:Family:Cash:Aleksey', 'нал Алексея').glyph, 'cash');
   assert.equal(tileOf('Assets:Family:Cash:Angelina', 'нал Ангелины').glyph, 'cash');
-  assert.equal(tileOf('Assets:PR:ALTA', 'ПР Алексея').glyph, 'briefcase');
   assert.equal(tileOf('Assets:Angelina:PR:Bank', 'счёт салона').glyph, 'scissors');
   assert.equal(tileOf('Assets:Family:Walt', 'Walt').glyph, 'wallet');
   assert.equal(tileOf('Assets:Family:Receivable', 'нам должны').glyph, 'inbound');
   assert.equal(tileOf('Assets:Family:OtherCard', 'другая карта').glyph, 'card');
   const tiles = ['Assets:Family:Cash:Aleksey', 'Assets:Family:ALTA', 'Assets:Family:Freedom', 'Assets:Family:UniCredit',
-    'Assets:Family:Raiffeisen:RSD', 'Assets:PR:ALTA', 'Assets:Angelina:PR:Bank', 'Assets:Family:Walt'].map((a) => tileOf(a, a).bg);
-  assert.equal(new Set(tiles).size, tiles.length);            // у каждого вида — свой цвет
+    'Assets:Family:Raiffeisen:RSD', 'Assets:Angelina:PR:Bank', 'Assets:Family:Walt'].map((a) => tileOf(a, a).bg);
+  assert.equal(new Set(tiles).size, tiles.length);            // у каждого вида — свой цвет (ПР — цвет банка и значок)
 });
 
 test('новый счёт без плитки — первая буква имени и цвет по имени: один и тот же при каждом открытии', () => {
