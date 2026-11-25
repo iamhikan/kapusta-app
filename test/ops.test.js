@@ -65,6 +65,12 @@ test('трата в валюте — валюта операции и RSD; «!»
   assert.deepEqual(r.marks, ['!', 'секрет']);
 });
 
+test('регулярная трата — меткой «регулярная» (Алексей 25.11.2026: «чтобы понимать, идут ли они в учёт плановых трат»)', () => {
+  assert.deepEqual(opRow({ ...LIDL, receipt: false, regular: 'подписки' }).marks, ['регулярная']);
+  assert.deepEqual(opRow({ ...LIDL, regular: 'подписки' }).marks, ['чек', 'регулярная']);
+  assert.deepEqual(opRow({ ...LIDL, receipt: false }).marks, []);
+});
+
 test('доля в категории — «из» всей операции (решение 23); найденная позиция чека — подписью', () => {
   const r = opRow({ ...LIDL, rsd: 400, total: 1500.5, hit: 'сыр твёрдый: SIR — 300' });
   assert.equal(r.amount, '400 RSD');
