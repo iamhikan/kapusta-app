@@ -198,6 +198,9 @@ export function view(h) {
       plan: h.closed || !(h.norm > 0) ? null : h.plan_today / h.norm } : null,
     scale: rated ? scaleOf(h) : null,
     stats: rated ? [left, first, second] : [],
+    // R-21 (ревью 26.11): почему нормы нет или она ≤ 0 — на самом «Здоровье», не только в «Бюджете»
+    why: !rated ? 'Месяц до начала учёта: курса евро на 1-е число нет.'
+      : h.norm > 0 ? '' : 'Доход месяца не покрывает обязательные и регулярные траты. Подробно — «Весь бюджет».',
     curve: { note: curveNote(h), chart: rated && h.curve.length > 0 },   // кривая — с чертой нормы и планом
     plan,
     limits,

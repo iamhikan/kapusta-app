@@ -327,3 +327,14 @@ test('R-9: «Показать все: 13 лимитов и 3 перебора»;
   assert.equal(view({ ...NOW, limits: many.slice(0, 11), regulars: [reg('банк', 2941, 2535)] }).moreLabel,
     'Показать все: 11 лимитов и 1 перебор');
 });
+
+// R-21 (ревью 26.11): «нормы нет» и норма ≤ 0 — с причиной на самом «Здоровье», не только в «Бюджете»
+test('R-21: норма 0 или меньше — причина словами под числами; норма есть — строки нет', () => {
+  for (const norm of [0, -20000]) {
+    const v = view({ ...NOW, norm, left: norm - NOW.spent, plan_today: 0, per_day: null, zone: { status: 'over', word: 'сверх нормы' } });
+    assert.equal(v.why, 'Доход месяца не покрывает обязательные и регулярные траты. Подробно — «Весь бюджет».');
+    assert.match(seen(summary(v)), /Доход месяца не покрывает обязательные и регулярные траты\. Подробно — «Весь бюджет»\.$/);
+  }
+  assert.equal(view(NOW).why, '');
+  assert.doesNotMatch(seen(summary(view(NOW))), /Доход месяца/);
+});
