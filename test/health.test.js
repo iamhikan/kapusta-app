@@ -136,6 +136,22 @@ test('остатки — группами по типу, суммы в две с
   assert.equal(v.fresh, 'последняя запись 11.11 в 08:11 · обновлено в 11:13');
 });
 
+test('«Наличные»: кошельки, потом нал дома с домиком; нал дома — в фильтр «Кошелёк или счёт» (решение 99)', () => {
+  const v = view({ ...NOW, balances_total: 400000, balances: [
+    { account: 'Assets:Family:Cash:Aleksey', name: 'нал Алексея', amounts: { RSD: 12710 }, group: 'cash', rsd: 12710 },
+    { account: 'Assets:Family:Cash:Angelina', name: 'нал Ангелины', amounts: { RSD: 6108 }, group: 'cash', rsd: 6108 },
+    { account: 'Assets:Family:Cash:Home', name: 'нал дома', amounts: { EUR: 749, RSD: 65000 }, group: 'cash', rsd: 152780 },
+    { account: 'Assets:Family:ALTA', name: 'карта ALTA', amounts: { RSD: 1000 }, group: 'cards', rsd: 1000 },
+  ] });
+  const [cash] = v.groups;
+  assert.deepEqual([cash.title, cash.rows.map((r) => r.name)], ['Наличные', ['Нал Алексея', 'Нал Ангелины', 'Нал дома']]);
+  const home = cash.rows[2];
+  assert.deepEqual(home.lines, [sp('65 000 RSD'), '749 €']);
+  assert.deepEqual([cash.rows[0].tile.glyph, home.tile.glyph], ['cash', 'home']);
+  assert.deepEqual(home.ops, { account: 'Assets:Family:Cash:Home' });
+  assert.deepEqual(v.accounts[2], ['нал дома', 'Assets:Family:Cash:Home']);
+});
+
 test('прежний сервер без групп и итога — одна группа без заголовка, итога нет; «Вне лимитов» нет (решение 44)', () => {
   const v = view(NOW);
   assert.equal(v.outside, undefined);

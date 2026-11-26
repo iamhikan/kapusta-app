@@ -20,7 +20,8 @@ const KEYS = ['from', 'to', 'limit', 'regular', 'cat', 'exact', 'q', 'transfers'
 // фильтры (холст «Операции» → «Фильтры»): значение — параметр /api/tx. Кошелёк или счёт — счета зрителя из остатков
 // «Здоровья» (решение 38); «Здоровье» ещё не грузилось — прежний список
 const ACCOUNTS = [['карта ALTA', 'Assets:Family:ALTA'], ['нал Алексея', 'Assets:Family:Cash:Aleksey'],
-  ['нал Ангелины', 'Assets:Family:Cash:Angelina'], ['Райффайзен Ангелины', 'Assets:Family:Raiffeisen:RSD'],
+  ['нал Ангелины', 'Assets:Family:Cash:Angelina'], ['нал дома', 'Assets:Family:Cash:Home'],   // шкаф (решение 99)
+  ['Райффайзен Ангелины', 'Assets:Family:Raiffeisen:RSD'],
   ['счёт салона', 'Assets:Angelina:PR:Bank']];
 
 export function filters(accounts = []) {
