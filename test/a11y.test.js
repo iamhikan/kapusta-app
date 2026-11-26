@@ -633,3 +633,39 @@ test('R-5: метка «🔁 регулярная» — диктор слыши�
   assert.match(eyes(title), /📌 обязательная/);
   assert.equal(heard(title).replace(/\s+/g, ' '), 'Lidl чек обязательная');
 });
+
+// R-18 на стенде: фокус встал на «Повторить» под списком, а кнопка — ниже окна (видно 0 px из 50). Раскладки в
+// поддельном DOM нет: место кнопки на экране задаёт тест
+function withLayout(rectOf, fn) {
+  const proto = El.prototype;
+  const saved = [proto.getBoundingClientRect, proto.scrollIntoView, globalThis.innerHeight];
+  proto.getBoundingClientRect = function rect() { return rectOf(this); };
+  proto.scrollIntoView = function scroll(opts) { this.scrolledTo = opts; };
+  globalThis.innerHeight = 844;
+  try { fn(); } finally { [proto.getBoundingClientRect, proto.scrollIntoView, globalThis.innerHeight] = saved; }
+}
+
+test('R-18, М14: «Показать ещё» было на виду — «Повторить» на его месте показана: страница докручивается ближайшим краем', () => {
+  const { root, entry, n } = opsSetup();
+  entry.pages = [{ days: [{ date: '2026-11-10', sum: 400, ops: [OP] }], total: 400, count: 1, next: 'c1' }];
+  n.render();
+  withLayout((el) => (el.textContent === 'Повторить' ? { top: 900, bottom: 950 } : { top: 700, bottom: 748 }), () => {
+    byKey(root, 'ops-more').focus();
+    Object.assign(entry, { error: 'HTTP 503 · ledger не грузится', fail: 'fault' });
+    n.render();
+    assert.equal(doc.activeElement.textContent, 'Повторить');
+    assert.deepEqual(doc.activeElement.scrolledTo, { block: 'nearest' });
+  });
+});
+
+test('R-18: строку с фокусом прокрутили прочь клавишами — перерисовка страницу назад не тянет', () => {
+  const { root, entry, n } = opsSetup();
+  entry.pages = [{ days: [{ date: '2026-11-10', sum: 400, ops: [OP] }], total: 400, count: 1, next: 'c1' }];
+  n.render();
+  withLayout(() => ({ top: -900, bottom: -842 }), () => {
+    byKey(root, 'op:sms:1').focus();
+    n.render();                                         // подгрузили следующие 50
+    assert.equal(focusKey(), 'op:sms:1');
+    assert.equal(doc.activeElement.scrolledTo, undefined);
+  });
+});

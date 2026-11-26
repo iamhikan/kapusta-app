@@ -13,6 +13,13 @@ const ALT = 'data-focus-alt';   // кнопка стала неактивной 
 
 const keyOf = (el) => (el && el.getAttribute ? el.getAttribute(KEY) : null);
 
+// элемент с фокусом — в окне, а не прокручен прочь клавишами
+function onScreen(el) {
+  if (!el.getBoundingClientRect || !globalThis.innerHeight) return false;
+  const r = el.getBoundingClientRect();
+  return r.bottom > 0 && r.top < globalThis.innerHeight;
+}
+
 function find(root, key) {
   // под листом фон inert: там фокус не встанет
   return [...root.querySelectorAll(`[${KEY}]`)].find((el) => keyOf(el) === key && !el.closest('[inert]')) || null;
@@ -38,8 +45,10 @@ export function painter(root, doc, live) {
   function show(...nodes) {
     const a = doc.activeElement;
     let typing = null;
+    let seen = false;
     if (inPlay()) {
       memo = keyOf(a);
+      seen = onScreen(a);
       // поле — только пока оно в фокусе: иначе фокус в поле откроет клавиатуру телефона сам
       if (memo && a.tagName === 'INPUT') typing = { start: a.selectionStart, end: a.selectionEnd };
     }
@@ -47,11 +56,11 @@ export function painter(root, doc, live) {
     modal(root);
     const key = next || memo;
     next = null;
-    if (key) place(key, typing);
+    if (key) place(key, typing, seen);
     say();
   }
 
-  function place(key, typing) {
+  function place(key, typing, seen = false) {
     let el = find(root, key);
     if (el && el.disabled && el.getAttribute(ALT)) el = find(root, el.getAttribute(ALT));
     // кнопки с ключом на готовом экране нет (строки категории за месяц нет, решение 74) — на заголовок экрана, не в BODY;
@@ -60,6 +69,9 @@ export function painter(root, doc, live) {
     if (!el && !root.querySelector('[aria-busy]')) el = find(root, 'title') || find(root, 'retry') || find(root, 'problem');
     if (!el || el.disabled || (el.tagName === 'INPUT' && !typing)) { memo = key; return; }
     el.focus({ preventScroll: true });
+    // фокус был на виду, а новая кнопка — ниже окна или под вкладками («Повторить» под списком, М14) — докрутить
+    // ближайшим краем (с отступом под вкладки, R-29); кнопка на виду не двигается. Прокрутили прочь — не трогаем
+    if (seen && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
     if (typing && el.setSelectionRange) el.setSelectionRange(typing.start, typing.end);
     memo = keyOf(el);
   }
