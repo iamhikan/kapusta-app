@@ -1,7 +1,7 @@
 // Экраны «Операции» и карточка операции (DOM). Данные — только из /api/tx и /api/tx/{ref}, в памяти страницы.
 import { healthPath, screen } from './api.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
-import { FLAG, accountView, cardView, dayLabel, dayTotal, emptyText, filters, headView, money, monthRange, monthTitle, opRow, taxLink,
+import { FLAG, accountView, cardView, dayLabel, daySay, dayTotal, emptyText, filters, headView, money, monthRange, monthTitle, opRow, taxLink,
   txPath } from './ops.js';
 import { tile, tileOf } from './tiles.js';
 import { GLYPHS } from './catcolor.js';
@@ -128,12 +128,27 @@ function catTile(t) {
     color: `color-mix(in srgb, ${t.color} var(--tile-ink), var(--fg))` } }, icon(GLYPHS[t.glyph], 18));
 }
 
+// метка строки и карточки: значок чата (🔁, 📌) — только для глаз, диктор слышит слово один раз (R-5, ревью 26.11)
+function mark(m) {
+  const [, glyph, word] = /^(\p{Extended_Pictographic})\s(.+)$/u.exec(m) || [];
+  return h('span', { class: `mark${m === '!' ? ' bad' : m === 'секрет' ? ' secret' : ''}` },
+    glyph ? [h('span', { 'aria-hidden': 'true' }, glyph), ` ${word}`] : m);
+}
+
+function dayHead(d) {
+  // итог дня с 🔁📌 — диктору словами (daySay), глазам — как в чате
+  const say = daySay(d);
+  const total = !d.sum ? null : say ? h('span', {}, h('span', { 'aria-hidden': 'true' }, dayTotal(d)), h('span', { class: 'sr' }, say))
+    : h('span', {}, dayTotal(d));
+  return h('div', { class: 'day-head muted small' }, h('span', {}, dayLabel(d.date)), total);
+}
+
 export function opLine(r, nav, opts = {}) {
   const inner = [
     r.tile ? catTile(r.tile) : null,
     h('span', { class: 'grow' },
       h('span', { class: 'op-where' }, h('span', { class: 'ellipsis' }, r.where),
-        ...r.marks.map((m) => h('span', { class: `mark${m === '!' ? ' bad' : m === 'секрет' ? ' secret' : ''}` }, m))),
+        ...r.marks.map(mark)),
       r.sub ? h('span', { class: 'op-sub muted small' }, r.sub) : null,
       r.note ? h('span', { class: `op-note small ${r.noteTone}` }, r.note) : null),
     h('span', { class: 'op-amount' }, sum(r.amount, r.income ? 'good' : ''),
@@ -285,7 +300,7 @@ export function opsScreen(entry, nav) {
       entry.ctx && entry.ctx.period)), h('p', { class: 'muted' }, 'Смените период или фильтры.'));
   } else {
     body = h('div', { class: 'stack' }, ...list.map((d) => h('div', { class: 'day' },
-      h('div', { class: 'day-head muted small' }, h('span', {}, dayLabel(d.date)), d.sum ? h('span', {}, dayTotal(d)) : null),
+      dayHead(d),
       h('section', { class: 'card list' }, ...d.ops.map((op, i) => opLine(opRow(op, { inCategory: !!entry.ctx,
         account: entry.ctx ? '' : entry.f.account }), nav,
         { expanded: entry.expanded, key: `${d.date}:${i}:${op.where}` }))))),
@@ -485,7 +500,7 @@ export function cardScreen(entry, nav) {
     notice(entry, nav),
     h('section', { class: 'card pad stack' },
       h('div', { class: 'op-where' }, h('h1', { class: 'card-title', ...TITLE }, c.title),
-        ...r.marks.map((m) => h('span', { class: `mark${m === '!' ? ' bad' : m === 'секрет' ? ' secret' : ''}` }, m))),
+        ...r.marks.map(mark)),
       c.what ? h('p', { class: 'muted' }, c.what) : null,
       h('div', { class: 'big' }, h('span', { class: `big-num${r.gray ? ' muted' : ''}` }, bigNum),
         bigUnit ? h('span', { class: 'muted' }, bigUnit) : null, r.amountSub ? h('span', { class: 'muted' }, r.amountSub) : null),

@@ -602,3 +602,34 @@ test('R-18: на экране ошибки без заголовка с ключ
   p.show(h('div', {}, failBody('card', { error: 'нет такой операции', fail: 'refused' }, nav, () => {})));
   assert.equal(doc.activeElement.textContent, 'Повторить');
 });
+
+// ——— p43a, R-5 (ревью 26.11, WCAG 1.1.1): диктор слышит слова, а не эмодзи; значки чата на экране остаются ———
+
+const eyes = (el) => text(el, (e) => e.classes.includes('sr')).join('').replace(/\s+/g, ' ');   // что видно: и aria-hidden
+
+test('R-5: итог дня — диктору словами «без регулярных и обязательных»; на экране — те же значки, что в чате', () => {
+  const { root, entry, n } = opsSetup();
+  entry.pages = [{ days: [{ date: '2026-11-10', sum: 77760, plain: 1300, ops: [{ ...OP, regular: 'подписки' }] },
+    { date: '2026-11-09', sum: 300, ops: [{ ...OP, ref: 'sms:2' }] }], total: 78060, count: 2, next: null }];
+  n.render();
+  const heads = find(root, (e) => e.classes.includes('day-head'));
+  const norm = (s) => s.replace(/\s+/g, ' ');
+  assert.equal(norm(heard(heads[0])), '10 ноября, вт траты 77 760, без регулярных и обязательных 1 300');
+  assert.equal(eyes(heads[0]), '10 ноября, вт77 760 · без 🔁📌 1 300');
+  assert.equal(norm(heard(heads[1])), '9 ноября, пн 300', 'день без меток — как был');
+});
+
+test('R-5: метка «🔁 регулярная» — диктор слышит слово один раз, без значка; на экране значок и слово', () => {
+  const { root, entry, n } = opsSetup();
+  entry.pages = [{ days: [{ date: '2026-11-10', sum: 400, plain: 0, ops: [{ ...OP, regular: 'подписки' }] }],
+    total: 400, count: 1, next: null }];
+  n.render();
+  const row = byKey(root, 'op:sms:1');
+  assert.match(eyes(row), /Lidl🔁 регулярная/);
+  assert.equal(heard(row).match(/регулярная/g).length, 1);
+  assert.doesNotMatch(heard(row), /🔁/);
+  const card = cardScreen({ kind: 'card', ref: 'sms:1', data: { ...CARD, mandatory: 'жильё' } }, nav);
+  const title = find(card, (e) => e.classes.includes('op-where'))[0];
+  assert.match(eyes(title), /📌 обязательная/);
+  assert.equal(heard(title).replace(/\s+/g, ' '), 'Lidl чек обязательная');
+});

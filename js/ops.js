@@ -52,6 +52,11 @@ export function dayTotal(d) {
   return d.plain == null ? money(d.sum) : `${money(d.sum)} · без 🔁📌 ${money(d.plain)}`;
 }
 
+// тот же итог для диктора — словами (R-5, ревью 26.11): значки 🔁📌 он читает названиями эмодзи. Без меток — не нужен
+export function daySay(d) {
+  return d.sum && d.plain != null ? `траты ${money(d.sum)}, без регулярных и обязательных ${money(d.plain)}` : '';
+}
+
 const cur = (number, currency) => `${money(number)}${currency in SYMBOL ? SYMBOL[currency] : ` ${currency}`}`;
 const full = (number, currency) => cur(number, currency) + (currency === 'RSD' ? ' RSD' : '');
 
