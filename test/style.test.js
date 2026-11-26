@@ -383,3 +383,21 @@ test('R-3, строки лимитов: плашка «+N» уходит под 
   assert.equal(d['flex-wrap'], 'wrap');
   assert.ok(px(d['row-gap'] ?? (d.gap || '').split(/\s+/)[0]) > 0, 'зазор между именем и плашкой под ним');
 });
+
+test('R-33: три числа под «Потрачено» — в ряд до 320 px, при крупном тексте (200 %, окно 195 px) — по одному в строке', () => {
+  const st = decls('.stats');
+  const m = /^repeat\(auto-fit, minmax\((\d+)px, 1fr\)\)$/.exec(st['grid-template-columns'] || '');
+  assert.ok(m, st['grid-template-columns']);
+  const min = Number(m[1]);
+  const gap = px(st.gap);
+  const inner = (w) => w - 2 * 16 - 2 * 16;   // поля экрана и карточки
+  assert.ok(3 * min + 2 * gap <= inner(320), '320 px: три в ряд — числа на одной линии (Алексей 12.11)');
+  assert.ok(2 * min + gap > inner(195), '195 px: по одному в строке — подписи не налезают');
+});
+
+test('R-33: итог дня отделён от даты зазором и уходит строкой ниже, если рядом не входит (200 %: зазор 0 px)', () => {
+  const d = decls('.day-head');
+  assert.equal(d['flex-wrap'], 'wrap');
+  const [row, col = row] = (d.gap || '').split(/\s+/);
+  assert.ok(px(col) >= 8 && px(row) > 0, d.gap);
+});

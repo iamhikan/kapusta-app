@@ -135,7 +135,9 @@ h1, h2, p { margin: 0; }
 .plan-cap > span { position: absolute; top: 0; white-space: nowrap; }
 /* числа — на одной линии, подписи — от верха: подпись в одну строку у одной колонки и в две у соседних не сдвигает
    ни число (Алексей 12.11, фаза 14), ни саму подпись (фаза 15): ячейка во всю высоту ряда, число прижато к низу */
-.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+/* R-33 (ревью 26.11): при крупном тексте (200 %, окно 195 px) — по одному в строке; до 320 px — три в ряд. Ревью
+   предлагало 96 px: тогда на 320 px третье число уходит вниз, а Алексей просил их на одной линии (12.11) */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); gap: 10px; }
 .stats > div { display: flex; flex-direction: column; justify-content: space-between; gap: 2px; }
 .stat { font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
 /* правка 5: «Деньги на …» — вывод плашкой первым, «есть / нужно» — двумя числами, разбивка — под раскрытием */
@@ -266,7 +268,9 @@ button { -webkit-tap-highlight-color: transparent; }
 /* стрелки месяца — шире (critique 12.11: 32 px мелко); высота — в ряд с чипами */
 .small-arrow { min-width: 40px; min-height: 32px; justify-content: center; }
 .day { display: flex; flex-direction: column; gap: 6px; }
-.day-head { display: flex; justify-content: space-between; padding: 0 4px; font-weight: 600; text-transform: none; }
+.day-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; padding: 0 4px; font-weight: 600;
+  text-transform: none; }
+.day-head > span + span { margin-left: auto; text-align: right; }   /* итог строкой ниже — справа, как в ряд (R-33) */
 .op { width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 16px; min-height: 56px; text-align: left; }
 .op.nested { padding-left: 32px; background: color-mix(in srgb, var(--muted) 6%, transparent); }
 .op.gray .op-where, .op.gray .op-amount > :first-child { color: var(--muted); }
