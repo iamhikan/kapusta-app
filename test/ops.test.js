@@ -449,3 +449,11 @@ test('R-30: «Поправка дубля SMS» — одна серая стро
   assert.deepEqual([r.where, r.sub, r.amount, r.gray], ['Поправка дубля SMS', 'карта ALTA, динары', '0 RSD', true]);
   assert.equal(opRow({ ...fix, correction: undefined }).gray, false, 'обычная трата — не серая');
 });
+
+// R-31 п. 3 (стенд S5): строка «прочие продукты» открывала все операции «Продуктов» (38 707 из 37 записей при строке
+// 2 240): страница не слала `exact` — fin знает его с этапа «Категорий» (спека: «сумма операций = строка «Категорий»»)
+test('R-31: операции «прочих продуктов» — только сами продукты: в запросе exact=1', () => {
+  assert.equal(txPath({ from: '2026-11-01', to: '2026-11-26', cat: 'Expenses:Family:Food', exact: true }),
+    '/api/tx?from=2026-11-01&to=2026-11-26&cat=Expenses%3AFamily%3AFood&exact=1');
+  assert.doesNotMatch(txPath({ from: '2026-11-01', to: '2026-11-26', cat: 'Expenses:Family:Food:Supermarket', exact: false }), /exact/);
+});
