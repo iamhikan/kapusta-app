@@ -32,7 +32,7 @@ const NOV = { month: '2026-11', days: 30, scope: 'all', norm: 240000, points: [
 test('R-2: «По дням» — подпись «как в „Потрачено“», под календарём — правило 🔁📌 (диктору — словами)', () => {
   const v = daysView(NOV, 'sum');
   assert.equal(v.sub, '1–11 ноября · как в «Потрачено»');
-  assert.equal(v.rule.text, '🔁📌 — только то, что сверх нормы, в день, когда норму перешли. В «Операциях» «без 🔁📌» считает день совсем без них.');
+  assert.equal(v.rule.text, '🔁📌 — только то, что сверх нормы, в день, когда норму перешли. В «Операциях» «без\u00a0🔁📌» считает день совсем без них.');
   assert.equal(v.rule.say, 'Регулярные и обязательные траты — только то, что сверх нормы, в день, когда норму перешли. В «Операциях» вторая сумма дня считается совсем без них.');
   assert.equal(daysView(NOV, 'plan').rule.text, v.rule.text);
   assert.equal(daysView({ ...NOV, norm: null }, 'sum').rule, null, 'месяц без нормы — правила нет');
@@ -50,7 +50,7 @@ test('R-2: экран дня из «По дням» — в шапке «в «П�
   const screen = opsScreen(dayEntry({ sum: 107763, plain: 31238, spent: 21828 }), navOf());
   const head = one(screen, 'day-head');
   assert.equal(flat(eye(head)), '11 ноября, ср107 763');
-  assert.doesNotMatch(eye(screen), /без 🔁📌/, 'ни у дня, ни в пояснении');
+  assert.doesNotMatch(eye(screen), /без\s🔁📌/, 'ни у дня, ни в пояснении (\s — и неразрывный пробел)');
   assert.match(eye(screen), new RegExp(sp('в «Потрачено» 21 828')));
 });
 
