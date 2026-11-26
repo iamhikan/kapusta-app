@@ -331,6 +331,9 @@ function marksBlock(entry, nav) {
 
 export function opsScreen(entry, nav) {
   const list = days(entry);
+  // категория в строке не нужна только на экране категории, лимита, регулярной; у экрана дня (R-2) — нужна: значок
+  // метки стоит после неё (R-3)
+  const params = (entry.ctx && entry.ctx.params) || {};
   const last = entry.pages[entry.pages.length - 1];
   let body;
   if (entry.error && !entry.pages.length) {
@@ -343,8 +346,8 @@ export function opsScreen(entry, nav) {
   } else {
     body = h('div', { class: 'stack' }, marksBlock(entry, nav), ...list.map((d) => h('div', { class: 'day' },
       dayHead(d),
-      h('section', { class: 'card list' }, ...d.ops.map((op, i) => opLine(opRow(op, { inCategory: !!entry.ctx,
-        account: entry.ctx ? '' : entry.f.account, bare: !!(entry.ctx && entry.ctx.params && entry.ctx.params.regular) }), nav,
+      h('section', { class: 'card list' }, ...d.ops.map((op, i) => opLine(opRow(op, { inCategory: !!(params.cat || params.limit || params.regular),
+        account: entry.ctx ? '' : entry.f.account, bare: !!params.regular }), nav,
         { expanded: entry.expanded, key: `${d.date}:${i}:${op.where}` }))))),
     // М14: следующие 50 не пришли — под списком тот же вид ошибки (М2) и «Повторить»; кнопки «Показать ещё» нет —
     // подгрузка при прокрутке не повторяет запрос сама (было: ошибка молчала, список прежний)

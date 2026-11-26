@@ -3,7 +3,7 @@
 // пишет в шапке то же число, что клетка (spent fin), — третьего числа нет. Поддельный DOM — fakedom.js. Числа придуманы.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { one } from './fakedom.js';
+import { all, one } from './fakedom.js';
 import { opsScreen } from '../js/screens.js';
 import { headView } from '../js/ops.js';
 import { daysView } from '../js/days.js';
@@ -57,4 +57,11 @@ test('R-2: клетка «По дням» открывает экран дня �
   const { daysScreenCellCtx } = await import('../js/more.js');
   const ctx = daysScreenCellCtx({ date: '2026-11-11', aria: '11 ноября: 31 238 RSD' }, false);
   assert.deepEqual([ctx.title, ctx.days, ctx.period], ['11 ноября', true, { kind: 'custom', from: '2026-11-11', to: '2026-11-11' }]);
+});
+
+test('R-2, R-3: на экране дня у строки — категория и значок после неё, как в «Операциях» (в категории, лимите, регулярной — без категории)', () => {
+  const subs = (screen) => all(screen, 'op-sub').map(eye);
+  assert.deepEqual(subs(opsScreen(dayEntry({ sum: 107763, plain: 31238, spent: 31238 }), navOf())), ['жильё 📌 · нал Алексея']);
+  const cat = { ...dayEntry({ sum: 107763 }), ctx: { title: 'Жильё', params: { cat: 'Expenses:Family:Rent' } } };
+  assert.deepEqual(subs(opsScreen(cat, navOf())), ['📌 · нал Алексея']);
 });
