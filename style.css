@@ -95,6 +95,8 @@ h1, h2, p { margin: 0; }
 .chip { font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 99px; white-space: nowrap;
   background: color-mix(in srgb, currentColor 16%, transparent); }
 .chip.bad { color: var(--bad-ink); }
+/* «нормы нет» (решение 81): серый темы на подложке 16 % — 4,2:1; на 8 % — 4,6:1 (R-20, ревью 26.11) */
+.chip.muted { background: color-mix(in srgb, currentColor 8%, transparent); }
 .big { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }   /* «≈ RSD» — строкой ниже, если не входит (решение 73) */
 .big > span { white-space: nowrap; }   /* «36 956,10 €» не делится: € не уходит на вторую строку */
 .big-num { font-size: 40px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
@@ -213,8 +215,9 @@ h1, h2, p { margin: 0; }
 .button { display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 24px;
   border-radius: 12px; background: var(--button-fill); color: var(--button-text); font-size: 16px; font-weight: 600;
   text-decoration: none; }
-/* неактивная («Выберите категорию», «Меняем…») — серая: не похожа на ту, что нажимается (critique 12.11) */
-.button:disabled { background: var(--track); color: var(--muted); cursor: default; }
+/* неактивная («Выберите категорию», «Меняем…») — серая: не похожа на ту, что нажимается (critique 12.11). Текст — подсказка,
+   что делать: 65 % цвета текста, не серый темы (3,5:1 → 5,1:1, R-20, ревью 26.11) */
+.button:disabled { background: var(--track); color: color-mix(in srgb, var(--fg) 65%, var(--bg)); cursor: default; }
 /* правка 7 (ui-ux-pro-max): нажатие видно сразу — подложка, без сдвига и смены размера; серую вспышку WebKit убираем.
    На iOS :active срабатывает, только если на странице есть слушатель touchstart (app.js) */
 button { -webkit-tap-highlight-color: transparent; }

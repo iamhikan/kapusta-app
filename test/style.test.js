@@ -121,6 +121,7 @@ const SMALL = [
   ['плашка «тратим быстрее плана»', 'chip fast'],
   ['плашка «тратим отложенное»', 'chip warn'],
   ['плашка «сверх»', 'chip bad'],
+  ['плашка «нормы нет»', 'chip muted'],   // месяц без курса (решение 81); ревью 26.11, R-20: было 4,2:1
   ['зелёный текст', 'good', ''],
   ['жёлтый текст', 'fast', ''],
   ['оранжевый текст', 'warn', ''],
@@ -232,8 +233,20 @@ test('три числа под «Потрачено» — на одной лин
 test('неактивная основная кнопка («Выберите категорию») выглядит неактивной: серая подложка и серый текст', () => {
   const off = decls('.button:disabled');
   assert.ok(off.background && off.background !== decls('.button').background, `подложка ${off.background}`);
-  assert.equal(off.color, 'var(--muted)');
+  assert.notEqual(off.color, decls('.button').color, 'текст не белый, как у активной');
   assert.equal(off.cursor, 'default');
+});
+
+test('R-20: текст неактивной кнопки — подсказка, что делать: не ниже 4,5:1 на её подложке в листе, в обеих темах', () => {
+  // ревью 26.11: «Выберите категорию» серым темы на серой подложке — 3,53:1
+  const off = decls('.button:disabled');
+  for (const theme of ['light', 'dark']) {
+    const vars = THEMES[theme];
+    const sheet = color(resolve(decls('.sheet').background, vars));
+    const bg = over(color(resolve(off.background, vars)), sheet);
+    const r = ratio(over(color(resolve(off.color, vars)), bg), bg);
+    assert.ok(r >= 4.5, `${theme}: ${r.toFixed(2)}:1`);
+  }
 });
 
 test('ссылки на листе («Сбросить», «Отмена», «Все категории») — не ниже 4,5:1 на фоне листа в обеих темах', () => {
