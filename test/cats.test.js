@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { barsView, catsView, colorOf, OTHER } from '../js/cats.js';
+import { words } from '../js/api.js';
 
 const sp = (s) => s.replace(/(\d) (\d{3})/g, '$1\u00a0$2');   // разделитель тысяч — неразрывный пробел
 
@@ -213,4 +214,42 @@ test('R-31: в «Продуктах» подкатегория самих про
   assert.equal(v.top[0].sub, '3 ноября, вт · супермаркеты, прочие продукты');
   assert.equal(v.head.title, 'Продукты', 'шапка — сама категория');
   assert.equal(catsView(BODY).rows[0].name, 'продукты', 'на «Категориях» — «продукты»');
+});
+
+// Алексей 26.11 на вопрос S5 («строка самой категории есть ещё у 11 категорий»): «Да, у всех 11». Имя — как сервер
+// его шлёт (`where` fin), после слов приложения (`words`: «учёба» — «образование»); род и число — как у категории
+const REST_11 = [
+  ['Expenses:Family:Health', 'здоровье', 'Expenses:Family:Health:Doctors', 'врачи и анализы', 'прочее здоровье'],
+  ['Expenses:Family:Subscriptions', 'подписки', 'Expenses:Family:Subscriptions:AI', 'ИИ и разработка', 'прочие подписки'],
+  ['Expenses:Family:Entertainment', 'развлечения', 'Expenses:Family:Entertainment:Cinema', 'кино', 'прочие развлечения'],
+  ['Expenses:Family:Travel', 'путешествия', 'Expenses:Family:Travel:Flights', 'авиабилеты', 'прочие путешествия'],
+  ['Expenses:Family:Household', 'хозяйство', 'Expenses:Family:Household:Hygiene', 'гигиена', 'прочее хозяйство'],
+  ['Expenses:Family:Restaurants', 'рестораны', 'Expenses:Family:Restaurants:Alcohol', 'алкоголь в ресторанах',
+    'прочие рестораны'],
+  ['Expenses:Family:Delivery', 'доставка', 'Expenses:Family:Delivery:Alcohol', 'алкоголь с доставкой', 'прочая доставка'],
+  ['Expenses:Family:Education', 'учёба', 'Expenses:Family:Education:English', 'английский', 'прочее образование'],
+  ['Expenses:Family:Transport', 'транспорт', 'Expenses:Family:Transport:Taxi', 'такси', 'прочий транспорт'],
+  ['Expenses:Family:Clothes', 'одежда', 'Expenses:Family:Clothes:Sport', 'спортивная одежда', 'прочая одежда'],
+  ['Expenses:Family:Outings', 'выходы', 'Expenses:Family:Outings:Alcohol', 'алкоголь на выходах', 'прочие выходы'],
+];
+
+for (const [key, name, subKey, subName, rest] of REST_11) {
+  test(`R-31 п. 3, все 11: в «${name}» строка самой категории — «${rest}» в списке, полосе, для диктора и в самых дорогих`, () => {
+    const sub = words({ ...BODY, cat: key, name, total: 3000, limit: null,
+      cats: [{ key: subKey, name: subName, rsd: 2000, share: 0.667, exact: false, prev: 1000 },
+        { key, name, rsd: 1000, share: 0.333, exact: true, prev: 1500 }],
+      top: [{ ref: 'sms:1', date: '2026-11-03', where: 'Место', cats: [subName, name], src: 'карта', rsd: 1200 }] });
+    const v = catsView(sub);
+    assert.deepEqual(v.rows.map((r) => r.name), [subName, rest]);
+    assert.deepEqual(v.strip.map((s) => s.name), [subName, rest]);
+    assert.match(v.aria, new RegExp(`${rest} 1`));
+    assert.equal(v.top[0].sub, `3 ноября, вт · ${subName}, ${rest}`);
+    assert.equal(v.head.title, words(name).charAt(0).toUpperCase() + words(name).slice(1), 'шапка — сама категория');
+    assert.equal(v.rows[1].exact, true, 'строка открывает только саму категорию: exact=1');
+  });
+}
+
+test('R-31 п. 3: на «Категориях» имена 11 категорий — как были, «прочие …» — только среди подкатегорий', () => {
+  const top = words({ ...BODY, cats: REST_11.map(([key, name]) => cat(key, name, 100)) });
+  assert.deepEqual(catsView(top).rows.map((r) => r.name), REST_11.map(([, name]) => words(name)));
 });
