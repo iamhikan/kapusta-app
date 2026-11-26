@@ -49,7 +49,7 @@ function withGauge(row, e, note) {
   }
   const over = e.over > 0;
   const limitAt = over ? e.limit / e.spent : null;
-  const hint = over ? `в «Потрачено» — только перебор\u00a0+${fmt(e.over)}`
+  const hint = over ? `в «Потрачено» идёт только перебор\u00a0+${fmt(e.over)}`
     : e.carry ? `в норме ${fmt(e.norm)} + конверт ${fmt(e.carry)}` : BARE_NOTE.test(note) ? note : '';
   return { ...row, note: '', gauge: { name: row.name, focus: `regular:${row.name}`, spent: fmt(e.spent), limit: fmt(e.limit),
     over: over ? `+${fmt(e.over)}` : '', fill: limitAt ?? (e.limit > 0 ? Math.min(1, e.spent / e.limit) : 0), limitAt,

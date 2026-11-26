@@ -43,8 +43,8 @@ export function dealOf(e, closed = false) {
     sum: money(paid ? e.paid : e.due),
     status: paid ? `✓ оплачено ${payDays(e.paid_on)}` : closed ? 'платежа не было' : 'ждёт оплаты',
     terms: keep(paid && !same ? `${money(e.paid)}, ${e.basis}` : e.basis),
-    rate: paid && diff ? `${diff > 0 ? '+' : '−'}${fmt(Math.abs(diff))} — курс дня оплаты${same ? '' : ' и сумма платежа'}, `
-      + 'в «Потрачено» не идёт' : '',
+    rate: paid && diff ? `разница с нормой\u00a0${diff > 0 ? '+' : '−'}${fmt(Math.abs(diff))}: курс дня оплаты`
+      + `${same ? '' : ' и сумма платежа'}, в «Потрачено» не идёт` : '',
   };
 }
 
