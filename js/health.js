@@ -92,8 +92,11 @@ function count(n, [one, few, many]) {
 }
 
 // подпись строки сверх нормы (R-9): что она делает с «Потрачено» — те же слова, что пояснение 🔁 fin (names.APART_NOTE).
-// Повтор ревью p46a (язык): было «в «Потрачено» идёт только перебор +406» — «перебор» Ангелине ничего не говорит
-export const overHint = (over) => `в «Потрачено» идёт только то, что сверх нормы:\u00a0+${fmt(over)}`;
+// Повтор ревью p46a (язык): было «в «Потрачено» идёт только перебор +406» — «перебор» Ангелине ничего не говорит.
+// Повтор 2 ревью (находки 1, 2): числа в подписи нет — оно на плашке «сверх 406»; «+» — только выигрыш
+export const OVER_HINT = 'в «Потрачено» идёт только то, что сверх нормы';
+// плашка перерасхода — словом, а не «+N»: «+» на том же экране значит выигрыш (повтор 2 ревью p48a, находка 1)
+const overBy = (n) => `сверх\u00a0${fmt(n)}`;
 
 function reserveNote(r) {
   // из чего резерв и чей перерасход покрыл (решение 51). Кончился — сколько покрыл из всего перерасхода (R-10, ревью
@@ -168,7 +171,7 @@ export function view(h) {
     const limitAt = share > 1 ? l.limit / l.spent : null;
     // решение 82: подпись — label, в «Операции» — key (имя budget.yaml)
     const row = { key: l.key, name: l.label, ops: { limit: l.key }, spent: fmt(l.spent), limit: fmt(l.limit),
-      over: l.over ? `+${fmt(l.over)}` : '', fill: limitAt ?? Math.max(0, Math.min(1, share)), limitAt,
+      over: l.over ? overBy(l.over) : '', fill: limitAt ?? Math.max(0, Math.min(1, share)), limitAt,
       color: COLOR[l.state], state: h.closed && l.state === 'ok' ? 'в лимите' : SAY[l.state], covered: calm };
     if (calm) row.hint = 'покрыто резервом';
     // резерв: операции перерасхода других лимитов, в шапке — чей перерасход и сколько покрыто (решение 51);
@@ -187,9 +190,9 @@ export function view(h) {
     // делает с «Потрачено». Основа суммы («обычно за месяц», конверт) — на экране регулярной (было: «регулярная: сумма
     // в норме — медиана за 3 мес.»)
     glyph: r.kind === 'mandatory' ? '📌' : '🔁',
-    spent: fmt(r.spent), limit: fmt(r.limit), over: `+${fmt(r.over)}`, fill: r.limit / r.spent,
+    spent: fmt(r.spent), limit: fmt(r.limit), over: overBy(r.over), fill: r.limit / r.spent,
     limitAt: r.limit / r.spent, color: COLOR.over, state: '', heat: r.limit ? r.spent / r.limit : Infinity,
-    hint: overHint(r.over) }));
+    hint: OVER_HINT }));
   // порядок лимитов — сервера (горячие первыми); строка регулярной встаёт перед первым лимитом холоднее её
   for (const r of regulars.sort((a, b) => b.heat - a.heat)) {
     const at = limits.findIndex((l) => !(l.ops && l.ops.regular) && l.heat < r.heat);

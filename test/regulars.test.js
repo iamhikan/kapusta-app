@@ -35,16 +35,16 @@ const HEALTH = {
   fresh: { last: '2026-11-18 08:11', now: '2026-11-18T15:00' },
 };
 
-test('перебор регулярной — строкой в списке лимитов, по «жаре» среди лимитов: имя, +сверх, потрачено / в норме', async () => {
+test('перебор регулярной — строкой в списке лимитов, по «жаре» среди лимитов: имя, «сверх N», потрачено / в норме', async () => {
   const v = view(await served(HEALTH));
   assert.deepEqual(v.limits.map((l) => l.name), ['красота', 'связь', 'питомцы', 'спортпит', 'продукты']);
   const row = limitRow(v.limits[1], { plan: v.plan, open() {} });
   assert.equal(seen(one(one(row, 'limit-name'), 'ellipsis')), 'связь');
-  assert.equal(flat(seen(one(row, 'badge'))), '+2 019');
-  assert.equal(flat(heard(row)), 'связь: 3 019 из 1 000, сверх на 2 019, в «Потрачено» идёт только то, что сверх нормы: +2 019');   // R-9
+  assert.equal(flat(seen(one(row, 'badge'))), 'сверх 2 019');
+  assert.equal(flat(heard(row)), 'связь: 3 019 из 1 000, сверх на 2 019, в «Потрачено» идёт только то, что сверх нормы');   // R-9; число — на плашке (повтор 2 ревью)
   assert.equal(one(row, 'fill').style.background, 'var(--bad)');
   const sport = limitRow(v.limits[3], { plan: v.plan, open() {} });
-  assert.equal(flat(heard(sport)), 'спортпит: 9 000 из 8 000, сверх на 1 000, в «Потрачено» идёт только то, что сверх нормы: +1 000');
+  assert.equal(flat(heard(sport)), 'спортпит: 9 000 из 8 000, сверх на 1 000, в «Потрачено» идёт только то, что сверх нормы');
 });
 
 test('перебор регулярной не считается лимитом: «Лимитов сверх» и резерв — только по лимитам', async () => {
@@ -78,7 +78,7 @@ test('коммуналка сверх своей доли — строкой с�
   const row = v.limits.find((l) => l.name === 'коммуналка');
   assert.deepEqual(row.ops, { regular: 'коммуналка' });
   assert.equal(flat(heard(limitRow(row, { open() {} }))),
-    'коммуналка: 13 491 из 8 427, сверх на 5 064, в «Потрачено» идёт только то, что сверх нормы: +5 064');
+    'коммуналка: 13 491 из 8 427, сверх на 5 064, в «Потрачено» идёт только то, что сверх нормы');
   assert.equal(row.glyph, '📌');
 });
 
@@ -87,7 +87,7 @@ test('коммуналка сверх своей доли — строкой с�
 // как метка в чате: 🔁 регулярная, 📌 обязательная (коммуналка). Было: «регулярная: сумма в норме — медиана за 3 мес.»
 const shown = (el) => (typeof el === 'string' ? el : el.classes.includes('sr') ? '' : el.kids.map(shown).join(' '));
 
-test('R-9: строка сверх нормы — «банк 🔁 +406 … в «Потрачено» идёт только то, что сверх нормы: +406»; коммуналка — 📌; без основы суммы', async () => {
+test('R-9: строка сверх нормы — «банк 🔁 сверх 406 … в «Потрачено» идёт только то, что сверх нормы»; коммуналка — 📌; без основы суммы', async () => {
   const bank = { key: 'банк', label: 'банк', kind: 'regular', basis: 'обычно за месяц', spent: 2941, limit: 2535,
     norm: 2535, carry: 0, over: 406 };
   const util = { key: 'коммуналка', label: 'коммуналка', kind: 'mandatory', basis: 'доля семьи, среднее с 05.2026',
@@ -95,19 +95,19 @@ test('R-9: строка сверх нормы — «банк 🔁 +406 … в «
   const v = view(await served({ ...HEALTH, regulars: [bank, util, HEALTH.regulars[1]] }));
   const rowOf = (name) => limitRow(v.limits.find((l) => l.name === name), { open() {} });
   const b = rowOf('банк');
-  assert.equal(flat(shown(one(b, 'limit-name'))), 'банк 🔁 +406');   // повтор ревью, п. 12: значок — после имени
-  assert.equal(flat(shown(b)), 'банк 🔁 +406 2 941 / 2 535 в «Потрачено» идёт только то, что сверх нормы: +406');
-  assert.equal(flat(heard(b)), 'банк: 2 941 из 2 535, сверх на 406, в «Потрачено» идёт только то, что сверх нормы: +406');
-  assert.equal(flat(shown(one(rowOf('коммуналка'), 'limit-name'))), 'коммуналка 📌 +1 446');
-  assert.match(flat(shown(rowOf('коммуналка'))), /в «Потрачено» идёт только то, что сверх нормы: \+1 446$/);
+  assert.equal(flat(shown(one(b, 'limit-name'))), 'банк 🔁 сверх 406');   // повтор ревью, п. 12: значок — после имени
+  assert.equal(flat(shown(b)), 'банк 🔁 сверх 406 2 941 / 2 535 в «Потрачено» идёт только то, что сверх нормы');
+  assert.equal(flat(heard(b)), 'банк: 2 941 из 2 535, сверх на 406, в «Потрачено» идёт только то, что сверх нормы');
+  assert.equal(flat(shown(one(rowOf('коммуналка'), 'limit-name'))), 'коммуналка 📌 сверх 1 446');
+  assert.match(flat(shown(rowOf('коммуналка'))), /в «Потрачено» идёт только то, что сверх нормы$/);
   // у спортпита с конвертом — тоже про «Потрачено»: «3 000 в норме + 5 000 конверт» — на его экране
-  assert.match(flat(shown(rowOf('спортпит'))), /в «Потрачено» идёт только то, что сверх нормы: \+1 000$/);
+  assert.match(flat(shown(rowOf('спортпит'))), /в «Потрачено» идёт только то, что сверх нормы$/);
   for (const name of ['банк', 'коммуналка', 'спортпит']) {
     assert.doesNotMatch(shown(rowOf(name)) + heard(rowOf(name)), /медиана|сумма в норме|конверт|регулярная:/, name);
   }
-  // лимит — без значка; «+406» не уходит один на строку при 320 px
+  // лимит — без значка; число сверх нормы — на плашке, в подписи его нет (повтор 2 ревью, находка 2)
   assert.equal(one(rowOf('красота'), 'limit-glyph'), null);
-  assert.match(v.limits.find((l) => l.name === 'банк').hint, /нормы:\u00a0\+406$/);
+  assert.equal(v.limits.find((l) => l.name === 'банк').hint, 'в «Потрачено» идёт только то, что сверх нормы');
 });
 
 // E10 (Алексей 20.11.2026): «нажать на категорию регулярных трат и увидеть все её транзакции, внутри — свой
@@ -379,8 +379,8 @@ test('R-11: «Бюджет» — строка регулярной с полос
     tx: { 'образование 2026-11': { total: 15684, count: 4 } } });
   const screen = moreScreen({ kind: 'budget', month: '2026-11', data: nav.budget('2026-11') }, nav);
   const edu = all(screen, '<button').find((b) => b.getAttribute('data-focus') === 'regular:образование');
-  assert.equal(flat(shown(edu)), 'образование +1 362 15 684 / 14 322 в «Потрачено» идёт только то, что сверх нормы: +1 362');
-  assert.equal(flat(heard(edu)), 'образование: 15 684 из 14 322, сверх на 1 362, в «Потрачено» идёт только то, что сверх нормы: +1 362');
+  assert.equal(flat(shown(edu)), 'образование сверх 1 362 15 684 / 14 322 в «Потрачено» идёт только то, что сверх нормы');
+  assert.equal(flat(heard(edu)), 'образование: 15 684 из 14 322, сверх на 1 362, в «Потрачено» идёт только то, что сверх нормы');
   assert.ok(one(edu, 'bar') && one(edu, 'limit-mark'));
   const subs = all(screen, '<button').find((b) => b.getAttribute('data-focus') === 'regular:подписки');
   assert.equal(flat(heard(subs)), 'подписки: 12 610 из 20 684');

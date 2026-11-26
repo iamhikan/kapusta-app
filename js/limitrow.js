@@ -1,13 +1,15 @@
 // Строка лимита (DOM): «Лимиты» на «Здоровье» и «Скрытые лимиты». Тап — операции лимита за месяц. Диктор слышит
 // строку одной фразой словами — «транспорт: 24 930 из 5 876, сверх на 19 054» (после v3, critique 12.11, P2 № 4: было
 // «транспорт +19 054 24 930 / 5 876»), видимые числа от него скрыты; состояние полоски — словами, цвет он не видит.
+// Перерасход в строке — одна кодировка (повтор 2 ревью p48a, находка 2): плашка словом «сверх N» и штриховка полосы
+// за меткой лимита. Число «потрачено» — без красного: было трижды (плашка «+N», красное число, штриховка).
 import { h, icon, ICONS } from './dom.js';
 
 const pct = (x) => `${(x * 100).toFixed(1)}%`;
 
 // фраза диктора: имя, «N из M», сверх на сколько (или состояние полоски), подпись под полоской
 export function limitSay(l) {
-  return [`${l.name}: ${l.spent} из ${l.limit}`, l.over ? `сверх на ${l.over.replace(/^\+/, '')}` : l.state, l.hint]
+  return [`${l.name}: ${l.spent} из ${l.limit}`, l.over ? l.over.replace(/^сверх/, 'сверх на') : l.state, l.hint]
     .filter(Boolean).join(', ');
 }
 
@@ -44,8 +46,8 @@ export function limitRow(l, { plan = null, open }) {
           l.glyph ? h('span', { class: 'limit-title' }, h('span', { class: 'ellipsis' }, l.name),
             h('span', { class: 'limit-glyph' }, l.glyph)) : h('span', { class: 'ellipsis' }, l.name),
           l.over ? h('span', { class: `badge${l.covered ? ' calm' : ''}` }, l.over) : null),
-        // решение 63: перерасход, который покрыл резерв, — без красного; подпись «покрыто резервом» — ниже (hint)
-        h('span', { class: 'nowrap' }, h('b', { class: l.over && !l.covered ? 'bad' : '' }, l.spent),
+        // решение 63: перерасход, который покрыл резерв, — плашка спокойным цветом; подпись «покрыто резервом» — ниже
+        h('span', { class: 'nowrap' }, h('b', {}, l.spent),
           h('span', { class: 'muted small' }, ` / ${l.limit}`))),
       limitBar(l, plan),
       l.hint ? h('span', { class: 'muted small', 'aria-hidden': 'true' }, l.hint) : null),

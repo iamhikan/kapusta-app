@@ -1,6 +1,6 @@
 // «Бюджет» (этап 7) — продолжение «Все лимиты» на «Здоровье»: ответ /api/budget -> что видит человек. Куда идёт доход
 // (fin limits) и деньги на месяц (fin plan) — только Алексею: Ангелине сервер их не шлёт (решение 11).
-import { amountLines, fmt, overHint } from './health.js';
+import { amountLines, fmt, OVER_HINT } from './health.js';
 import { monthTitle } from './ops.js';
 import { FX, dealOf, regularOf } from './regular.js';
 
@@ -50,10 +50,10 @@ function withGauge(row, e, note) {
   }
   const over = e.over > 0;
   const limitAt = over ? e.limit / e.spent : null;
-  const hint = over ? overHint(e.over)
+  const hint = over ? OVER_HINT
     : e.carry ? `в норме ${fmt(e.norm)} + конверт ${fmt(e.carry)}` : BARE_NOTE.test(note) ? note : '';
   return { ...row, note: '', gauge: { name: row.name, focus: `regular:${row.name}`, spent: fmt(e.spent), limit: fmt(e.limit),
-    over: over ? `+${fmt(e.over)}` : '', fill: limitAt ?? (e.limit > 0 ? Math.min(1, e.spent / e.limit) : 0), limitAt,
+    over: over ? `сверх\u00a0${fmt(e.over)}` : '', fill: limitAt ?? (e.limit > 0 ? Math.min(1, e.spent / e.limit) : 0), limitAt,
     color: over ? 'var(--bad)' : 'var(--bar-green)', state: '', hint } };
 }
 const BARE_NOTE = /^в норме /;

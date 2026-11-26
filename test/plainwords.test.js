@@ -25,11 +25,11 @@ const HEALTH = {
   fresh: { last: '2026-11-26 08:11', now: '2026-11-26T15:00' },
 };
 
-test('«Здоровье»: строка сверх нормы — «в «Потрачено» идёт только то, что сверх нормы: +406»; кнопка — «3 траты сверх нормы»', () => {
+test('«Здоровье»: строка сверх нормы — «в «Потрачено» идёт только то, что сверх нормы» (число — на плашке); кнопка — «3 траты сверх нормы»', () => {
   const v = view(HEALTH);
   const bank = v.limits.find((l) => l.name === 'банк');
-  assert.equal(bank.hint, 'в «Потрачено» идёт только то, что сверх нормы: +406');   // число не отрывается от слов
-  assert.equal(v.limits.find((l) => l.name === 'коммуналка').hint, 'в «Потрачено» идёт только то, что сверх нормы: +1 446');
+  assert.equal(bank.hint, 'в «Потрачено» идёт только то, что сверх нормы');   // число — на плашке «сверх 406»
+  assert.equal(v.limits.find((l) => l.name === 'коммуналка').hint, 'в «Потрачено» идёт только то, что сверх нормы');
   assert.equal(v.moreLabel, 'Показать все: 1 лимит и 3 траты сверх нормы');
   const one = view({ ...HEALTH, regulars: HEALTH.regulars.slice(0, 1) });
   assert.equal(one.moreLabel, 'Показать все: 1 лимит и 1 трата сверх нормы');
@@ -49,7 +49,7 @@ test('«Бюджет»: подпись сверх нормы — как на «�
       { name: 'обмен валюты', rsd: 588, note: '(5 €)' }] }] };
   const health = { month: '2026-11', closed: false, envelopes: [ENV('банк', 2941, 2535), ENV('обмен валюты', -189, 588)] };
   const rows = budgetView(b, health).groups[0].rows;
-  assert.equal(rows[0].gauge.hint, 'в «Потрачено» идёт только то, что сверх нормы: +406');
+  assert.equal(rows[0].gauge.hint, 'в «Потрачено» идёт только то, что сверх нормы');
   assert.deepEqual([rows[1].sum, rows[1].note], ['+189', 'выигрыш на обмене · в норме 5 €']);
   assert.doesNotMatch(plain(rows), OLD);
 });

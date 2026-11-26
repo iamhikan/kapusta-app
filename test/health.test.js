@@ -90,12 +90,12 @@ test('Ангелине — без «Весь доход» (сервер его �
   assert.ok(!JSON.stringify(v).includes('Весь доход'));
 });
 
-test('лимиты: горячие сверху, «+N» сверх лимита; цвет полоски — по state сервера (решения 69, 82)', () => {
+test('лимиты: горячие сверху, «сверх N» словами (повтор 2 ревью, находка 1: было «+N»); цвет полоски — по state сервера (решения 69, 82)', () => {
   const v = view(NOW);
   const [pets, travel, food] = v.limits;
   assert.equal(pets.name, 'питомцы');
   assert.deepEqual(pets.ops, { limit: 'питомцы' });               // тап — операции лимита за месяц (решение 3)
-  assert.equal(pets.over, '+2 000');
+  assert.equal(pets.over, 'сверх 2 000');
   assert.equal(pets.color, 'var(--bar-orange)');                 // covered — решение 63: перерасход покрыл резерв
   const bare = { ...NOW, limits: [{ ...NOW.limits[0], state: 'over' }] };
   assert.equal(view(bare).limits[0].color, 'var(--bad)');        // over — резерв не покрыл: красная
@@ -292,7 +292,7 @@ const SHORT = { ...NOW, limits: [{ ...NOW.limits[0], state: 'over' }, ...NOW.lim
 
 test('решение 63: перерасход, который покрыл резерв, — оранжевая полоска и «покрыто резервом»; резерв кончился — красная', () => {
   const pets = view(NOW).limits.find((l) => l.name === 'питомцы');
-  assert.deepEqual([pets.covered, pets.color, pets.hint, pets.over], [true, 'var(--bar-orange)', 'покрыто резервом', sp('+2 000')]);
+  assert.deepEqual([pets.covered, pets.color, pets.hint, pets.over], [true, 'var(--bar-orange)', 'покрыто резервом', sp('сверх 2 000')]);
   for (const l of view(SHORT).limits.filter((x) => x.over)) {
     assert.deepEqual([l.covered, l.color, l.state, l.hint], [false, 'var(--bad)', 'сверх лимита', undefined], l.name);
   }
