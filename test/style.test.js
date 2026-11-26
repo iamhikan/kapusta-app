@@ -599,3 +599,13 @@ test('находка 4, шапки и «Операции» при 195 px: мес
     assert.deepEqual(decls(sel, 320), decls(sel), `320 px: ${sel}`);
   }
 });
+
+// ——— p50a: вёрстка по повтору 2 ревью p48a (docs/ui-review-2026-11-26.md, «Повтор 2 после правок» → «Новые находки») ———
+
+test('находка 4, текст 200 % (окно 195 px): «план на сегодня 223 578» — переносом под полосой, не за край карточки', () => {
+  // было: подпись в одну строку шириной 159 px при карточке 131 px (стенд: 28 px за краем). Число не делится: между
+  // тысячами — неразрывный пробел (fmt, health.js)
+  assert.equal(decls('.plan-cap > span', NARROW)['white-space'], 'normal');
+  assert.equal(decls('.plan-cap > span')['white-space'], 'nowrap', 'у черты плана — одной строкой, как было');
+  assert.deepEqual(decls('.plan-cap > span', 320), decls('.plan-cap > span'));
+});

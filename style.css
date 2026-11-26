@@ -517,9 +517,10 @@ section .title { font-size: 17px; font-weight: 600; }
   /* строка «Операций»: имя и подпись — во всю ширину, под ними сумма, справа */
   .op:not(.line) { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
   .op:not(.line) > .op-amount { justify-self: end; }
-  /* «план на сегодня 223 578» шире полосы — строкой под полосой, а не за край карточки (место у черты — в style) */
+  /* «план на сегодня 223 578» шире полосы — строкой под полосой, а не за край карточки (место у черты — в style); шире
+     карточки — переносом по словам, число не делится (неразрывный пробел, повтор 2 ревью p48a, находка 4) */
   .plan-cap { height: auto; margin-bottom: 0; }
-  .plan-cap > span { position: static; transform: none !important; }
+  .plan-cap > span { position: static; transform: none !important; white-space: normal; }
   .section-head { flex-wrap: wrap; row-gap: 0; }
   .section-head > span { text-align: left; }
   /* «Категории»: имя — первой строкой во всю ширину, сумма — второй, «доля · к …» — третьей; чипы периода — по два */
