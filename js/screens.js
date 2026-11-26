@@ -301,7 +301,7 @@ export function failBody(kind, entry, nav, retry, key = 'retry') {
   // снимка: Мак не спит
   if (entry.fail !== 'refused' && entry.fail !== 'fault') return offlineBody(kind, entry, nav, retry, key);
   const s = screen(entry.fail, entry.error);
-  const text = kind === 'card' && entry.status === 404 ? `${s.text} Её могли удалить или заменить.` : s.text;
+  const text = kind === 'card' && entry.status === 404 ? `${s.text} Её могли удалить или\u00a0заменить.` : s.text;   // без висячего слова
   // R-19: отказ fin — действие по месту (js/refused.js): повтор дал бы тот же отказ; ошибка fin — «Повторить»
   const step = entry.fail === 'refused' ? refusedStep(kind, entry,
     { today: nav.today(), under: nav.under ? nav.under() : null, more: key === 'ops-more' }) : null;

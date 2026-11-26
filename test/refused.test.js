@@ -92,7 +92,8 @@ test('R-19: карточка, 404 «нет такой операции» — «�
   const entry = { kind: 'card', ref: 'sms:gone' };
   await loadCard(entry, nav);
   const tree = cardScreen(entry, nav);
-  assert.match(seen(tree), /Нет такой операции\. Её могли удалить или заменить\./);
+  // «или заменить» — через неразрывный пробел: при 390 px «заменить.» висело одно в строке (детектор, стенд S5)
+  assert.match(seen(tree), /Нет такой операции\. Её могли удалить или\u00a0заменить\./);
   assert.deepEqual(buttons(one(tree, 'empty')), ['К списку']);
   press(button(tree, 'К списку'));
   assert.equal(back, 1);
