@@ -155,8 +155,10 @@ function exchange(op) {
   const out = op.legs.filter((l) => l.number < 0);
   const into = op.legs.filter((l) => l.number > 0);
   const rate = op.rate ? ` · по ${money(op.rate.deal)}, НБС ${money(op.rate.nbs)}` : '';
-  const note = op.fx > 0 ? [`выигрыш +${fmt(op.fx)} к курсу НБС`, 'good']
-    : op.fx < 0 ? [`потеря −${fmt(-op.fx)} к курсу НБС`, 'warn'] : ['по курсу НБС', ''];
+  // повтор ревью p46a (язык): «выигрыш на обмене +N» (было «выигрыш +N к курсу НБС»); курс сделки и НБС — в подписи.
+  // Узко (320 px) подпись — в две строки: число держится за «обмене», одно на строку не уходит
+  const note = op.fx > 0 ? [`выигрыш на обмене\u00a0+${fmt(op.fx)}`, 'good']
+    : op.fx < 0 ? [`потеря на обмене\u00a0−${fmt(-op.fx)}`, 'warn'] : ['по курсу НБС', ''];
   return { sub: `${op.src}${rate}`, amount: out.length ? full(-out[0].number, out[0].currency) : '',
     amountSub: into.length ? `→ ${full(into[0].number, into[0].currency)}` : '', note: note[0], noteTone: note[1] };
 }
@@ -197,9 +199,10 @@ export function opRow(op, { inCategory = false, account = '', bare = false } = {
   const base = { ref: op.ref, where: op.count > 1 ? `${op.where} · ${records(op.count)}` : op.where, marks, note: itemName(op.hit), noteTone: '', gray: false,
     group: (op.group || []).map((g) => opRow(g, { bare })), count: op.count || 1, tile: tileOfOp(op) };
   if (op.kind === 'exchange') {
-    // R-6: у обмена регулярная — только разница к курсу НБС (решение 88): значок — у строки выигрыша или потери
+    // R-6: у обмена регулярная — только разница к курсу НБС (решение 88): значок — у строки выигрыша или потери, после
+    // неё, как в строке траты (повтор ревью p46a, п. 12)
     const ex = exchange(op);
-    return { ...base, gray: true, ...ex, note: glyph && ex.note ? `${glyph} ${ex.note}` : ex.note };
+    return { ...base, gray: true, ...ex, note: glyph && ex.note ? `${ex.note}\u00a0${glyph}` : ex.note };
   }
   if (op.kind === 'transfer') {
     const from = op.legs.filter((l) => l.number < 0).map((l) => l.name);
@@ -256,9 +259,9 @@ export function headView(ctx, body) {
   const over = lim != null && body.total > lim && !covered;
   // жильё и кредит РФ (E14): «сверх» — курс дня оплаты, в «Потрачено» не идёт — число есть, красного нет
   const bad = over && !ctx.contract;
-  // у спортпита — «В норме 2 433 + конверт 7 300»: limit — сумма с конвертом; обмен валюты — норма на потери к курсу
+  // у спортпита — «В норме 2 433 + конверт 7 300»: limit — сумма с конвертом; обмен валюты — норма на потери при обмене
   const word = `${ctx.limitWord || 'Лимит'} ${ctx.carry ? `${fmt(ctx.norm ?? lim - ctx.carry)} + конверт ${fmt(ctx.carry)}` : fmt(lim)}`
-    + (ctx.fx ? ' на потери к курсу' : '');
+    + (ctx.fx ? ' на потери при обмене' : '');
   // R-13 (ревью 26.11): вернули больше, чем потратили (обмен с выигрышем) — «+N», без «из» и без полосы: «−189 из 588»
   // читалось как «потратили минус 189»
   const back = lim != null && !ctx.note && body.total < 0;
@@ -279,7 +282,7 @@ export function headView(ctx, body) {
   return {
     title: ctx.title, period: ctx.period ? periodTitle(ctx.period) : monthTitle(ctx.month),
     sum: back ? `+${fmt(-body.total)}` : fmt(body.total),
-    note: back ? (ctx.fx ? 'выигрыш к курсу НБС' : 'вернули больше, чем потратили')
+    note: back ? (ctx.fx ? 'выигрыш на обмене' : 'вернули больше, чем потратили')
       : ctx.note || (lim == null ? '' : covered ? 'в пределах конверта' : over ? `сверх ${fmt(body.total - lim)}`
         : `из ${fmt(lim)}`), tone: bad ? 'bad' : back ? 'good' : '',
     fill: lim == null || back ? null : lim > 0 ? Math.max(0, Math.min(1, body.total / lim)) : 1,
