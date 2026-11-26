@@ -23,7 +23,7 @@ const dayEntry = (day) => ({ kind: 'ops', month: '2026-11', expanded: new Set(),
   ctx: { title: '11 ноября', days: true, period: { kind: 'custom', from: '2026-11-11', to: '2026-11-11' }, params: {} },
   f: { q: '', transfers: false, account: '', who: '', source: '', flag: false },
   pages: [{ from: '2026-11-11', to: '2026-11-11', count: 9, total: 107763, next: null,
-    apart: ['📌 — обязательная трата: она в норме отдельно'], days: [{ date: '2026-11-11', ops: [rent], ...day }] }] });
+    apart: ['📌 — обязательная трата: у неё своя норма, в «Потрачено» идёт только то, что сверх нормы у коммуналки'], days: [{ date: '2026-11-11', ops: [rent], ...day }] }] });
 
 const NOV = { month: '2026-11', days: 30, scope: 'all', norm: 240000, points: [
   { date: '2026-11-11', rsd: 31238, scale: 31238, plan: 8000 }] };
@@ -31,8 +31,8 @@ const NOV = { month: '2026-11', days: 30, scope: 'all', norm: 240000, points: [
 test('R-2: «По дням» — подпись «как в „Потрачено“», под календарём — правило 🔁📌 (диктору — словами)', () => {
   const v = daysView(NOV, 'sum');
   assert.equal(v.sub, '1–11 ноября · как в «Потрачено»');
-  assert.equal(v.rule.text, '🔁📌 — только перебор сверх нормы, в день, когда его перешли.');
-  assert.equal(v.rule.say, 'Регулярные и обязательные траты — только перебор сверх нормы, в день, когда его перешли.');
+  assert.equal(v.rule.text, '🔁📌 — только то, что сверх нормы, в день, когда норму перешли.');
+  assert.equal(v.rule.say, 'Регулярные и обязательные траты — только то, что сверх нормы, в день, когда норму перешли.');
   assert.equal(daysView(NOV, 'plan').rule.text, v.rule.text);
   assert.equal(daysView({ ...NOV, norm: null }, 'sum').rule, null, 'месяц без нормы — правила нет');
 });

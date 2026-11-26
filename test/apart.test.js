@@ -75,7 +75,7 @@ test('R-3: экран регулярной (regular=) — без значка в
 });
 
 test('R-3: карточка — слово у строки метки, у шапки и суммы значка нет', () => {
-  const card = { ...spend('a:1', 'Английский', { regular: 'образование' }), apart: ['🔁 — регулярная трата: она в норме отдельно'],
+  const card = { ...spend('a:1', 'Английский', { regular: 'образование' }), apart: ['🔁 — регулярная трата: у неё своя норма, в «Потрачено» идёт только то, что сверх нормы'],
     refs: ['a:1'], similar: [], postings: [] };
   const screen = cardScreen({ kind: 'card', ref: 'a:1', data: card }, navOf());
   assert.match(eye(one(screen, 'card-title')), /^Английский$/);
@@ -85,22 +85,22 @@ test('R-3: карточка — слово у строки метки, у шап
 
 // ——— R-6: у обмена 🔁 — у строки выигрыша или потери; повтор ревью (п. 12): после неё, как значок в строке ———
 
-test('R-6: обмен — «выигрыш +782 к курсу НБС 🔁», у имени метки нет; на экране «Обмена валюты» и в карточке — без значка', () => {
+test('R-6: обмен — «выигрыш на обмене +782 🔁», у имени метки нет; на экране «Обмена валюты» и в карточке — без значка', () => {
   const r = opRow(EXCHANGE);
   assert.equal(r.where, 'Обмен');
   assert.deepEqual(r.marks, []);
-  assert.equal(r.note, 'выигрыш +782 к курсу НБС 🔁');
+  assert.equal(r.note, 'выигрыш на обмене +782 🔁');
   assert.equal(r.sub, 'нал Алексея · по 118, НБС 117,61');
-  assert.equal(opRow({ ...EXCHANGE, fx: -40 }).note, 'потеря −40 к курсу НБС 🔁');
-  assert.equal(opRow(EXCHANGE, { inCategory: true, bare: true }).note, 'выигрыш +782 к курсу НБС');
-  assert.equal(opRow({ ...EXCHANGE, regular: undefined }).note, 'выигрыш +782 к курсу НБС');
+  assert.equal(opRow({ ...EXCHANGE, fx: -40 }).note, 'потеря на обмене −40 🔁');
+  assert.equal(opRow(EXCHANGE, { inCategory: true, bare: true }).note, 'выигрыш на обмене +782');
+  assert.equal(opRow({ ...EXCHANGE, regular: undefined }).note, 'выигрыш на обмене +782');
   const row = rowOf(opsScreen(list([EXCHANGE]), navOf()), 'add:x');
-  assert.match(eye(row), /выигрыш \+782 к курсу НБС 🔁/);
-  assert.match(flat(heard(row)), /выигрыш \+782 к курсу НБС\s*регулярная трата/);
+  assert.match(eye(row), /выигрыш на обмене \+782 🔁/);
+  assert.match(flat(heard(row)), /выигрыш на обмене \+782\s*регулярная трата/);
   const card = cardScreen({ kind: 'card', ref: 'add:x', data: { ...EXCHANGE, refs: ['add:x'], similar: [], postings: [],
-    apart: ['🔁 — регулярная трата: она в норме отдельно, в «Потрачено» идёт только перебор'] } }, navOf());
+    apart: ['🔁 — регулярная трата: у неё своя норма, в «Потрачено» идёт только то, что сверх нормы'] } }, navOf());
   const notes = all(card, 'good').map(eye);
-  assert.ok(notes.includes('выигрыш +782 к курсу НБС'), notes.join(' | '));
+  assert.ok(notes.includes('выигрыш на обмене +782'), notes.join(' | '));
 });
 
 test('R-3 (стенд 320 px): подпись с меткой — три части: категория, значок, «· откуда»; без метки — одной строкой, как была', () => {

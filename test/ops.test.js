@@ -133,9 +133,9 @@ test('обмен — отдали и получили, курс сделки и 
   assert.equal(r.amount, sp('1 500 €'));
   assert.equal(r.amountSub, sp('→ 176 400 RSD'));
   assert.equal(r.sub, 'нал Алексея · по 117,60, НБС 117,25');
-  assert.deepEqual([r.note, r.noteTone], ['выигрыш +525 к курсу НБС', 'good']);
+  assert.deepEqual([r.note, r.noteTone], ['выигрыш на обмене +525', 'good']);
   const loss = opRow({ ...ex, fx: -40 });
-  assert.deepEqual([loss.note, loss.noteTone], ['потеря −40 к курсу НБС', 'warn']);
+  assert.deepEqual([loss.note, loss.noteTone], ['потеря на обмене −40', 'warn']);
 });
 
 test('теневая запись у Ангелины — «Без описания», без ref: карточки нет (решение 24)', () => {

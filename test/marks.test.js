@@ -10,8 +10,9 @@ import { cardScreen, opsScreen } from '../js/screens.js';
 const eye = (el) => (typeof el === 'string' ? el : !el || !el.kids || el.classes.includes('sr') ? '' : el.kids.map(eye).join(''));
 const press = (el) => el.handlers.click({ target: el, currentTarget: el });
 
-const REG = '🔁 — регулярная трата: она в норме отдельно, в «Потрачено» идёт только перебор';
-const MAN = '📌 — обязательная трата: она в норме отдельно';
+// строки пояснения fin (names.APART_NOTE; повтор ревью p46a: было «она в норме отдельно», «только перебор»)
+const REG = '🔁 — регулярная трата: у неё своя норма, в «Потрачено» идёт только то, что сверх нормы';
+const MAN = '📌 — обязательная трата: у неё своя норма, в «Потрачено» идёт только то, что сверх нормы у коммуналки';
 const op = (ref, where, extra = {}) => ({ ref, date: '2026-11-13', where, what: '', kind: 'spend', cats: ['банк'], src: 'нал',
   amount: { number: 100, currency: 'RSD' }, rsd: 100, receipt: false, flag: false, by: 'Алексей', ...extra });
 const PAGE = { from: '2026-11-01', to: '2026-11-26', count: 2, total: 1433, next: null, apart: [REG, MAN],
@@ -33,8 +34,7 @@ test('R-4: над первым днём — что значат 🔁 и 📌, с
   const note = one(screen, 'marks-note');
   assert.ok(note, 'пояснение есть');
   const text = eye(note);
-  assert.match(text, /🔁 — регулярная трата: она в норме отдельно, в «Потрачено» идёт только перебор/);
-  assert.match(text, /📌 — обязательная трата: она в норме отдельно/);
+  assert.ok(text.includes(REG) && text.includes(MAN), text);
   assert.match(text, /«без 🔁📌» — траты дня без них/);
   assert.match(text, /Минус — в этот день вернули больше, чем потратили/);
   assert.doesNotMatch(heard(note), /🔁|📌/, 'значки диктору не читаются — он слышит слова');
@@ -71,7 +71,7 @@ test('R-4: карточка — строка метки «🔁 регулярн�
   const line = all(screen, '<button').find((b) => /регулярная · подписки/.test(eye(b)));
   assert.ok(line, 'строка метки — кнопка');
   assert.match(eye(line), /🔁 регулярная · подписки/);
-  assert.match(eye(line), /Регулярная трата: она в норме отдельно, в «Потрачено» идёт только перебор\./);
+  assert.match(eye(line), /Регулярная трата: у неё своя норма, в «Потрачено» идёт только то, что сверх нормы\./);
   const head = eye(one(screen, 'op-where'));
   assert.match(head, /чек/);
   assert.doesNotMatch(head, /регулярная/, 'у имени — только «чек», метка — своей строкой');
@@ -86,5 +86,5 @@ test('R-4: обязательная в карточке — «📌 обязат�
   const screen = cardScreen({ kind: 'card', ref: 'a:1', data: card }, navOf());
   const line = all(screen, '<button').find((b) => /обязательная · кредит РФ/.test(eye(b)));
   assert.ok(line);
-  assert.match(eye(line), /📌 обязательная · кредит РФ.*Обязательная трата: она в норме отдельно\./s);
+  assert.match(eye(line), /📌 обязательная · кредит РФ.*Обязательная трата: у неё своя норма, в «Потрачено» идёт только то, что сверх нормы у коммуналки\./s);
 });

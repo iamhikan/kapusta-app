@@ -84,12 +84,16 @@ function reserveHit(limits) {
 
 const quoted = (rows) => rows.map((l) => `«${l.label}»`).join(', ');
 
-// «1 перебор», «3 перебора», «13 лимитов» (как plural в ops.js: тот модуль сам берёт fmt отсюда)
+// «1 трата», «3 траты», «13 лимитов» (как plural в ops.js: тот модуль сам берёт fmt отсюда)
 function count(n, [one, few, many]) {
   const d = n % 10;
   const t = n % 100;
   return `${n} ${d === 1 && t !== 11 ? one : d >= 2 && d <= 4 && (t < 12 || t > 14) ? few : many}`;
 }
+
+// подпись строки сверх нормы (R-9): что она делает с «Потрачено» — те же слова, что пояснение 🔁 fin (names.APART_NOTE).
+// Повтор ревью p46a (язык): было «в «Потрачено» идёт только перебор +406» — «перебор» Ангелине ничего не говорит
+export const overHint = (over) => `в «Потрачено» идёт только то, что сверх нормы:\u00a0+${fmt(over)}`;
 
 function reserveNote(r) {
   // из чего резерв и чей перерасход покрыл (решение 51). Кончился — сколько покрыл из всего перерасхода (R-10, ревью
@@ -185,7 +189,7 @@ export function view(h) {
     glyph: r.kind === 'mandatory' ? '📌' : '🔁',
     spent: fmt(r.spent), limit: fmt(r.limit), over: `+${fmt(r.over)}`, fill: r.limit / r.spent,
     limitAt: r.limit / r.spent, color: COLOR.over, state: '', heat: r.limit ? r.spent / r.limit : Infinity,
-    hint: `в «Потрачено» идёт только перебор\u00a0+${fmt(r.over)}` }));
+    hint: overHint(r.over) }));
   // порядок лимитов — сервера (горячие первыми); строка регулярной встаёт перед первым лимитом холоднее её
   for (const r of regulars.sort((a, b) => b.heat - a.heat)) {
     const at = limits.findIndex((l) => !(l.ops && l.ops.regular) && l.heat < r.heat);
@@ -211,9 +215,9 @@ export function view(h) {
     // решение 63: строка резерва видна сразу — под горячими лимитами, даже если по порядку она дальше первых TOP
     top: [...limits.slice(0, TOP), ...limits.slice(TOP).filter((l) => l.note)],
     limitsShown: Math.min(TOP, limits.length),
-    // R-9 (ревью 26.11): «Показать все 16» — это 13 лимитов и 3 строки перебора; кнопка говорит, из чего число
+    // R-9 (ревью 26.11): «Показать все 16» — это 13 лимитов и 3 строки сверх нормы; кнопка говорит, из чего число
     moreLabel: `Показать все: ${count(h.limits.length, ['лимит', 'лимита', 'лимитов'])}`
-      + (regulars.length ? ` и ${count(regulars.length, ['перебор', 'перебора', 'переборов'])}` : ''),
+      + (regulars.length ? ` и ${count(regulars.length, ['трата', 'траты', 'трат'])} сверх нормы` : ''),
     legend: legendOf(limits, h.closed),
     reserve: note,
     // решение 40: скрытые лимиты (show: hot) — отдельной кнопкой; дошли до порога — уже в общем списке (сервер)

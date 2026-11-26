@@ -1,6 +1,6 @@
 // «Бюджет» (этап 7) — продолжение «Все лимиты» на «Здоровье»: ответ /api/budget -> что видит человек. Куда идёт доход
 // (fin limits) и деньги на месяц (fin plan) — только Алексею: Ангелине сервер их не шлёт (решение 11).
-import { amountLines, fmt } from './health.js';
+import { amountLines, fmt, overHint } from './health.js';
 import { monthTitle } from './ops.js';
 import { FX, dealOf, regularOf } from './regular.js';
 
@@ -41,15 +41,16 @@ const glyphOf = (name) => GLYPH[name] || (/^Регулярные/.test(name) ? '
 // R-11 (решение 98, ответ 5): строка регулярной (и коммуналки) — потрачено против суммы в норме и полоса, как у лимита
 // (решение 78, правка 1): перебор — плашкой «+N», штриховкой и подписью про «Потрачено», как на «Здоровье» (R-9).
 // Числа — envelopes «Здоровья» месяца; limit — сумма с конвертом (спортпит), под полосой — из чего она. Вернули больше,
-// чем потратили (обмен с выигрышем, R-13), — без полосы и «из»: «+189», словами — в подписи
+// чем потратили (обмен с выигрышем, R-13), — без полосы и «из»: «+189», словами — в подписи. Повтор ревью p46a (язык):
+// «выигрыш на обмене» (было «к курсу НБС»), «сверх нормы» (было «перебор») — как на «Здоровье» и в чате
 function withGauge(row, e, note) {
   if (e.spent < 0) {
-    const word = row.name === FX ? 'выигрыш к курсу НБС' : 'вернули больше, чем потратили';
+    const word = row.name === FX ? 'выигрыш на обмене' : 'вернули больше, чем потратили';
     return { ...row, sum: `+${fmt(-e.spent)}`, note: [word, BARE_NOTE.test(note) ? note : ''].filter(Boolean).join(' · ') };
   }
   const over = e.over > 0;
   const limitAt = over ? e.limit / e.spent : null;
-  const hint = over ? `в «Потрачено» идёт только перебор\u00a0+${fmt(e.over)}`
+  const hint = over ? overHint(e.over)
     : e.carry ? `в норме ${fmt(e.norm)} + конверт ${fmt(e.carry)}` : BARE_NOTE.test(note) ? note : '';
   return { ...row, note: '', gauge: { name: row.name, focus: `regular:${row.name}`, spent: fmt(e.spent), limit: fmt(e.limit),
     over: over ? `+${fmt(e.over)}` : '', fill: limitAt ?? (e.limit > 0 ? Math.min(1, e.spent / e.limit) : 0), limitAt,
