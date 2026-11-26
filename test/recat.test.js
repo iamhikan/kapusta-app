@@ -80,8 +80,9 @@ test('итог словами: сменили, позиция, конфликт,
   const names = (a) => ({ [H]: 'хозяйство', 'Expenses:Family:Restaurants': 'рестораны' }[a]);
   assert.deepEqual(result({ error: 'conflict', data: { now: ['Expenses:Family:Restaurants'] } }, j, names), {
     kind: 'conflict', text: 'Запись уже изменили: сейчас «рестораны». Капуста спросила вас в чате, что оставить.' });
+  // R-23 (ревью 26.11): человек уже в приложении — «когда вы откроете приложение» неверно
   assert.deepEqual(result({ error: 'down' }, j), { kind: 'queued',
-    text: 'Капуста не отвечает. Смена в очереди: уйдёт, когда вы откроете приложение и Капуста ответит.' });
+    text: 'Капуста не отвечает. Смена в очереди: уйдёт сама, когда Капуста ответит — при следующем открытии.' });
   assert.deepEqual(result({ error: 'refused', detail: 'нельзя' }, j), { kind: 'refused', text: 'Не сменили: нельзя.' });
   assert.equal(result({ error: 'stale' }, j).kind, 'stale');
 });

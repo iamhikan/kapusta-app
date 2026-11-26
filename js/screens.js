@@ -361,7 +361,8 @@ export async function loadCard(entry, nav) {
   entry.data = r.data || null;
   [entry.error, entry.fail] = r.error ? [r.detail || r.error, r.error] : [null, null];
   const waiting = nav.queued(entry.ref);          // смена ждёт в очереди с прошлого раза (холст card-error)
-  if (waiting.length && !entry.notice) entry.notice = { tone: 'warn', text: result({ error: 'down' }, waiting[0]).text };
+  // R-23: и после нового открытия — «Отменить» (было без него)
+  if (waiting.length && !entry.notice) entry.notice = { tone: 'warn', text: result({ error: 'down' }, waiting[0]).text, cancel: waiting[0].id };
   nav.render();
 }
 

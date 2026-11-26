@@ -142,3 +142,20 @@ for (const [what, first, title, said] of CARD_FAILS) {
     assert.doesNotMatch(text, /Повторить|не отвечает|ошиблась/);
   });
 }
+
+// R-23 (ревью 26.11): после нового открытия карточка со сменой в очереди — та же плашка и «Отменить» (было — без него)
+test('R-23: смена ждёт в очереди с прошлого раза — плашка с «Отменить»; нажатие убирает смену из очереди', async () => {
+  const nav = loader([200, CARD]);
+  const waiting = { id: 'c9', ref: 'sms:1', n: null, was: ['Expenses:Family:Alcohol'], to: 'Expenses:Family:Food', toName: 'продукты' };
+  nav.queued = (ref) => (ref === 'sms:1' ? [waiting] : []);
+  nav.dropped = [];
+  nav.unqueue = async (id) => { nav.dropped.push(id); };
+  const entry = { kind: 'card', ref: 'sms:1' };
+  await loadCard(entry, nav);
+  const text = seen(cardScreen(entry, nav));
+  assert.match(text, /Смена в очереди: уйдёт сама, когда Капуста ответит — при следующем открытии\./);
+  const cancel = button(cardScreen(entry, nav), 'Отменить');
+  assert.ok(cancel, '«Отменить» есть и после нового открытия');
+  await cancel.handlers.click({});
+  assert.deepEqual(nav.dropped, ['c9']);
+});
