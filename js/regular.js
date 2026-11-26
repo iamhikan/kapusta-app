@@ -34,12 +34,13 @@ function inNorm(key, budget) {
 // градусник регулярной за месяц -> { limit, norm, carry, over, basis, contract } или null (данных нет): limit —
 // сколько входит в норму (сумма и конверт), carry — конверт (null — неизвестен), over — перебор по слову сервера
 // (null — не знаем), basis — на чём сумма словами сервера («медиана за 3 мес.», «доля семьи, …», «по договору 650 €»),
-// contract — жильё и кредит РФ (E14): их «сверх» — курс дня оплаты, не перебор, в «Потрачено» не идёт
+// contract — жильё и кредит РФ (E14): их «сверх» — курс дня оплаты, не перебор, в «Потрачено» не идёт; cap — предел
+// конверта у редкой (спортпит): пустой месяц у неё — так и задумано (R-14)
 export function gaugeOf(key, health, budget) {
   const e = envelope(key, health);
   if (e) {
     return { limit: e.limit, norm: e.norm ?? e.limit, carry: e.carry || 0, over: e.over > 0, basis: e.basis || '',
-      contract: !!e.contract };
+      contract: !!e.contract, cap: e.cap || 0 };
   }
   const n = inNorm(key, budget);
   if (n == null) return null;

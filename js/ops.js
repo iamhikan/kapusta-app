@@ -108,6 +108,32 @@ export function emptyText(month, title, period = null) {
   return `В ${IN_MONTH[Number(month.slice(5)) - 1]} ${what} нет`;
 }
 
+// R-14 (ревью 26.11): пустой список говорит правду о своём месте. Поиск — «по запросу … ничего нет» и «Очистить поиск»;
+// регулярная — «платежа не было»; редкая (конверт, cap) — так и задумано и сколько нормы ушло в конверт; фильтров на
+// экране нет — «Смените … стрелкой». g — градусник регулярной (gaugeOf), today — сегодня (прошлый месяц или текущий)
+export function emptyView(entry, g, today) {
+  const ctx = entry.ctx;
+  const f = entry.f || {};
+  const i = Number(entry.month.slice(5)) - 1;
+  const filtered = !!(f.transfers || f.account || f.who || f.source || f.flag);
+  const out = (title, text = '', clear = false) => ({ title, text, clear });
+  if (!ctx && f.q) return out(`По запросу «${f.q}» в ${IN_MONTH[i]} ничего нет`, filtered ? 'Смените месяц или фильтры.' : '', true);
+  if (!ctx) {
+    return filtered ? out(`В ${IN_MONTH[i]} таких операций нет`, 'Смените месяц или фильтры.')
+      : out(`В ${IN_MONTH[i]} операций нет`, 'Смените месяц стрелкой.');
+  }
+  if (ctx.params && ctx.params.regular) {
+    if (!(g && g.cap > 0)) return out(`В ${IN_MONTH[i]} платежа не было`, 'Смените месяц стрелкой.');
+    const into = Math.max(0, Math.min(g.norm, g.cap - g.carry));
+    const past = entry.month < today.slice(0, 7);
+    return out(`В ${IN_MONTH[i]} покупки не было`, `Так и задумано: покупка редкая. ${!into ? `Конверт уже полон — ${fmt(g.carry)}.`
+      : past ? `${fmt(into)} из нормы ${OF_MONTH[i]} ушли в конверт.` : `Без неё ${fmt(into)} из нормы ${OF_MONTH[i]} уйдут в конверт.`}`);
+  }
+  const p = ctx.period;
+  if (p && p.kind === 'custom' && p.from === p.to) return out(`${ctx.title} трат нет`, 'Смените день стрелкой.');
+  return out(emptyText(entry.month, ctx.title, p), p ? 'Смените период стрелкой.' : 'Смените месяц стрелкой.');
+}
+
 export function txPath(state) {
   const q = new URLSearchParams();
   for (const k of KEYS) {

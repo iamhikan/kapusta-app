@@ -1,7 +1,7 @@
 // Экраны «Операции» и карточка операции (DOM). Данные — только из /api/tx и /api/tx/{ref}, в памяти страницы.
 import { healthPath, screen } from './api.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
-import { FLAG, accountView, cardView, dayLabel, daySay, dayTotal, emptyText, filters, headView, marksNote, money, monthRange, monthTitle,
+import { FLAG, accountView, cardView, dayLabel, daySay, dayTotal, emptyView, filters, headView, marksNote, money, monthRange, monthTitle,
   opRow, taxLink, txPath } from './ops.js';
 import { tile, tileOf } from './tiles.js';
 import { GLYPHS } from './catcolor.js';
@@ -286,6 +286,17 @@ export function offlineBody(kind, entry, nav, retry, key = 'retry') {
     h('p', { class: 'small detail muted' }, entry.error));
 }
 
+// R-14 (ревью 26.11): пустой список — правдой о своём месте; у поиска — «Очистить поиск» (фокус — в поле поиска)
+function emptyBody(entry, nav) {
+  const ctx = entry.ctx;
+  const g = ctx && ctx.params && ctx.params.regular && nav.health
+    ? gaugeOf(ctx.params.regular, nav.health(entry.month), nav.budget ? nav.budget(entry.month) : null) : null;
+  const v = emptyView(entry, g, nav.today());
+  return h('div', { class: 'empty' }, h('h2', {}, v.title), v.text ? h('p', { class: 'muted' }, v.text) : null,
+    v.clear ? h('button', { type: 'button', class: 'button', 'data-focus': 'clear-q', on: { click: () => {
+      tap(); entry.f.q = ''; entry.typed = ''; nav.focus('ops-q'); loadOps(entry, nav); } } }, 'Очистить поиск') : null);
+}
+
 // R-4 (ревью 26.11): над первым днём — что значат 🔁 и 📌 словами чата, «без 🔁📌» и минус дня (R-8). «Понятно» прячет
 // пояснение на этом устройстве. На экране регулярной его нет: шапка там — «В норме N»
 function marksBlock(entry, nav) {
@@ -310,8 +321,7 @@ export function opsScreen(entry, nav) {
     body = h('div', { class: 'stack', 'aria-busy': 'true', 'aria-label': 'Загрузка' },
       ...[1, 2, 3].map(() => h('section', { class: 'card', style: { height: '160px' } })));
   } else if (!list.length) {
-    body = h('div', { class: 'empty' }, h('h2', {}, emptyText(entry.month, entry.ctx && entry.ctx.title,
-      entry.ctx && entry.ctx.period)), h('p', { class: 'muted' }, 'Смените период или фильтры.'));
+    body = emptyBody(entry, nav);
   } else {
     body = h('div', { class: 'stack' }, marksBlock(entry, nav), ...list.map((d) => h('div', { class: 'day' },
       dayHead(d),
