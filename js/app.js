@@ -233,11 +233,11 @@ function skeleton() {
 
 function problem(kind, detail) {
   // М2 на весь экран (js/screens.js): «Повторить» — снова «Здоровье» месяца, «Закрыть» — закрыть Капусту. Отказ fin
-  // (R-19): другой месяц — «К текущему месяцу», текущий — «Закрыть»; повтор дал бы тот же отказ
+  // (R-19): другой месяц — «К текущему месяцу», текущий — «Прошлый месяц»; повтор дал бы тот же отказ
   const now = today().slice(0, 7);
   const s = kind === 'refused' ? refusedStep('health', { month: month || now }, { today: today() }) : null;
   show(problemScreen(screen(kind, detail), { retry: () => load(month), close: () => tg && tg.close(), family: nav.family(),
-    step: s && { label: s.label, run: () => load(now) } }));
+    step: s && { label: s.label, run: () => load(s.act === 'prev' ? shiftMonth(now, -1) : now) } }));
 }
 
 function banner(s) {

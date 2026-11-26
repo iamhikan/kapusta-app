@@ -137,9 +137,11 @@ test('R-19: 503 и молчание Мака — «Повторить», как 
   assert.deepEqual(buttons(one(cardScreen(entry, nav), 'empty')), ['Повторить']);
 });
 
-test('R-19: «Здоровье» будущего месяца, 400 — «К текущему месяцу»; текущий месяц — «Закрыть», не «Повторить»', () => {
-  assert.deepEqual(refusedStep('health', { month: '2026-12' }, { today: TODAY }), { label: 'К текущему месяцу', act: 'now' });
-  assert.equal(refusedStep('health', { month: '2026-11' }, { today: TODAY }), null);
+// «Здоровье» текущего месяца fin отказывает, когда часы телефона ушли вперёд часов Мака («месяц ещё не начался»):
+// «К текущему месяцу» дал бы тот же отказ, «Закрыть» закрыл бы Капусту — по месту остаётся прошлый месяц
+test('R-19: «Здоровье» другого месяца, 400 — «К текущему месяцу»; текущего — «Прошлый месяц», не «Повторить»', () => {
+  assert.deepEqual(refusedStep('health', { month: '2026-09' }, { today: TODAY }), { label: 'К текущему месяцу', act: 'now' });
+  assert.deepEqual(refusedStep('health', { month: '2026-11' }, { today: TODAY }), { label: 'Прошлый месяц', act: 'prev' });
   let went = 0;
   const s = screen('refused', 'месяц ещё не начался');
   const tree = problemScreen(s, { retry() {}, close() {}, step: { label: 'К текущему месяцу', run: () => { went += 1; } } });

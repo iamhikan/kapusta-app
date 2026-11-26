@@ -158,9 +158,11 @@ const NARROW = ['q', 'transfers', 'account', 'who', 'source', 'flag'];   // фи
 
 // kind — экран, entry — его состояние (месяц, период, категория, фильтры), today — ГГГГ-ММ-ДД, under — вид экрана под
 // ним (null — экран-вкладка), more — отказали следующие 50. -> { label, act } или null: действия по месту нет, а
-// стрелки месяца и фильтры на экране и так есть (у «Здоровья» — «Закрыть»)
+// стрелки месяца и фильтры на экране и так есть
 export function refusedStep(kind, entry, { today, under = null, more = false }) {
   const now = today.slice(0, 7);
+  // «Здоровье» текущего месяца fin отказывает, когда часы телефона впереди часов Мака: «месяц ещё не начался»
+  if (kind === 'health' && entry.month === now) return { label: 'Прошлый месяц', act: 'prev' };
   if (kind === 'card') return { label: under === 'card' ? 'Назад' : 'К списку', act: 'back' };
   if (kind === 'ops' && more) return { label: 'Загрузить список заново', act: 'reload' };
   if (kind === 'ops' && (entry.ctx || NARROW.some((k) => entry.f && entry.f[k]))) {
