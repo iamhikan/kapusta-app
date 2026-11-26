@@ -99,8 +99,10 @@ test('R-4: обязательная в карточке — «📌 обязат�
 test('находка 6: пояснение меток — диктор слышит «Значок повтора — регулярная трата…», на экране — 🔁', () => {
   const note = one(opsScreen(list(), navOf()), 'marks-note');
   const said = all(note, '<p').map((p) => heard(p).replace(/\s+/g, ' ').trim());
-  assert.equal(said[0], `Значок повтора${REG.slice(2)}.`);
-  assert.equal(said[1], `Значок канцелярской кнопки${MAN.slice(2)}.`);
+  // диктору пробелы нормализованы; неразрывный пробел строки (T2, «коммуналка\u00a0—») — тоже пробел
+  const norm = (s) => s.replace(/\s+/g, ' ');
+  assert.equal(said[0], norm(`Значок повтора${REG.slice(2)}.`));
+  assert.equal(said[1], norm(`Значок канцелярской кнопки${MAN.slice(2)}.`));
   const shown = all(note, '<p').map(eye);
   assert.deepEqual(shown.slice(0, 2), [`${REG}.`, `${MAN}.`], 'на экране — значки, без слов диктора');
 });
