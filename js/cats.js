@@ -27,14 +27,15 @@ function cmpHead(prev, from) {
   return `к ${short(prev.from)}–${short(prev.to)}`;
 }
 
-function limitText(l, name) {
-  // свой лимит (и общий с тем же именем: «транспорт» с машиной) — «лимит N»; общий под другим именем — чей он
-  // (Алексей 12.11: «хозяйство» на «Категориях» и «дом и хозяйство» на «Здоровье» — одна сумма, разные имена)
+function limitText(l) {
+  // свой лимит (только эта категория) — «лимит N»; общий — чей он и его числа (Алексей 12.11: «хозяйство» на
+  // «Категориях» и «дом и хозяйство» на «Здоровье» — одна сумма, разные имена). R-27 (ревью 26.11): общий с тем же
+  // именем («здоровье» с «аптекой», «транспорт» с машиной) — тоже общий: его сумма — не сумма категории
   if (!l) return '';
-  return mine(l, name) ? `лимит ${fmt(l.limit)}` : `в лимите «${l.name}»`;
+  return mine(l) ? `лимит ${fmt(l.limit)}` : `в лимите «${l.name}»: ${fmt(l.spent)} из ${fmt(l.limit)}`;
 }
 
-const mine = (l, name) => !!l && (l.own || l.name === name);
+const mine = (l) => !!l && !!l.own;
 
 // полоска к своему лимиту — как на «Здоровье» (правка 2): сверх — до потраченного, лимит — метка (limitAt).
 // Цвет — категории: «в плане / выше плана» у недели, квартала, года не считается
@@ -62,9 +63,10 @@ export function catsView(body) {
     key: c.key, name: c.name, sum: fmt(c.rsd), share: `${Math.round(c.share * 100)} %`,
     delta: c.prev == null ? '' : signed(c.rsd - c.prev), deltaTone: c.prev == null ? '' : tone(c.rsd - c.prev),
     color: sub ? `color-mix(in srgb, ${base} ${SHADES[Math.min(i, SHADES.length - 1)]}%, var(--track))` : colorOf(c.key),
-    limit: sub ? '' : limitText(c.limit, c.name), exact: !!c.exact,
-    bar: !sub && mine(c.limit, c.name) ? barOf(c.limit, colorOf(c.key)) : null,
-    of: !sub && mine(c.limit, c.name) ? `из ${fmt(c.limit.limit)}` : '',
+    limit: sub ? '' : limitText(c.limit), exact: !!c.exact,
+    // полоска — только у лимита одной категории (R-27): у общего она говорила о его сумме рядом с числом категории
+    bar: !sub && mine(c.limit) ? barOf(c.limit, colorOf(c.key)) : null,
+    of: !sub && mine(c.limit) ? `из ${fmt(c.limit.limit)}` : '',
   }));
   // полоса долей (правка 2): 5 самых больших и «ещё N»; минусовые (возвраты больше трат) — только в списке
   const plus = body.cats.map((c, i) => ({ ...c, color: rows[i].color })).filter((c) => c.rsd > 0);

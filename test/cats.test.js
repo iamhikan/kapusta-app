@@ -56,7 +56,7 @@ test('список: сумма, доля, лимит периода и изме�
   assert.deepEqual([food.name, food.sum, food.share, food.delta, food.deltaTone],
     ['продукты', sp('3 000'), '30 %', '+500', 'warn']);
   assert.equal(food.limit, sp('лимит 9 000'));
-  assert.equal(rest.limit, 'в лимите «еда вне дома»');               // общий лимит — подписью (Алексей 12.11)
+  assert.equal(rest.limit, sp('в лимите «еда вне дома»: 2 000 из 5 000'));   // общий лимит — подписью (Алексей 12.11)
   assert.deepEqual([rest.delta, rest.deltaTone], ['0', '']);
   assert.deepEqual([travel.delta, travel.deltaTone], [sp('−4 800'), 'good']);
   assert.equal(pets.limit, '');
@@ -126,13 +126,15 @@ test('транспорт и хозяйство — не один бирюзов�
   assert.ok(dist(colorOf('Expenses:Family:Transport'), colorOf('Expenses:Family:Household')) > 0.08);
 });
 
-test('категория из общего лимита — «лимит «…»» под именем; лимит с тем же именем — «лимит N» (Алексей 12.11)', () => {
+test('категория из общего лимита — «в лимите «…»: N из M» под именем, и у лимита с тем же именем (R-27)', () => {
   const v = catsView({ ...BODY, cats: [
     cat('Expenses:Family:Household', 'хозяйство', 700, { limit: { name: 'дом и хозяйство', own: false, limit: 5000, spent: 900 } }),
     cat('Expenses:Family:Transport', 'транспорт', 600, { limit: { name: 'транспорт', own: false, limit: 2000, spent: 650 } }),
     cat('Expenses:Family:Food', 'продукты', 500, { limit: { name: 'продукты', own: true, limit: 9000, spent: 500 } }),
   ] });
-  assert.deepEqual(v.rows.map((r) => r.limit), ['в лимите «дом и хозяйство»', 'лимит 2 000', 'лимит 9 000']);
+  // R-27 (ревью 26.11): «транспорт» вместе с машиной — общий лимит, хоть имя и то же: его число — не число категории
+  assert.deepEqual(v.rows.map((r) => r.limit), [sp('в лимите «дом и хозяйство»: 900 из 5 000'),
+    sp('в лимите «транспорт»: 650 из 2 000'), sp('лимит 9 000')]);
 });
 
 test('«В лимитах» вместо «Шкала градусника» (решение 51): подпись столбцов по месяцам', () => {
@@ -155,7 +157,7 @@ test('прошлый период в столбце и в карточке: ме
   assert.deepEqual(cmp('2026-11-12', '2026-11-12', { from: '2026-11-11', to: '2026-11-11' }), ['к 11.11', 'к 11 ноября']);
 });
 
-test('правка 2: у своего лимита — полоска к лимиту (вид «Здоровья») и «из N»; лимит группы — без полоски', () => {
+test('правка 2, R-27: полоска к лимиту и «из N» — только у лимита одной категории; общий — без полоски', () => {
   const v = catsView({ ...BODY, cats: [
     cat('Expenses:Family:Food', 'продукты', 3000, { limit: { name: 'продукты', own: true, limit: 9000, spent: 3000 } }),
     cat('Expenses:Family:Transport', 'транспорт', 6000, { limit: { name: 'транспорт', own: false, limit: 2000, spent: 6000 } }),
@@ -165,7 +167,7 @@ test('правка 2: у своего лимита — полоска к лим�
   const [food, transport, rest, pets] = v.rows;
   assert.deepEqual(food.bar, { fill: 3000 / 9000, limitAt: null, color: colorOf('Expenses:Family:Food') });
   assert.equal(food.of, sp('из 9 000'));
-  assert.deepEqual(transport.bar, { fill: 2000 / 6000, limitAt: 2000 / 6000, color: colorOf('Expenses:Family:Transport') });
+  assert.deepEqual([transport.bar, transport.of], [null, '']);       // R-27: лимит «транспорт» — и машина, полоска не её
   assert.deepEqual([rest.bar, rest.of], [null, '']);
   assert.deepEqual([pets.bar, pets.limit], [null, '']);
   const sub = catsView({ ...BODY, cat: 'Expenses:Family:Food', name: 'продукты', limit: null });
@@ -184,4 +186,14 @@ test('правка 6: «норма N» — подписью справа у че
   const plain = barsView({ scope: 'all', points: pts.map((p) => ({ ...p, norm: null })) }, '2026-11-13');
   assert.equal(plain.norm, null);
   assert.ok(plain.bars[2].x > v.bars[2].x, 'без нормы — столбцы на всю ширину');
+});
+
+test('R-27: «здоровье» 12 351 в общем лимите «здоровье» (с «аптекой») — без штриховки, число лимита словами', () => {
+  const v = catsView({ ...BODY, cats: [
+    cat('Expenses:Family:Health', 'здоровье', 12351, { limit: { name: 'здоровье', own: false, limit: 14103, spent: 31144 } }),
+    cat('Expenses:Family:Pharmacy', 'аптека', 18793, { limit: { name: 'здоровье', own: false, limit: 14103, spent: 31144 } }),
+  ] });
+  const [health, pharmacy] = v.rows;
+  assert.deepEqual([health.bar, health.of, health.limit], [null, '', sp('в лимите «здоровье»: 31 144 из 14 103')]);
+  assert.equal(pharmacy.limit, health.limit);
 });
