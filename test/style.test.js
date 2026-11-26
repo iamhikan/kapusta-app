@@ -411,10 +411,10 @@ test('R-3 (стенд 320 px): значок метки в подписи стр�
   const cats = decls('.sub-cats');
   const tail = decls('.sub-tail');
   assert.equal(decls('.sub-glyph').flex, 'none', 'значок не сжимается');
-  for (const d of [cats, tail]) {
-    assert.equal(d['min-width'], '0');
-    assert.equal(d['text-overflow'], 'ellipsis');
-  }
-  const shrink = (d) => Number(d.flex.split(/\s+/)[1]);
-  assert.ok(shrink(tail) >= 50 * shrink(cats), 'сначала сжимается «откуда»');
+  // категория не сжимается вместе с «откуда» (было: доли пикселя — и «банк» становился «ба…»), но и не шире места
+  // без значка: длинная — многоточием, значок остаётся
+  assert.equal(cats.flex, 'none');
+  assert.match(cats['max-width'], /^calc\(100% - [\d.]+em\)$/);
+  assert.equal(tail['min-width'], '0');
+  for (const d of [cats, tail]) assert.equal(d['text-overflow'], 'ellipsis');
 });
