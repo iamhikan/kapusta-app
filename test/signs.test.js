@@ -144,3 +144,51 @@ test('строка резерва кончается выводом: «Не по
   const calm = { ...HEALTH, limits: [L('питомцы', 6000, 4000, 'covered'), L('резерв', 2500, 30000, 'ok', { eaten: 2000 })] };
   assert.equal(flat(view(calm).limits.find((l) => l.name === 'резерв').hint), 'свои 500 + перерасход других 2 000 — покрыл «питомцы».');
 });
+
+// находка 1, «Бюджет»: «обмен валюты +189» стоял без цвета рядом с красной «банк +406». Стало: выигрыш — зелёный «+N»
+// со словом, потеря на обмене — «−N» со словом «потеря» (как в строках «Операций»), разница договорного платежа —
+// словами, без знака: «на 70 больше нормы»
+import { moreScreen } from '../js/more.js';
+import { dealOf } from '../js/regular.js';
+
+const budgetOf = (rows) => ({ ...BUDGET, groups: [{ ...BUDGET.groups[0], rows }] });
+const fxHealth = (spent, extra = {}) => ({ month: '2026-11', closed: false,
+  envelopes: [ENV('обмен валюты', spent, 588, { basis: '5 EUR в месяц', ...extra }), ENV('подписки', -540, 20684)] });
+const FX_ROWS = [{ name: 'обмен валюты', rsd: 588, note: '(5 €)' }, { name: 'подписки', rsd: 20684, note: '' }];
+const lineOf = (screen, name) => all(screen, '<button').find((b) => b.getAttribute('data-focus') === `regular:${name}`);
+const sumOf = (line) => all(line, 'nowrap').at(-1);
+const budgetScreen = (health) => moreScreen({ kind: 'budget', month: '2026-11', data: budgetOf(FX_ROWS) },
+  { health: () => health });
+
+test('«Бюджет»: выигрыш на обмене и возврат — зелёный «+N» со словом', () => {
+  const rows = budgetView(budgetOf(FX_ROWS), fxHealth(-189)).groups[0].rows;
+  assert.deepEqual([rows[0].sum, rows[0].tone, rows[0].note], ['+189', 'good', 'выигрыш на обмене · в норме 5 €']);
+  assert.deepEqual([rows[1].sum, rows[1].tone, rows[1].note], ['+540', 'good', 'вернули больше, чем потратили']);
+  const screen = budgetScreen(fxHealth(-189));
+  assert.equal(shown(lineOf(screen, 'обмен валюты')), 'обмен валюты выигрыш на обмене · в норме 5 € +189');
+  assert.ok(sumOf(lineOf(screen, 'обмен валюты')).classes.includes('good'));
+  assert.ok(sumOf(lineOf(screen, 'подписки')).classes.includes('good'));
+});
+
+test('«Бюджет»: потеря на обмене в пределах нормы — «−36» и «потеря на обмене», без полосы; сверх нормы — как регулярная', () => {
+  const rows = budgetView(budgetOf(FX_ROWS), fxHealth(36)).groups[0].rows;
+  assert.deepEqual([rows[0].sum, rows[0].tone, rows[0].note, rows[0].gauge], ['−36', 'warn', 'потеря на обмене · в норме 5 €', undefined]);
+  const screen = budgetScreen(fxHealth(36));
+  assert.equal(shown(lineOf(screen, 'обмен валюты')), 'обмен валюты потеря на обмене · в норме 5 € −36');
+  assert.ok(sumOf(lineOf(screen, 'обмен валюты')).classes.includes('warn'));
+  // потеря больше нормы: в «Потрачено» идёт то, что сверх, — строка, как у других регулярных
+  const over = budgetView(budgetOf(FX_ROWS), fxHealth(700)).groups[0].rows[0];
+  assert.deepEqual([over.gauge.over, over.gauge.hint], ['сверх 112', 'в «Потрачено» идёт только то, что сверх нормы']);
+});
+
+const deal = (spent, norm, paid, basis) => ({ key: 'жильё', label: 'жильё', kind: 'mandatory', contract: true, basis, spent,
+  limit: norm, norm, carry: 0, over: Math.max(0, spent - norm), due: { number: 650, currency: 'EUR' },
+  paid: { number: paid, currency: 'EUR' }, paid_on: ['2026-11-11'] });
+
+test('договорный платёж: разница с нормой — словами «на 70 больше нормы», «на 846 меньше нормы», без «+» и «−»', () => {
+  assert.equal(flat(dealOf(deal(76460, 76390, 650, 'по договору 650 €')).rate),
+    'на 70 больше нормы: курс дня оплаты, в «Потрачено» не идёт');
+  assert.equal(flat(dealOf(deal(32009, 32855, 640, 'по договору 650 €')).rate),
+    'на 846 меньше нормы: курс дня оплаты и сумма платежа, в «Потрачено» не идёт');
+  assert.match(dealOf(deal(76460, 76390, 650, 'по договору 650 €')).rate, /^на 70 больше/);   // число не отрывается
+});
