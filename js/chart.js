@@ -19,7 +19,7 @@ export function curve(h) {
     grid,
     days: [1, 10, 20, h.days].map((d) => ({ x: x(d), label: String(d) })),
     normY: y(h.norm),
-    normLabel: `норма ${Math.round(h.norm / 1000)} тыс.`,
+    normLabel: `норма ${h.norm < 0 ? '−' : ''}${Math.abs(Math.round(h.norm / 1000))} тыс.`,   // R-21: минус — знаком
     plan: { from: { x: x(1), y: y(h.norm / h.days) }, to: { x: x(h.days), y: y(h.norm) } },
     line: pts.map((p) => p.join(',')).join(' '),
     area: [[x(1), y(0)], ...pts, [x(last[0]), y(0)]].map((p) => p.join(',')).join(' '),

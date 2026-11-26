@@ -76,3 +76,20 @@ test('месяц без нормы (до начала учёта): плана д
     assert.equal(v.cells.find((c) => c.d === '2').aria, sp('2 ноября: 22 000 RSD'), mode);
   }
 });
+
+// R-8 (ревью 26.11): 13.11 — «−3,1» дефисом и цветом «мало трат». Минус — знаком «−», клетка — контуром, в легенде —
+// что значит минус; легенда без минусовых дней — как была
+test('R-8: день меньше нуля — «−3,1», контур вместо цвета «мало трат», в легенде — что это значит', () => {
+  const back = { ...NOV, points: [...NOV.points, { date: '2026-11-06', rsd: -3100, scale: -3100, plan: 7400 },
+    { date: '2026-11-07', rsd: -12400, scale: -12400, plan: 7600 }] };
+  for (const mode of ['sum', 'plan']) {
+    const v = daysView(back, mode);
+    const day = (d) => v.cells.find((c) => c.d === d);
+    assert.deepEqual([day('6').k, day('7').k, day('6').neg, day('5').neg], ['−3,1', '−12', true, false], mode);
+    assert.match(day('6').aria, /^6 ноября: −3\u00a0100 RSD/, mode);
+    assert.match(day('6').aria, /возвратов больше, чем трат$/, mode);
+    assert.equal(v.legend.at(-1).text, 'меньше нуля — возвратов больше, чем трат', mode);
+    assert.equal(v.legend.at(-1).neg, true, mode);
+  }
+  assert.ok(!daysView(NOV, 'sum').legend.some((l) => l.neg));
+});

@@ -8,11 +8,13 @@ const OF_MONTH = ['января', 'февраля', 'марта', 'апреля'
   'ноября', 'декабря'];
 const LEVELS = [4000, 8000, 15000];   // оттенки «по сумме» — как на холсте later-days
 
+// тысячи в клетке: «2», «22», «2,5»; меньше нуля — знаком «−», не дефисом (R-8, ревью 26.11)
 const thousands = (v) => {
   if (!v) return '';
-  const k = v / 1000;
-  return k >= 10 ? String(Math.round(k)) : k.toFixed(1).replace(/\.0$/, '').replace('.', ',');
+  const k = Math.abs(v) / 1000;
+  return (v < 0 ? '−' : '') + (k >= 10 ? String(Math.round(k)) : k.toFixed(1).replace(/\.0$/, '').replace('.', ','));
 };
+const NEG = 'меньше нуля — возвратов больше, чем трат';
 
 const SAY = { good: 'в плане', warn: 'выше плана', bad: 'вдвое выше плана' };   // цвет клетки — словами для диктора
 const level = (v) => (v <= 0 ? 0 : v <= LEVELS[0] ? 1 : v <= LEVELS[1] ? 2 : v <= LEVELS[2] ? 3 : 4);
@@ -37,9 +39,13 @@ export function daysView(b, mode) {
     const p = byDay.get(d);
     if (!p) { cells.push({ d: String(d), future: true, date: null }); continue; }
     const v = plan ? p.scale : p.rsd;
-    cells.push({ d: String(d), date: p.date, k: thousands(v), level: level(v), tone: tone(p.scale, p.plan),
-      aria: plan ? `${name(d)}: ${fmt(p.scale)} RSD при плане ${fmt(p.plan)} — ${SAY[tone(p.scale, p.plan)]}` : `${name(d)}: ${fmt(v)} RSD` });
+    // R-8: день меньше нуля — контуром, не цветом «мало трат»; диктору — словами
+    const neg = v < 0;
+    cells.push({ d: String(d), date: p.date, k: thousands(v), level: level(v), tone: tone(p.scale, p.plan), neg,
+      aria: (plan ? `${name(d)}: ${fmt(p.scale)} RSD при плане ${fmt(p.plan)} — ${SAY[tone(p.scale, p.plan)]}` : `${name(d)}: ${fmt(v)} RSD`)
+        + (neg ? `, ${NEG.replace('меньше нуля — ', '')}` : '') });
   }
+  const negative = cells.some((c) => c.neg);
   while (cells.length % 7) cells.push({ blank: true });
   const last = b.points.length ? Number(b.points[b.points.length - 1].date.slice(8)) : 0;
   const tail = 'Тап по дню — операции дня.';
@@ -59,8 +65,9 @@ export function daysView(b, mode) {
     title: `Траты по дням · ${monthTitle(b.month)}`,
     sub: `1–${last} ${OF_MONTH[m - 1]} · ${plan ? 'к плану на день' : b.scope === 'scale' ? 'в лимитах' : 'без аренды и регулярных'}`,
     cells,
-    legend: plan ? [{ text: 'в плане', tone: 'good' }, { text: 'выше', tone: 'warn' }, { text: 'вдвое выше', tone: 'bad' }]
-      : [{ text: 'до 4 тыс.', level: 1 }, { text: 'до 8', level: 2 }, { text: 'до 15', level: 3 }, { text: 'больше 15 тыс.', level: 4 }],
+    legend: [...(plan ? [{ text: 'в плане', tone: 'good' }, { text: 'выше', tone: 'warn' }, { text: 'вдвое выше', tone: 'bad' }]
+      : [{ text: 'до 4 тыс.', level: 1 }, { text: 'до 8', level: 2 }, { text: 'до 15', level: 3 }, { text: 'больше 15 тыс.', level: 4 }]),
+    ...(negative ? [{ text: NEG, neg: true }] : [])],
     note,
     scale: plan || b.scope === 'scale',
   };

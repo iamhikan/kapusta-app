@@ -144,7 +144,7 @@ function daysBody(entry, nav) {
   const cell = (c) => {
     if (c.blank) return h('span', { class: 'day-cell blank', 'aria-hidden': 'true' });
     if (c.future) return h('span', { class: 'day-cell future', 'aria-label': `${c.d}: ещё не прошёл` }, h('span', {}, c.d));
-    const cls = v.mode === 'plan' ? `tone-${c.tone}` : `heat-${c.level}`;
+    const cls = c.neg ? 'neg' : v.mode === 'plan' ? `tone-${c.tone}` : `heat-${c.level}`;   // R-8: меньше нуля — контуром
     return h('button', { type: 'button', class: `day-cell ${cls}`, 'aria-label': c.aria, 'data-focus': `day:${c.date}`, on: { click: () => open(nav,
       newOps(c.date.slice(0, 7), { title: c.aria.split(':')[0], period: { kind: 'custom', from: c.date, to: c.date },
         params: v.scale ? { scale: true } : {} })) } }, h('span', {}, c.d), h('span', { class: 'day-k' }, c.k));
@@ -156,7 +156,7 @@ function daysBody(entry, nav) {
       h('div', { class: 'cal muted small', 'aria-hidden': 'true' }, ...['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'].map((d) => h('span', {}, d))),
       h('div', { class: 'cal' }, ...v.cells.map(cell)),
       h('div', { class: 'legend muted small' }, ...v.legend.map((l) => h('span', { class: 'legend-item' },
-        h('span', { class: `swatch-box ${l.tone ? `tone-${l.tone}` : `heat-${l.level}`}` }), l.text)))),
+        h('span', { class: `swatch-box ${l.neg ? 'neg' : l.tone ? `tone-${l.tone}` : `heat-${l.level}`}` }), l.text)))),
     h('p', { class: 'note-text muted small' }, v.note)];
 }
 

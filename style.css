@@ -390,6 +390,8 @@ section .title { font-size: 17px; font-weight: 600; }
 .day-cell.future { color: var(--muted); background: transparent; box-shadow: inset 0 0 0 1px var(--line); }   /* пустая клетка — рамкой */
 .day-k { font-size: 11px; }
 .heat-0 { background: color-mix(in srgb, var(--accent) 6%, var(--card)); }
+/* R-8: день меньше нуля (возвратов больше, чем трат) — контуром, не цветом «мало трат» */
+.day-cell.neg, .swatch-box.neg { background: var(--card); box-shadow: inset 0 0 0 2px var(--accent); }
 .heat-1 { background: color-mix(in srgb, var(--accent) 22%, var(--card)); }
 .heat-2 { background: color-mix(in srgb, var(--accent) 45%, var(--card)); }
 .heat-3 { background: color-mix(in srgb, var(--accent) 70%, var(--card)); }

@@ -32,3 +32,9 @@ test('прошлый месяц — без прогноза; подпись дл
   assert.equal(c.aria, 'Траты нарастающим итогом: 500 000 на 31-е число, норма 200 000');
   assert.match(curve(NOW).aria, /прогноз на конец месяца 218 182/);
 });
+
+test('R-21: черта нормы меньше нуля — «норма −20 тыс.» знаком минус, не дефисом', async () => {
+  const { curve } = await import('../js/chart.js');
+  const c = curve({ norm: -20000, spent: 242036, forecast: 300000, days: 30, closed: false, curve: [[1, 1000], [26, 242036]] });
+  assert.equal(c.normLabel, 'норма −20 тыс.');
+});
