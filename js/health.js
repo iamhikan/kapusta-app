@@ -84,6 +84,13 @@ function reserveHit(limits) {
 
 const quoted = (rows) => rows.map((l) => `«${l.label}»`).join(', ');
 
+// «1 перебор», «3 перебора», «13 лимитов» (как plural в ops.js: тот модуль сам берёт fmt отсюда)
+function count(n, [one, few, many]) {
+  const d = n % 10;
+  const t = n % 100;
+  return `${n} ${d === 1 && t !== 11 ? one : d >= 2 && d <= 4 && (t < 12 || t > 14) ? few : many}`;
+}
+
 function reserveNote(r) {
   // из чего резерв и чей перерасход покрыл (решение 51); частично — только когда он кончился (critique 12.11)
   if (!r) return '';
@@ -193,6 +200,9 @@ export function view(h) {
     // решение 63: строка резерва видна сразу — под горячими лимитами, даже если по порядку она дальше первых TOP
     top: [...limits.slice(0, TOP), ...limits.slice(TOP).filter((l) => l.note)],
     limitsShown: Math.min(TOP, limits.length),
+    // R-9 (ревью 26.11): «Показать все 16» — это 13 лимитов и 3 строки перебора; кнопка говорит, из чего число
+    moreLabel: `Показать все: ${count(h.limits.length, ['лимит', 'лимита', 'лимитов'])}`
+      + (regulars.length ? ` и ${count(regulars.length, ['перебор', 'перебора', 'переборов'])}` : ''),
     legend: legendOf(limits, h.closed),
     reserve: note,
     // решение 40: скрытые лимиты (show: hot) — отдельной кнопкой; дошли до порога — уже в общем списке (сервер)

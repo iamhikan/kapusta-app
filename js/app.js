@@ -291,7 +291,7 @@ function limits(v, data) {
   const more = v.limits.length > v.top.length
     ? h('button', { class: 'more', type: 'button', 'aria-expanded': String(allLimits), 'data-focus': 'limits-more',
       on: { click: () => { tap(); allLimits = !allLimits; render(); } } },
-    allLimits ? 'Свернуть' : `Показать все ${v.limits.length}`, icon(allLimits ? ICONS.up : ICONS.down, 16))
+    allLimits ? 'Свернуть' : v.moreLabel, icon(allLimits ? ICONS.up : ICONS.down, 16))
     : null;
   return [
     // решение 49: легенда цветов полосок — одной строкой у заголовка, а не абзацем под списком

@@ -313,3 +313,16 @@ test('норма 0 или меньше (обязательные съели до
     assert.doesNotMatch(text, /%|Infinity|NaN|план на сегодня/, String(norm));
   }
 });
+
+// R-9, часть (ревью 26.11): «Показать все 16» — 13 лимитов и 3 строки перебора; плитка «Лимитов сверх 5 из 13» считает
+// только лимиты. Кнопка говорит, из чего число
+test('R-9: «Показать все: 13 лимитов и 3 перебора»; без перебора — «Показать все: 7 лимитов»', () => {
+  const reg = (key, spent, limit) => ({ key, label: key, kind: 'regular', basis: 'медиана за 3 мес.', spent, limit, norm: limit,
+    carry: 0, over: spent - limit });
+  const many = Array.from({ length: 13 }, (_, i) => L(`лимит ${i}`, 100 * i, 1000, 'ok'));
+  const v = view({ ...NOW, limits: many, regulars: [reg('банк', 2941, 2535), reg('связь', 5000, 4272), reg('подписки', 21000, 20684)] });
+  assert.equal(v.moreLabel, 'Показать все: 13 лимитов и 3 перебора');
+  assert.equal(view(NOW).moreLabel, 'Показать все: 7 лимитов');
+  assert.equal(view({ ...NOW, limits: many.slice(0, 11), regulars: [reg('банк', 2941, 2535)] }).moreLabel,
+    'Показать все: 11 лимитов и 1 перебор');
+});
