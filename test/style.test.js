@@ -432,7 +432,8 @@ test('R-3 (стенд 320 px): значок метки в подписи стр�
   assert.equal(cats.flex, 'none');
   assert.match(cats['max-width'], /^calc\(100% - [\d.]+em\)$/);
   assert.equal(tail['min-width'], '0');
-  for (const d of [cats, tail]) assert.equal(d['text-overflow'], 'ellipsis');
+  assert.equal(cats['text-overflow'], 'ellipsis');
+  // «откуда» длиннее строки — переносом по словам, не многоточием (повтор 2 ревью p48a, находка 7; тест ниже)
 });
 
 test('R-31 п. 3 (стенд S5): имя на «Категориях» — до двух строк, потом многоточие: «прочие продукты» при 390 px было «прочие продук…»', () => {
@@ -506,9 +507,8 @@ test('находка 11: «· откуда» не сжимается до «·»
   assert.equal(decls('.op-sub.split > :first-child')['margin-left'], x, 'первая часть подписи — на прежнем месте');
   // значок — в первой строке: категория не шире строки без значка (1,6em) и без сдвига x
   assert.equal(decls('.sub-cats')['max-width'], `calc(100% - ${1.6 + Number.parseFloat(x)}em)`);
-  // «откуда» длиннее строки — многоточием уже в своей строке
+  // «откуда» длиннее строки — в своей строке: было многоточием, теперь переносом (повтор 2 ревью p48a, находка 7)
   assert.equal(decls('.sub-tail')['min-width'], '0');
-  assert.equal(decls('.sub-tail')['text-overflow'], 'ellipsis');
 });
 
 // R-33, M-часть (повтор ревью p46a, находка 4, WCAG 1.4.4): текст 200 % — окно 195 px. Было: страница шириной 278 px,
@@ -652,4 +652,25 @@ test('находка 7, 320 px: чипы периода — подпись не 
 test('находка 7: абзацы — без одного слова в последней строке (детектор `straggler`: «минуту.», «октября», «117,61)»)', () => {
   // экран ошибки S9C при 320 px — «минуту.» одна; подпись шапки «Продуктов» — «октября»; описание обмена — «117,61)»
   assert.equal(decls('p')['text-wrap'], 'pretty');
+});
+
+test('Q3 и находка 7: «откуда» длиннее строки — переносом по словам в своей строке («Райффайзен Ангел…» при 320 px)', () => {
+  // хвост «· откуда» — ячейка: точка шириной x не сжимается, имя счёта — переносом рядом с ней, без многоточия
+  const tail = decls('.sub-tail');
+  assert.equal(tail.display, 'flex');
+  assert.equal(tail['text-overflow'], undefined);
+  assert.equal(decls('.sub-sep').flex, 'none', 'точка не сжимается: в начале новой строки она за краем целиком');
+  const src = decls('.sub-src');
+  assert.deepEqual([src['white-space'], src['min-width']], ['normal', '0']);
+  // строка без метки (Q3): категории — во всю строку, места под значок нет; сдвиг подписи — x (находка 11)
+  assert.equal(decls('.op-sub.plain > .sub-cats')['max-width'], `calc(100% - ${decls('.sub-sep').width})`);
+  // перевод «откуда → куда»: «→ куда» не входит — строкой ниже целиком, стрелка видна (сдвига и обрезки слева нет)
+  const flow = decls('.op-sub.flow');
+  assert.deepEqual([flow.display, flow['flex-wrap']], ['flex', 'wrap']);
+  assert.ok(Number.parseFloat(flow['column-gap']) > 0, 'зазор в строке — вместо пробела; в начале строки его нет');
+  assert.equal(flow['margin-left'], undefined);
+  assert.equal(decls('.op-sub.flow > span')['white-space'], 'normal');
+  // крупный текст (195 px): подпись — обычным текстом, по словам (находка 4 повтора 1)
+  assert.equal(decls('.sub-tail', NARROW).display, 'inline');
+  for (const sel of ['.sub-tail', '.sub-src', '.op-sub.flow']) assert.deepEqual(decls(sel, 320), decls(sel), `320 px: ${sel}`);
 });

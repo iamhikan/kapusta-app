@@ -305,8 +305,15 @@ button { -webkit-tap-highlight-color: transparent; }
 .op-sub.split > :first-child { margin-left: 1em; }
 .sub-cats { flex: none; max-width: calc(100% - 2.6em); overflow: hidden; text-overflow: ellipsis; }
 .sub-glyph { flex: none; }
-.sub-tail { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.sub-sep { display: inline-block; width: 1em; text-align: center; }
+.sub-tail { flex: 0 1 auto; min-width: 0; display: flex; }
+.sub-sep { display: inline-block; flex: none; width: 1em; text-align: center; }
+/* «откуда» длиннее строки — переносом по словам рядом с точкой, а не «Райффайзен Ангел…» (повтор 2 ревью p48a,
+   находка 7); строка без метки — та же подпись без значка, категориям — вся строка (Q3) */
+.sub-src { min-width: 0; white-space: normal; }
+.op-sub.plain > .sub-cats { max-width: calc(100% - 1em); }
+/* перевод «откуда → куда»: «→ куда» не входит — строкой ниже целиком, со стрелкой (Q3: было «нал Алексея → на…») */
+.op-sub.flow { display: flex; flex-wrap: wrap; column-gap: 0.3em; }
+.op-sub.flow > span { min-width: 0; white-space: normal; }
 .op-note { font-weight: 600; }
 .op-amount { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; text-align: right;
   font-weight: 600; }
@@ -514,7 +521,7 @@ section .title { font-size: 17px; font-weight: 600; }
   /* подпись с меткой — обычным текстом, по словам: сдвиг и обрезка слева (находка 11) срезали бы значок у края */
   .op-sub.split { display: block; margin-left: 0; clip-path: none; }
   .op-sub.split > :first-child { margin-left: 0; }
-  .sub-sep { display: inline; }
+  .sub-sep, .sub-tail { display: inline; }
   /* плитки счёта и категории — украшение (aria-hidden, имя — в тексте): отнимали у имени 48 px из 131 */
   .line.bal > .tile, .op:not(.line) > .cat-tile { display: none; }
   /* остаток: имя — во всю ширину, под ним суммы, справа; стрелка — у правого края */

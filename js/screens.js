@@ -187,14 +187,24 @@ function dayHead(d) {
 
 // R-3 (стенд, 320 px): подпись с меткой — три части: категория, значок, «· откуда»; значок остаётся на виду (было
 // «образование …» — значок уходил в многоточие). Узко «откуда» не входит рядом — уходит строкой ниже (повтор ревью
-// p46a, находка 11: сжималось до «·»); точка — своя ячейка, в начале новой строки её не видно (style.css)
-function subLine(text) {
+// p46a, находка 11: сжималось до «·»); точка — своя ячейка, в начале новой строки её не видно (style.css). Строка без
+// метки — так же, без значка; перевод — «откуда» и «→ куда»; «откуда» длиннее строки — переносом по словам (повтор 2
+// ревью p48a, Q3 и находка 7: было многоточие). Где «откуда» — знает opRow (tail)
+function subLine(text, tail) {
+  const src = (t) => h('span', { class: 'sub-src' }, t);
   const m = /^(.*?)( ?(?:🔁|📌)+)((?: · .*)?)$/u.exec(text);
-  if (!m) return h('span', { class: 'op-sub muted small' }, text);
-  const [, cats, glyph, tail] = m;
+  if (!m) {
+    const at = tail && text.endsWith(tail.sep + tail.text) ? text.length - tail.sep.length - tail.text.length : -1;
+    if (at < 0) return h('span', { class: 'op-sub muted small' }, text);
+    const head = text.slice(0, at);
+    if (tail.sep === ' → ') return h('span', { class: 'op-sub muted small flow' }, h('span', {}, head), h('span', {}, `→ ${tail.text}`));
+    return h('span', { class: 'op-sub muted small split plain' }, head ? h('span', { class: 'sub-cats' }, head) : null,
+      h('span', { class: 'sub-tail' }, tail.sep ? h('span', { class: 'sub-sep' }, tail.sep) : null, src(tail.text)));
+  }
+  const [, cats, glyph, rest] = m;
   return h('span', { class: 'op-sub muted small split' }, cats ? h('span', { class: 'sub-cats' }, cats) : null,
     h('span', { class: 'sub-glyph' }, ...glyphs(glyph)),
-    tail ? h('span', { class: 'sub-tail' }, h('span', { class: 'sub-sep' }, ' · '), tail.slice(3)) : null);
+    rest ? h('span', { class: 'sub-tail' }, h('span', { class: 'sub-sep' }, ' · '), src(rest.slice(3))) : null);
 }
 
 export function opLine(r, nav, opts = {}) {
@@ -203,7 +213,7 @@ export function opLine(r, nav, opts = {}) {
     h('span', { class: 'grow' },
       h('span', { class: 'op-where' }, h('span', { class: 'ellipsis' }, r.where),
         ...r.marks.map(mark)),
-      r.sub ? subLine(r.sub) : null,
+      r.sub ? subLine(r.sub, r.tail) : null,
       r.note ? h('span', { class: `op-note small ${r.noteTone}` }, ...glyphs(r.note)) : null),
     h('span', { class: 'op-amount' }, sum(r.amount, r.income ? 'good' : ''),
       r.amountSub ? h('span', { class: 'muted small' }, r.amountSub) : null),

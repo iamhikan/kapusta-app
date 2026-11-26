@@ -103,7 +103,7 @@ test('R-6: обмен — «выигрыш на обмене +782 🔁», у и�
   assert.ok(notes.includes('выигрыш на обмене\u00a0+782'), notes.join(' | '));
 });
 
-test('R-3 (стенд 320 px): подпись с меткой — три части: категория, значок, «· откуда»; без метки — одной строкой, как была', () => {
+test('R-3 (стенд 320 px): подпись с меткой — три части: категория, значок, «· откуда»; без метки — две (повтор 2, Q3)', () => {
   const screen = opsScreen(list([spend('a:1', 'Английский', { regular: 'образование' }), spend('a:2', 'Пекара')]), navOf());
   const sub = one(rowOf(screen, 'a:1'), 'op-sub');
   assert.ok(sub.classes.includes('split'));
@@ -112,7 +112,8 @@ test('R-3 (стенд 320 px): подпись с меткой — три час�
   assert.equal(eye(one(sub, 'sub-tail')), ' · Райффайзен РФ');
   assert.equal(eye(sub), 'образование 🔁 · Райффайзен РФ');
   const plain = one(rowOf(screen, 'a:2'), 'op-sub');
-  assert.ok(!plain.classes.includes('split'));
+  assert.ok(plain.classes.includes('split') && plain.classes.includes('plain'));
+  assert.equal(one(plain, 'sub-glyph'), null);
   assert.equal(eye(plain), 'образование · Райффайзен РФ');
   const bare = one(rowOf(opsScreen(list([spend('a:1', 'Английский', { regular: 'образование', cats: [] })], {
     ctx: { title: 'Лимит', params: { limit: 'x' } } }), navOf()), 'a:1'), 'op-sub');
@@ -125,7 +126,60 @@ test('находка 11: «· откуда» — точка и счёт отде
   const screen = opsScreen(list([spend('a:1', 'Английский', { regular: 'образование' })]), navOf());
   const tail = one(one(rowOf(screen, 'a:1'), 'op-sub'), 'sub-tail');
   assert.equal(eye(one(tail, 'sub-sep')), ' · ');
-  assert.deepEqual(tail.kids.slice(1), ['Райффайзен РФ'], 'счёт — после точки, целиком');
+  assert.equal(eye(one(tail, 'sub-src')), 'Райффайзен РФ', 'счёт — после точки, целиком (своей ячейкой: длинный — переносом)');
   assert.equal(eye(tail), ' · Райффайзен РФ');
   assert.match(flat(heard(rowOf(screen, 'a:1'))), /регулярная трата · Райффайзен РФ/, 'диктор слышит то же');
+});
+
+// ——— p50a: повтор 2 ревью p48a, Q3 (Алексей: «Да исправляй все как рекомендуешь») и находка 7 ———
+// Строка без метки: «откуда» резало многоточие (390 px — 12 из 50 строк ноября, 320 px — 30). Теперь, как у строки с
+// меткой (находка 11), «откуда» не входит рядом — уходит строкой ниже целиком; длиннее строки («Райффайзен Ангелины»
+// при 320 px) — переносом по словам, а не «Райффайзен Ангел…». Страница не делит подпись по « · »: имя счёта бывает с
+// точкой («ПР · UniCredit») — «откуда» отдаёт opRow (tail)
+
+test('Q3: opRow отдаёт «откуда» отдельно — после категорий « · », у перевода — « → куда», одно «откуда» — без знака', () => {
+  assert.deepEqual(opRow(spend('a:2', 'Пекара')).tail, { sep: ' · ', text: 'Райффайзен РФ' });
+  assert.deepEqual(opRow(spend('a:1', 'Английский', { regular: 'образование' })).tail, { sep: ' · ', text: 'Райффайзен РФ' });
+  assert.deepEqual(opRow(spend('a:3', 'Налог', { cats: ['налоги'], src: 'ПР · UniCredit' })).tail,
+    { sep: ' · ', text: 'ПР · UniCredit' });
+  const inCat = opRow(spend('a:2', 'Пекара'), { inCategory: true });
+  assert.deepEqual([inCat.sub, inCat.tail], ['Райффайзен РФ', { sep: '', text: 'Райффайзен РФ' }]);
+  // счёт — в шапке экрана счёта (решение 48): «откуда» в строке нет
+  const own = opRow({ ...spend('a:2', 'Пекара'), account: 'Assets:Family:Raiffeisen:RUB' }, { account: 'Assets:Family:Raiffeisen' });
+  assert.deepEqual([own.sub, own.tail], ['образование', null]);
+  const move = opRow({ ref: 'add:h', date: '2026-11-26', where: 'Перелив', what: '', kind: 'transfer', cats: [],
+    src: 'нал Алексея', rsd: 65000, receipt: false, flag: false,
+    legs: [{ name: 'нал Алексея', number: -65000, currency: 'RSD' }, { name: 'нал дома', number: 65000, currency: 'RSD' }] });
+  assert.deepEqual([move.sub, move.tail], ['нал Алексея → нал дома', { sep: ' → ', text: 'нал дома' }]);
+  assert.equal(opRow({ ...spend('a:4', 'Нал'), opening: 'check' }).tail, null, 'сверка остатка — без «откуда»');
+});
+
+test('Q3: строка без метки — категории и «· откуда» отдельно: узко счёт уходит строкой ниже целиком, как у строки с меткой', () => {
+  const screen = opsScreen(list([spend('a:2', 'Пекара', { cats: ['супермаркеты', 'сладкое и снеки', 'напитки'] }),
+    spend('a:3', 'Налог', { cats: ['налоги'], src: 'ПР · UniCredit' })]), navOf());
+  const sub = one(rowOf(screen, 'a:2'), 'op-sub');
+  assert.equal(eye(one(sub, 'sub-cats')), 'супермаркеты, сладкое и снеки, напитки');
+  assert.equal(eye(one(one(sub, 'sub-tail'), 'sub-sep')), ' · ');
+  assert.equal(eye(one(sub, 'sub-src')), 'Райффайзен РФ');
+  assert.equal(eye(sub), 'супермаркеты, сладкое и снеки, напитки · Райффайзен РФ', 'на экране — те же слова');
+  assert.match(flat(heard(rowOf(screen, 'a:2'))), /напитки · Райффайзен РФ/, 'диктор слышит то же');
+  // имя счёта с точкой — целиком в «откуда», категория — до него
+  const pr = one(rowOf(screen, 'a:3'), 'op-sub');
+  assert.deepEqual([eye(one(pr, 'sub-cats')), eye(one(pr, 'sub-src'))], ['налоги', 'ПР · UniCredit']);
+});
+
+test('Q3: на экране категории (подпись — одно «откуда») — без точки; перевод — «откуда» и «→ куда» отдельно', () => {
+  const cat = list([spend('a:2', 'Пекара')], { ctx: { title: 'Образование', params: { cat: 'Expenses:Family:Education' } } });
+  const sub = one(rowOf(opsScreen(cat, navOf()), 'a:2'), 'op-sub');
+  assert.equal(one(sub, 'sub-sep'), null);
+  assert.equal(eye(one(sub, 'sub-src')), 'Райффайзен РФ');
+  assert.equal(eye(sub), 'Райффайзен РФ');
+  // перевод: «→ куда» не входит — строкой ниже, со стрелкой в начале (было «нал Алексея → на…» при 320 px)
+  const move = { ref: 'add:h', date: '2026-11-25', where: 'Перелив', what: '', kind: 'transfer', cats: [], src: 'нал Алексея',
+    rsd: 65000, receipt: false, flag: false,
+    legs: [{ name: 'нал Алексея', number: -65000, currency: 'RSD' }, { name: 'нал дома', number: 65000, currency: 'RSD' }] };
+  const flow = one(rowOf(opsScreen(list([move]), navOf()), 'add:h'), 'op-sub');
+  assert.ok(flow.classes.includes('flow'));
+  assert.deepEqual(flow.kids.map(eye), ['нал Алексея', '→ нал дома']);
+  assert.match(flat(heard(rowOf(opsScreen(list([move]), navOf()), 'add:h'))), /нал Алексея → нал дома/);
 });
