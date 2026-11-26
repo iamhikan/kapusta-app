@@ -192,3 +192,42 @@ test('договорный платёж: разница с нормой — сл
     'на 846 меньше нормы: курс дня оплаты и сумма платежа, в «Потрачено» не идёт');
   assert.match(dealOf(deal(76460, 76390, 650, 'по договору 650 €')).rate, /^на 70 больше/);   // число не отрывается
 });
+
+// находка 1, экран «Обмен валюты»: шапка дня «25 ноября −3 888» стояла над строками «выигрыш на обмене +346», «+3 542».
+// Стало: день говорит выигрышем или потерей, как строки: «выигрыш +3 888» зелёным, «потеря −3 961» — как «потеря на
+// обмене −3 961». Шапка месяца с потерей — «−36» и «потеря на обмене», как с выигрышем — «+189 выигрыш на обмене»
+import { newOps, opsScreen } from '../js/screens.js';
+
+const FX_DAYS = [{ date: '2026-11-25', sum: -3888, ops: [] }, { date: '2026-11-12', sum: 520, ops: [] },
+  { date: '2026-11-06', sum: 3961, ops: [] }];
+function regularScreen(key, health, days, total) {
+  const nav = { today: () => '2026-11-26', health: () => health, budget: () => null, limitOf: () => null, noteOf: () => '',
+    accounts: () => [], balanceOf: () => null, marksHidden: () => true };
+  const entry = newOps('2026-11', { title: key, params: { regular: key }, limitWord: 'В норме' });
+  entry.pages = [{ days, total, count: 5, next: null }];
+  return opsScreen(entry, nav);
+}
+const dayHeads = (tree) => all(tree, 'day-head').map((d) => [flat(eyes(d)), d.kids[1].classes.join(' ')]);
+const head = (tree) => {
+  const big = one(all(tree, 'card')[0], 'big');
+  return [shown(big.kids[0]), big.kids[0].classes.join(' '), shown(big.kids[1]), big.kids[1].classes.join(' ').trim()];
+};
+
+test('«Обмен валюты»: день — «выигрыш +3 888» зелёным и «потеря −3 961», а не «−3 888» над выигрышами', () => {
+  const screen = regularScreen('обмен валюты', fxHealth(-189), FX_DAYS, -189);
+  assert.deepEqual(dayHeads(screen), [['25 ноября, ср выигрыш +3 888', 'good'], ['12 ноября, чт потеря −520', 'warn'],
+    ['6 ноября, пт потеря −3 961', 'warn']]);
+  assert.deepEqual(head(screen), ['+189', 'big-num good', 'выигрыш на обмене', 'muted']);
+  // у других регулярных день — как был: сумма трат дня без знака и цвета
+  const bank = regularScreen('банк', { month: '2026-11', envelopes: [ENV('банк', 1580, 2535)] },
+    [{ date: '2026-11-25', sum: 1580, ops: [] }], 1580);
+  assert.deepEqual(dayHeads(bank), [['25 ноября, ср 1 580', '']]);
+});
+
+test('«Обмен валюты»: месяц с потерей — «−36» и «потеря на обмене»; потеря больше нормы — «сверх 112» красным', () => {
+  const loss = regularScreen('обмен валюты', fxHealth(36), [{ date: '2026-11-14', sum: 36, ops: [] }], 36);
+  assert.deepEqual(head(loss), ['−36', 'big-num', 'потеря на обмене', 'warn']);
+  assert.ok(one(all(loss, 'card')[0], 'bar'), 'полоса — сколько нормы на потери ушло');
+  const over = regularScreen('обмен валюты', fxHealth(700), [{ date: '2026-11-14', sum: 700, ops: [] }], 700);
+  assert.deepEqual(head(over), ['−700', 'big-num bad', 'потеря на обмене, сверх 112', 'muted bad']);
+});

@@ -135,13 +135,15 @@ const pagesOf = (entry) => (entry.ctx && entry.ctx.days
   ? entry.pages.map((p) => ({ ...p, days: (p.days || []).map(({ plain, ...d }) => d) })) : entry.pages);
 
 function days(entry) {
-  // страницы по 50: день на стыке страниц — одним днём (сумма дня от сервера — за весь день)
+  // страницы по 50: день на стыке страниц — одним днём (сумма дня от сервера — за весь день). Экран «Обмен валюты» —
+  // день выигрышем или потерей (fx, повтор 2 ревью p48a, находка 1)
+  const fx = !!(entry.ctx && entry.ctx.params && entry.ctx.params.regular === FX);
   const out = [];
   for (const p of pagesOf(entry)) {
     for (const d of p.days) {
       const last = out[out.length - 1];
       if (last && last.date === d.date) last.ops.push(...d.ops);
-      else out.push({ ...d, ops: [...d.ops] });
+      else out.push({ ...d, fx, ops: [...d.ops] });
     }
   }
   return out;
@@ -180,7 +182,7 @@ function dayHead(d) {
   // итог дня с 🔁📌 — диктору словами (daySay), глазам — как в чате
   const say = daySay(d);
   const total = !d.sum ? null : say ? h('span', {}, h('span', { 'aria-hidden': 'true' }, dayTotal(d)), h('span', { class: 'sr' }, say))
-    : h('span', {}, dayTotal(d));
+    : h('span', { class: d.fx ? (d.sum < 0 ? 'good' : 'warn') : null }, dayTotal(d));   // выигрыш — зелёным
   return h('div', { class: 'day-head muted small' }, h('span', {}, dayLabel(d.date)), total);
 }
 

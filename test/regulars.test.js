@@ -299,7 +299,7 @@ test('E10, R-13: вернули больше, чем потратили — бе
     'В норме 588 на потери при обмене · 5 записей · 1–26 ноября']);
   const back = headView({ ...ctx, title: 'Банк' }, { total: -540, count: 2 });
   assert.deepEqual([back.sum, back.note, back.fill], ['+540', 'вернули больше, чем потратили', null]);
-  assert.equal(headView({ ...ctx, fx: true }, { total: 520, count: 1 }).note, 'из 588');   // потеря в пределах — как была
+  assert.equal(headView({ ...ctx, fx: true }, { total: 520, count: 1 }).note, 'потеря на обмене');   // потеря — словом (повтор 2 ревью)
 });
 
 test('E13: ответ без envelopes — коммуналка без перебора без перехода и у Алексея: full в плане страница не читает (решение 94)', async () => {
