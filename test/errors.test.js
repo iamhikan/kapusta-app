@@ -139,3 +139,35 @@ for (const [what, fail, title] of [['Капуста ошиблась (503)', [50
     assert.doesNotMatch(after, new RegExp(`${title}|Повторить`));
   });
 }
+
+// R-22 (ревью 26.11): техническая строка («HTTP 503 · ledger не грузится», «сеть: TypeError …») Ангелине ничего не даёт.
+// Ей — действие: «Если не пройдёт, скажите Алексею.» У Алексея строка остаётся: она для диагностики. Кто смотрит —
+// view последнего «Здоровья» (nav.family)
+for (const [what, status, body] of [['503 от fin', 503, { error: 'ledger не грузится' }], ['сеть', 'down', null]]) {
+  test(`R-22: Ангелине на экране ошибки (${what}) — «Если не пройдёт, скажите Алексею.», не техническая строка`, async () => {
+    const nav = { ...navOf(status, body), family: () => true };
+    const entry = newOps('2026-11');
+    await loadOps(entry, nav);
+    const box = one(opsScreen(entry, nav), 'empty');
+    assert.equal(seen(one(box, 'detail')), 'Если не пройдёт, скажите Алексею.');
+    assert.doesNotMatch(seen(box), /HTTP|TypeError|ts\.net/);
+    const mine = { ...navOf(status, body), family: () => false };
+    const own = newOps('2026-11');
+    await loadOps(own, mine);
+    assert.match(seen(one(one(opsScreen(own, mine), 'empty'), 'detail')), /HTTP 503|TypeError/);
+  });
+}
+
+test('R-22: экран ошибки «Здоровья» (М2) у Ангелины — тоже без технической строки', async () => {
+  const { problemScreen } = await import('../js/screens.js');
+  const { screen } = await import('../js/api.js');
+  const s = screen('fault', 'HTTP 503 · ledger не грузится');
+  assert.equal(seen(one(problemScreen(s, { retry() {}, close() {}, family: true }), 'detail')), 'Если не пройдёт, скажите Алексею.');
+  assert.equal(seen(one(problemScreen(s, { retry() {}, close() {} }), 'detail')), 'HTTP 503 · ledger не грузится');
+});
+
+test('R-22: карточка без Мака — «Операция приходит с Мака», не «Операции приходят»', async () => {
+  const { offline } = await import('../js/snapshot.js');
+  assert.match(offline('card', false).text, /^Операция приходит с Мака\./);
+  assert.match(offline('ops', false).text, /^Операции приходят с Мака\./);
+});

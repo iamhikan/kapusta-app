@@ -42,6 +42,7 @@ let retrying = false;                  // «Повторить» на снимк
 let pending = [];                      // смены категории в очереди CloudStorage: Мак молчал (решение 18)
 let flushing = false;
 let accounts = [];                     // счета зрителя из остатков «Здоровья» — в фильтр «Операций» (решение 38)
+let viewer = null;                     // вид зрителя (view «Здоровья»): Ангелине ошибки — без технической строки (R-22)
 // остатки по месяцам — шапка «Операций» счёта (решение 48): месяц списка, иначе текущий (R-25). Смена категории их не
 // сбрасывает: остатки от неё не меняются
 const balanceViews = new Map();
@@ -81,6 +82,7 @@ const nav = {
   },
   changed: () => stale(),
   accounts: () => accounts,
+  family: () => viewer === 'family',
   balanceOf(account, m) {
     const v = balanceViews.get(m) || balanceViews.get(today().slice(0, 7));
     return v ? balanceRow(v, account) : null;
@@ -229,7 +231,7 @@ function skeleton() {
 
 function problem(kind, detail) {
   // М2 на весь экран (js/screens.js): «Повторить» — снова «Здоровье» месяца, «Закрыть» — закрыть Капусту
-  show(problemScreen(screen(kind, detail), { retry: () => load(month), close: () => tg && tg.close() }));
+  show(problemScreen(screen(kind, detail), { retry: () => load(month), close: () => tg && tg.close(), family: nav.family() }));
 }
 
 function banner(s) {
@@ -379,6 +381,7 @@ async function load(next) {
   cache.set(month, r.data);
   const fresh = view(r.data);
   accounts = fresh.accounts;
+  viewer = r.data.view || viewer;
   balanceViews.set(month, fresh);
   snap = null;
   // после каждого удачного ответа — снимок в CloudStorage (ключ на месяц, до 4096 знаков, решение 32)
@@ -421,6 +424,7 @@ async function offlineHealth(mine, detail) {
   snap = s;
   hasSnap = true;
   month = s.month;
+  viewer = s.view || viewer;
   if (stack[stack.length - 1].kind === 'health') render();
 }
 

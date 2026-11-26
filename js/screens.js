@@ -29,9 +29,15 @@ export function monthHead(v, { snapped = false, step }) {
     arrow(1, 'Следующий месяц', v.canNext, ICONS.right));
 }
 
+// R-22 (ревью 26.11): мелкая техническая строка («HTTP 503 · …», «сеть: TypeError …») — для диагностики Алексея;
+// Ангелине (вид family) вместо неё — действие
+export const ASK = 'Если не пройдёт, скажите Алексею.';
+const detailFor = (detail, family) => (detail && family ? ASK : detail);
+const isFamily = (nav) => !!(nav && nav.family && nav.family());
+
 // М2 на весь экран: вход, «Здоровье» без ответа. У отказа fin его слова — текст экрана (s.text), мелким шрифтом — только
-// причина ошибки или молчания. Заголовок — с ключом title: фокус не падает в BODY (R-18)
-export function problemScreen(s, { retry, close }) {
+// причина ошибки или молчания (Ангелине — ASK). Заголовок — с ключом title: фокус не падает в BODY (R-18)
+export function problemScreen(s, { retry, close, family = false }) {
   const pic = s.icon === 'logo' ? h('div', { class: 'logo' }, 'К')
     : icon(s.icon === 'lock' ? ['M7 11V7a5 5 0 0 1 10 0v4', 'M5 11h14v10H5z'] : ['M12 9v4', 'M12 17h.01',
       'M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'], 56);
@@ -40,7 +46,7 @@ export function problemScreen(s, { retry, close }) {
       'Повторить')
       : h('button', { class: 'button', type: 'button', 'data-focus': 'problem', on: { click: () => close() } }, 'Закрыть');
   return h('div', { class: 'problem', 'data-say': `${s.title}. ${s.text}` }, h('div', { class: 'problem-icon' }, pic),
-    h('h1', TITLE, s.title), h('p', {}, s.text), act, s.detail ? h('p', { class: 'small detail' }, s.detail) : null);
+    h('h1', TITLE, s.title), h('p', {}, s.text), act, s.detail ? h('p', { class: 'small detail' }, detailFor(s.detail, family)) : null);
 }
 
 export function newOps(month, ctx = null) {
@@ -275,7 +281,7 @@ export function failBody(kind, entry, nav, retry, key = 'retry') {
   const s = screen(entry.fail, entry.error);
   return h('div', { class: 'empty', 'data-say': `${s.title}. ${s.text}` }, h('h2', {}, s.title), h('p', { class: 'muted' }, s.text),
     h('button', { type: 'button', class: 'button', 'data-focus': key, on: { click: () => { tap(); retry(); } } }, 'Повторить'),
-    s.detail ? h('p', { class: 'small detail muted' }, s.detail) : null);
+    s.detail ? h('p', { class: 'small detail muted' }, detailFor(s.detail, isFamily(nav))) : null);
 }
 
 export function offlineBody(kind, entry, nav, retry, key = 'retry') {
@@ -284,7 +290,7 @@ export function offlineBody(kind, entry, nav, retry, key = 'retry') {
   return h('div', { class: 'empty', 'data-say': `${o.title}. ${o.text}` }, h('h2', {}, o.title), h('p', { class: 'muted' }, o.text),
     h('button', { type: 'button', class: 'button', 'data-focus': key, on: { click: () => { tap(); retry(); } } }, 'Повторить'),
     o.link ? h('button', { type: 'button', class: 'link', 'data-focus': 'snapshot', on: { click: () => nav.snapshot() } }, o.link) : null,
-    h('p', { class: 'small detail muted' }, entry.error));
+    h('p', { class: 'small detail muted' }, detailFor(entry.error, isFamily(nav))));
 }
 
 // R-14 (ревью 26.11): пустой список — правдой о своём месте; у поиска — «Очистить поиск» (фокус — в поле поиска)
@@ -413,7 +419,7 @@ function notice(entry, nav) {
   // диктор слышит итог из своей живой зоны (data-say), а не перечитывает экран; код ответа — только мелко на экране
   return h('div', { class: `offline notice ${n.tone}`, 'data-say': n.text },
     h('span', { class: 'offline-text' }, n.text, n.detail ? h('span', { class: 'small detail muted',
-      style: { display: 'block', overflowWrap: 'anywhere' } }, n.detail) : null),
+      style: { display: 'block', overflowWrap: 'anywhere' } }, detailFor(n.detail, isFamily(nav))) : null),
     cancel, again);
 }
 
