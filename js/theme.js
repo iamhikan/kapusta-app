@@ -63,10 +63,10 @@ export function legible(ink, toward, all, need = NEED) {
   return hex(toward);
 }
 
+const mix = (a, b, share) => a.map((x, i) => x * share + b[i] * (1 - share));   // share цвета a над b
+
 // свои цвета текста на :root (root.style). Сначала снимаем прошлые: смена темы считается от цвета Telegram, а не от
 // своего. read(имя) — цвет переменной так, как его видит браузер. -> {переменная: свой цвет}
-const mix = (a, b, share) => a.map((x, i) => x * share + b[i] * (1 - share));
-
 export function fit(root, read) {
   for (const [name] of INKS) root.style.removeProperty(name);
   const fg = rgb(read('--fg'));
