@@ -104,10 +104,21 @@ function budgetBody(entry, nav) {
     h('span', { class: 'grow' }, h('span', {}, name), note ? h('span', { class: 'muted small' }, note) : null),
     h('span', { class: 'nowrap' }, sum));
   // E10: регулярная (и коммуналка) — её операции за месяц, в шапке — потрачено против суммы в норме (решение 95)
+  const openRegular = (r) => open(nav, newOps(entry.month, { title: r.name.charAt(0).toUpperCase() + r.name.slice(1),
+    params: { regular: r.regular }, limitWord: 'В норме' }));
   const regular = (r) => h('button', { type: 'button', class: 'line op', 'data-focus': `regular:${r.name}`,
-    on: { click: () => open(nav, newOps(entry.month, { title: r.name.charAt(0).toUpperCase() + r.name.slice(1),
-      params: { regular: r.regular }, limitWord: 'В норме' })) } },
+    on: { click: () => openRegular(r) } },
   h('span', { class: 'grow' }, h('span', {}, r.name), r.note ? h('span', { class: 'muted small' }, r.note) : null),
+  h('span', { class: 'nowrap' }, r.sum), icon(ICONS.right, 16));
+  // R-11 (решение 98, ответ 5): строка с полосой «потрачено / в норме» — как лимит на «Здоровье»
+  const gauged = (r) => limitRow(r.gauge, { open: () => openRegular(r) });
+  // R-12: жильё и кредит РФ — «✓ оплачено 11 ноября · по договору 650 €» («ждёт оплаты»), разница — строкой ниже
+  const deal = (r) => h('button', { type: 'button', class: 'line op', 'data-focus': `regular:${r.name}`,
+    on: { click: () => openRegular(r) } },
+  h('span', { class: 'grow' }, h('span', {}, r.name),
+    h('span', { class: 'small' }, h('span', { class: r.deal.paid ? 'good' : 'muted' }, r.deal.status),
+      h('span', { class: 'muted' }, ` · ${r.deal.terms}`)),
+    r.deal.rate ? h('span', { class: 'muted small' }, r.deal.rate) : null),
   h('span', { class: 'nowrap' }, r.sum), icon(ICONS.right, 16));
   const pct = (x) => `${(x * 100).toFixed(1)}%`;
   return [head(v.title, v.sub),
@@ -120,8 +131,10 @@ function budgetBody(entry, nav) {
         h('span', { class: 'legend-item' }, h('span', { class: 'swatch-box', style: { background: a.color } }), a.name),
         h('span', { class: 'nowrap' }, a.sum))))) : null,
     v.plan ? planCard(v.plan) : null,
-    ...v.groups.map((g) => [h('div', { class: 'section-head' }, h('h2', {}, g.name), h('span', { class: 'muted small' }, g.sum)),
-      h('section', { class: 'card list' }, ...g.rows.map((r) => (r.regular ? regular(r) : row(r.name, r.sum, r.note)))),
+    // значок группы (📌, 🔁) — как метка в «Операциях», диктору не читается
+    ...v.groups.map((g) => [h('div', { class: 'section-head' },
+      h('h2', {}, g.glyph ? h('span', { 'aria-hidden': 'true' }, `${g.glyph} `) : null, g.name), h('span', { class: 'muted small' }, g.sum)),
+      h('section', { class: 'card list' }, ...g.rows.map((r) => (r.gauge ? gauged(r) : r.deal ? deal(r) : r.regular ? regular(r) : row(r.name, r.sum, r.note)))),
       g.sub ? h('p', { class: 'note-text muted small' }, g.sub) : null]),
     v.savings || v.norm ? h('section', { class: 'card list' }, v.savings ? row(v.savings.name, v.savings.sum, v.savings.note) : null,
       v.norm ? row(v.norm.name, v.norm.sum, '', 'strong') : null) : null,

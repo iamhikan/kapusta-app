@@ -41,10 +41,10 @@ test('перебор регулярной — строкой в списке л�
   const row = limitRow(v.limits[1], { plan: v.plan, open() {} });
   assert.equal(seen(one(one(row, 'limit-name'), 'ellipsis')), 'связь');
   assert.equal(flat(seen(one(row, 'badge'))), '+2 019');
-  assert.equal(flat(heard(row)), 'связь: 3 019 из 1 000, сверх на 2 019, регулярная: сумма в норме — среднее за 3 месяца');
+  assert.equal(flat(heard(row)), 'связь: 3 019 из 1 000, сверх на 2 019, в «Потрачено» идёт только перебор +2 019');   // R-9
   assert.equal(one(row, 'fill').style.background, 'var(--bad)');
   const sport = limitRow(v.limits[3], { plan: v.plan, open() {} });
-  assert.match(flat(heard(sport)), /^спортпит: 9 000 из 8 000, сверх на 1 000, регулярная: 3 000 в норме \+ 5 000 конверт$/);
+  assert.equal(flat(heard(sport)), 'спортпит: 9 000 из 8 000, сверх на 1 000, в «Потрачено» идёт только перебор +1 000');
 });
 
 test('перебор регулярной не считается лимитом: «Лимитов сверх» и резерв — только по лимитам', async () => {
@@ -71,14 +71,43 @@ test('тап — операции регулярной: regular= в запрос
   assert.equal(flat(h.sub), 'В норме 1 000 · 2 записи · 1–18 ноября');
 });
 
-test('коммуналка сверх своей доли — строкой «обязательная», основа суммы — словами сервера (basis)', async () => {
+test('коммуналка сверх своей доли — строкой со значком 📌; подпись — что перебор делает с «Потрачено» (R-9)', async () => {
   const utilities = { key: 'коммуналка', label: 'коммуналка', kind: 'mandatory', basis: 'доля семьи, среднее с 05.2026',
     spent: 13491, limit: 8427, norm: 8427, carry: 0, over: 5064 };
   const v = view(await served({ ...HEALTH, regulars: [utilities] }));
   const row = v.limits.find((l) => l.name === 'коммуналка');
   assert.deepEqual(row.ops, { regular: 'коммуналка' });
   assert.equal(flat(heard(limitRow(row, { open() {} }))),
-    'коммуналка: 13 491 из 8 427, сверх на 5 064, обязательная: сумма в норме — доля семьи, среднее с 05.2026');
+    'коммуналка: 13 491 из 8 427, сверх на 5 064, в «Потрачено» идёт только перебор +5 064');
+  assert.equal(row.glyph, '📌');
+});
+
+// R-9 (решение 98, ответ 6): строка перебора на «Здоровье» говорит, что она делает с «Потрачено», а не на чём сумма
+// («медиана за 3 мес.» — слово статистики, Ангелине оно ничего не даёт; основа суммы — на экране регулярной). Значок —
+// как метка в чате: 🔁 регулярная, 📌 обязательная (коммуналка). Было: «регулярная: сумма в норме — медиана за 3 мес.»
+const shown = (el) => (typeof el === 'string' ? el : el.classes.includes('sr') ? '' : el.kids.map(shown).join(' '));
+
+test('R-9: строка перебора — «🔁 банк +406 … в «Потрачено» идёт только перебор +406»; коммуналка — 📌; без основы суммы', async () => {
+  const bank = { key: 'банк', label: 'банк', kind: 'regular', basis: 'обычно за месяц', spent: 2941, limit: 2535,
+    norm: 2535, carry: 0, over: 406 };
+  const util = { key: 'коммуналка', label: 'коммуналка', kind: 'mandatory', basis: 'доля семьи, среднее с 05.2026',
+    spent: 13491, limit: 12045, norm: 12045, carry: 0, over: 1446 };
+  const v = view(await served({ ...HEALTH, regulars: [bank, util, HEALTH.regulars[1]] }));
+  const rowOf = (name) => limitRow(v.limits.find((l) => l.name === name), { open() {} });
+  const b = rowOf('банк');
+  assert.equal(flat(shown(one(b, 'limit-name'))), '🔁 банк +406');
+  assert.equal(flat(shown(b)), '🔁 банк +406 2 941 / 2 535 в «Потрачено» идёт только перебор +406');
+  assert.equal(flat(heard(b)), 'банк: 2 941 из 2 535, сверх на 406, в «Потрачено» идёт только перебор +406');
+  assert.equal(flat(shown(one(rowOf('коммуналка'), 'limit-name'))), '📌 коммуналка +1 446');
+  assert.match(flat(shown(rowOf('коммуналка'))), /в «Потрачено» идёт только перебор \+1 446$/);
+  // у спортпита с конвертом — тоже про «Потрачено»: «3 000 в норме + 5 000 конверт» — на его экране
+  assert.match(flat(shown(rowOf('спортпит'))), /в «Потрачено» идёт только перебор \+1 000$/);
+  for (const name of ['банк', 'коммуналка', 'спортпит']) {
+    assert.doesNotMatch(shown(rowOf(name)) + heard(rowOf(name)), /медиана|сумма в норме|конверт|регулярная:/, name);
+  }
+  // лимит — без значка; «+406» не уходит один на строку при 320 px
+  assert.equal(one(rowOf('красота'), 'limit-glyph'), null);
+  assert.match(v.limits.find((l) => l.name === 'банк').hint, /перебор\u00a0\+406$/);
 });
 
 // E10 (Алексей 20.11.2026): «нажать на категорию регулярных трат и увидеть все её транзакции, внутри — свой
@@ -167,7 +196,7 @@ test('E10: строка регулярной в «Бюджете» ведёт н
   assert.equal(nav.asked.at(-1), `/api/tx?from=2026-11-01&to=2026-11-20&regular=${encodeURIComponent('связь')}`);
   // E13: числа — envelopes «Здоровья», второй строкой — на чём сумма (basis)
   assert.deepEqual(header(opsScreen(entry, nav)), { sum: '3 068', note: 'из 4 272', tone: 'big-num ', fill: '71.8%',
-    sub: 'В норме 4 272 · 2 записи · 1–20 ноября', basis: 'сумма в норме — медиана за 3 мес.' });
+    sub: 'В норме 4 272 · 2 записи · 1–20 ноября', basis: 'сумма в норме — обычно за месяц' });
 });
 
 test('E10, E13: сервер до E14 — нажимаются регулярные и коммуналка; жильё, кредит РФ (их нет в envelopes) и строки ПР («ПР коммуналка») — без перехода', async () => {
@@ -245,7 +274,7 @@ test('E10, E13: прошлый месяц стрелкой — градусни�
   assert.ok(nav.asked.includes('/api/health?month=2026-10&envelopes=1'), nav.asked.join(' '));
   assert.ok(!nav.asked.includes('/api/budget?month=2026-10'), nav.asked.join(' '));   // строка «Бюджета» не нужна
   assert.deepEqual(header(opsScreen(entry, nav)), { sum: '4 272', note: 'из 5 734', tone: 'big-num ', fill: '74.5%',
-    sub: 'В норме 5 734 · 3 записи · 1–31 октября', basis: 'сумма в норме — медиана за 3 мес.' });
+    sub: 'В норме 5 734 · 3 записи · 1–31 октября', basis: 'сумма в норме — обычно за месяц' });
   assert.ok(drawn > 0);
 });
 
@@ -339,4 +368,95 @@ test('E14: кредит РФ — весь платёж месяца против
   assert.equal(nav.asked.at(-1), `/api/tx?from=2026-11-01&to=2026-11-20&${new URLSearchParams({ regular: 'кредит РФ' })}`);
   assert.deepEqual(header(opsScreen(entry, nav)), { sum: '32 009', note: 'из 32 855', tone: 'big-num ', fill: '97.4%',
     sub: 'В норме 32 855 · 1 запись · 1–20 ноября', basis: 'сумма в норме — по графику 25 000 ₽' });
+});
+
+// R-11 (решение 98, ответ 5): строка регулярной в «Бюджете» — как строка лимита на «Здоровье»: имя, «+N» при переборе,
+// «потрачено / в норме», полоса; нажатие — те же «Операции» регулярной, фокус после «Назад» — на ту же строку
+test('R-11: «Бюджет» — строка регулярной с полосой и «потрачено / в норме»; группа — «🔁 Регулярные платежи · ушло N из M»', async () => {
+  const nov = { ...NOV, envelopes: NOV_ENV.map((e) => (e.key === 'образование' ? { ...e, spent: 15684, over: 1362 } : e)) };
+  const nav = navOf({ health: { '2026-11': await served(nov) },
+    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, ALEKSEY)) },
+    tx: { 'образование 2026-11': { total: 15684, count: 4 } } });
+  const screen = moreScreen({ kind: 'budget', month: '2026-11', data: nav.budget('2026-11') }, nav);
+  const edu = all(screen, '<button').find((b) => b.getAttribute('data-focus') === 'regular:образование');
+  assert.equal(flat(shown(edu)), 'образование +1 362 15 684 / 14 322 в «Потрачено» идёт только перебор +1 362');
+  assert.equal(flat(heard(edu)), 'образование: 15 684 из 14 322, сверх на 1 362, в «Потрачено» идёт только перебор +1 362');
+  assert.ok(one(edu, 'bar') && one(edu, 'limit-mark'));
+  const subs = all(screen, '<button').find((b) => b.getAttribute('data-focus') === 'regular:подписки');
+  assert.equal(flat(heard(subs)), 'подписки: 12 610 из 20 684');
+  const heads = all(screen, 'section-head').map((x) => flat(shown(x)));
+  assert.ok(heads.includes('🔁 Регулярные платежи ушло 36 422 из 47 812'), heads.join(' | '));
+  assert.ok(heads.includes('📌 Обязательные 121 290'), heads.join(' | '));
+  assert.ok(all(screen, 'section-head').every((x) => !/[🔁📌]/u.test(heard(x))));   // значок диктору не читается
+  edu.handlers.click({});
+  const entry = nav.pushed.at(-1);
+  assert.deepEqual([entry.ctx.title, entry.ctx.params, entry.ctx.limitWord], ['Образование', { regular: 'образование' }, 'В норме']);
+});
+
+// R-12 (решение 98, ответ 5): шапка жилья и кредита РФ — платёж в валюте договора и «✓ оплачено <день>» (или «ждёт
+// оплаты»), без полосы; динары и сумма в норме по курсу 1-го — строкой ниже; разница — своей строкой: в «Потрачено»
+// не идёт. Было: «76 460 сверх 70» с полной зелёной полосой, «32 009 из 32 855» (обещание остатка, которого нет)
+const deal46 = (key, basis, spent, norm, due, paid, on) => ({ ...deal(key, basis, spent, norm), due, paid, paid_on: on });
+const NOV46 = { ...NOV, envelopes: [...NOV_ENV,
+  deal46('жильё', 'по договору 650 €', 76460, 76390, { number: 650, currency: 'EUR' }, { number: 650, currency: 'EUR' },
+    ['2026-11-11']),
+  deal46('кредит РФ', 'по графику 25 000 ₽', 32009, 32855, { number: 25000, currency: 'RUB' },
+    { number: 24937.26, currency: 'RUB' }, ['2026-11-13'])] };
+const dealHead = (tree) => {
+  const card = all(tree, 'card')[0];
+  const note = one(card, 'big').kids[1];
+  return { sum: flat(seen(one(card, 'big-num'))), note: flat(seen(note)), noteClass: note.getAttribute('class'),
+    bar: !!one(card, 'bar'), sub: flat(seen(one(card, 'head-sub'))), basis: flat(seen(one(card, 'basis') || '')),
+    rate: flat(seen(one(card, 'rate') || '')) };
+};
+
+test('R-12: жильё — «650 € ✓ оплачено 11 ноября», без полосы; разница с нормой — своей строкой', async () => {
+  const nav = navOf({ health: { '2026-11': await served(NOV46) },
+    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, ALEKSEY)) },
+    tx: { 'жильё 2026-11': { total: 76460, count: 1 }, 'кредит РФ 2026-11': { total: 32009, count: 1 } } });
+  assert.deepEqual(dealHead(opsScreen(await openFromBudget(nav, '2026-11', 'жильё'), nav)), { sum: '650 €',
+    note: '✓ оплачено 11 ноября', noteClass: 'good', bar: false,
+    sub: '76 460 RSD · в норме 76 390 по курсу 1 ноября · 1 запись · 1–20 ноября',
+    basis: 'сумма в норме — по договору 650 €', rate: 'разница с нормой +70: курс дня оплаты, в «Потрачено» не идёт' });
+  assert.deepEqual(dealHead(opsScreen(await openFromBudget(nav, '2026-11', 'кредит РФ'), nav)), { sum: '24 937 ₽',
+    note: '✓ оплачено 13 ноября', noteClass: 'good', bar: false,
+    sub: '32 009 RSD · в норме 32 855 по курсу 1 ноября · 1 запись · 1–20 ноября',
+    basis: 'сумма в норме — по графику 25 000 ₽', rate: 'разница с нормой −846: курс дня оплаты и сумма платежа, в «Потрачено» не идёт' });
+});
+
+test('R-12: до оплаты — «650 € ждёт оплаты», без полосы и без строки курса; в «Бюджете» — те же слова', async () => {
+  const none = { ...NOV46, envelopes: NOV46.envelopes.map((e) => (e.contract
+    ? { ...e, spent: 0, over: 0, paid: { ...e.paid, number: 0 }, paid_on: [] } : e)) };
+  const nav = navOf({ health: { '2026-11': await served(none) },
+    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG)) } });
+  assert.deepEqual(dealHead(opsScreen(await openFromBudget(nav, '2026-11', 'жильё'), nav)), { sum: '650 €',
+    note: 'ждёт оплаты', noteClass: 'muted ', bar: false, sub: 'в норме 76 390 по курсу 1 ноября · 1–20 ноября',
+    basis: 'сумма в норме — по договору 650 €', rate: '' });
+  const screen = moreScreen({ kind: 'budget', month: '2026-11', data: nav.budget('2026-11') }, nav);
+  const rent = all(screen, '<button').find((b) => b.getAttribute('data-focus') === 'regular:жильё');
+  assert.equal(flat(shown(rent)), 'жильё ждёт оплаты · по договору 650 € 76 390');
+});
+
+test('R-12: «Бюджет» — строка жилья: «✓ оплачено 11 ноября · по договору 650 €» и разница строкой ниже', async () => {
+  const nav = navOf({ health: { '2026-11': await served(NOV46) },
+    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, ALEKSEY)) } });
+  const screen = moreScreen({ kind: 'budget', month: '2026-11', data: nav.budget('2026-11') }, nav);
+  const line = (name) => all(screen, '<button').find((b) => b.getAttribute('data-focus') === `regular:${name}`);
+  assert.equal(flat(shown(line('жильё'))),
+    'жильё ✓ оплачено 11 ноября · по договору 650 € разница с нормой +70: курс дня оплаты, в «Потрачено» не идёт 76 390');
+  assert.equal(flat(shown(line('кредит РФ'))), 'кредит РФ ✓ оплачено 13 ноября · 24 937 ₽, по графику 25 000 ₽'
+    + ' разница с нормой −846: курс дня оплаты и сумма платежа, в «Потрачено» не идёт 32 855');
+  assert.equal(one(line('жильё'), 'good').kids.join(''), '✓ оплачено 11 ноября');
+});
+
+// R-15, R-9 (решение 98, ответ 6): основа суммы — на экране регулярной словами «обычно за месяц», без «медианы».
+// fin с p46a шлёт basis «обычно за месяц»; прежний fin («медиана за 3 мес.») — страница пишет те же слова
+test('R-15: на экране регулярной — «сумма в норме — обычно за месяц»; и у прежнего fin', async () => {
+  for (const basis of ['обычно за месяц', 'медиана за 3 мес.']) {
+    const nov = { ...NOV, envelopes: NOV_ENV.map((e) => (e.key === 'связь' ? { ...e, basis } : e)) };
+    const nav = navOf({ health: { '2026-11': await served(nov) },
+      budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG)) }, tx: { 'связь 2026-11': { total: 3068, count: 2 } } });
+    const h = header(opsScreen(await openFromBudget(nav, '2026-11', 'связь'), nav));
+    assert.equal(h.basis, 'сумма в норме — обычно за месяц', basis);
+  }
 });
