@@ -89,16 +89,20 @@ export function fit(root, read) {
   return out;
 }
 
-// цвет переменной глазами браузера: пробный скрытый элемент с фоном var(…) -> rgb() или color(srgb …). Фон, а не
-// color: фон не наследуется — цвет, который браузер не понял, читается прозрачным (null), а не цветом текста
-export const probe = (doc, view) => (name) => {
-  const el = doc.createElement('i');
-  el.hidden = true;
-  el.style.backgroundColor = `var(${name})`;
-  doc.body.append(el);
-  const c = view.getComputedStyle(el).backgroundColor;
-  el.remove();
-  return c;
+// цвет переменной глазами браузера: один пробный скрытый элемент с фоном var(…) -> rgb() или color(srgb …). Фон, а не
+// color: фон не наследуется — цвет, который браузер не понял, читается прозрачным (null), а не цветом текста. Элемент
+// один на страницу: чтение пересчитывает стиль только его, а не всего экрана
+export const probe = (doc, view) => {
+  let el = null;
+  return (name) => {
+    if (!el || !el.isConnected) {
+      el = doc.createElement('i');
+      el.hidden = true;
+      doc.body.append(el);
+    }
+    el.style.backgroundColor = `var(${name})`;
+    return view.getComputedStyle(el).backgroundColor;
+  };
 };
 
 // что уходит в fin: цвета темы, схема, платформа и версия клиента — без initData и данных человека
