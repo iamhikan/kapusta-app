@@ -15,6 +15,9 @@ const thousands = (v) => {
   return (v < 0 ? '−' : '') + (k >= 10 ? String(Math.round(k)) : k.toFixed(1).replace(/\.0$/, '').replace('.', ','));
 };
 const NEG = 'меньше нуля — возвратов больше, чем трат';
+// R-2: что из регулярных и обязательных в дне — для глаз значками, как в чате; диктору — словами (R-5)
+const RULE = { text: '🔁📌 — только перебор сверх нормы, в день, когда его перешли.',
+  say: 'Регулярные и обязательные траты — только перебор сверх нормы, в день, когда его перешли.' };
 
 const SAY = { good: 'в плане', warn: 'выше плана', bad: 'вдвое выше плана' };   // цвет клетки — словами для диктора
 const level = (v) => (v <= 0 ? 0 : v <= LEVELS[0] ? 1 : v <= LEVELS[1] ? 2 : v <= LEVELS[2] ? 3 : 4);
@@ -63,12 +66,14 @@ export function daysView(b, mode) {
     canPlan,
     mode: plan ? 'plan' : 'sum',
     title: `Траты по дням · ${monthTitle(b.month)}`,
-    sub: `1–${last} ${OF_MONTH[m - 1]} · ${plan ? 'к плану на день' : b.scope === 'scale' ? 'в лимитах' : 'без аренды и регулярных'}`,
+    // R-2 (решение 98, ответ 2): день — «как в „Потрачено“» (было «без аренды и регулярных»: аренда сверх договора шла)
+    sub: `1–${last} ${OF_MONTH[m - 1]} · ${plan ? 'к плану на день' : b.scope === 'scale' ? 'в лимитах' : 'как в «Потрачено»'}`,
     cells,
     legend: [...(plan ? [{ text: 'в плане', tone: 'good' }, { text: 'выше', tone: 'warn' }, { text: 'вдвое выше', tone: 'bad' }]
       : [{ text: 'до 4 тыс.', level: 1 }, { text: 'до 8', level: 2 }, { text: 'до 15', level: 3 }, { text: 'больше 15 тыс.', level: 4 }]),
     ...(negative ? [{ text: NEG, neg: true }] : [])],
     note,
+    rule: canPlan ? RULE : null,   // правило 🔁📌 под календарём; месяц без нормы — без него
     scale: plan || b.scope === 'scale',
   };
 }

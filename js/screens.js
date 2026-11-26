@@ -104,10 +104,15 @@ async function gaugeData(entry, nav) {
   if (got && entry.month === m) nav.render();
 }
 
+// экран дня из «По дням» (R-2, решение 98): правило дня — «как в „Потрачено“» (в шапке), «без 🔁📌» — правило
+// «Операций»: у дня и в пояснении его нет, иначе на экране третье число
+const pagesOf = (entry) => (entry.ctx && entry.ctx.days
+  ? entry.pages.map((p) => ({ ...p, days: (p.days || []).map(({ plain, ...d }) => d) })) : entry.pages);
+
 function days(entry) {
   // страницы по 50: день на стыке страниц — одним днём (сумма дня от сервера — за весь день)
   const out = [];
-  for (const p of entry.pages) {
+  for (const p of pagesOf(entry)) {
     for (const d of p.days) {
       const last = out[out.length - 1];
       if (last && last.date === d.date) last.ops.push(...d.ops);
@@ -180,7 +185,7 @@ function head(entry, nav) {
   const g = ctx.params && ctx.params.regular && nav.health
     ? gaugeOf(ctx.params.regular, nav.health(entry.month), nav.budget(entry.month)) : null;
   const v = headView({ title: ctx.title, limit: g ? g.limit : nav.limitOf(ctx, entry.month), note: nav.noteOf(ctx, entry.month),
-    limitWord: ctx.limitWord, fx: !!ctx.params && ctx.params.regular === FX,
+    limitWord: ctx.limitWord, fx: !!ctx.params && ctx.params.regular === FX, days: !!ctx.days,
     ...(g ? { norm: g.norm, carry: g.carry, over: g.over, basis: g.basis, contract: g.contract } : {}),
     month: entry.month, period: ctx.period, to: range(entry, today).to }, body);
   const shift = (dir) => {
@@ -310,7 +315,7 @@ function emptyBody(entry, nav) {
 function marksBlock(entry, nav) {
   if (entry.ctx && entry.ctx.params && entry.ctx.params.regular) return null;
   if (nav.marksHidden && nav.marksHidden()) return null;
-  const lines = marksNote(entry.pages);
+  const lines = marksNote(pagesOf(entry));
   if (!lines.length) return null;
   const line = (l) => h('p', { class: 'small' }, l.say ? [h('span', { 'aria-hidden': 'true' }, l.text), h('span', { class: 'sr' }, l.say)]
     : [l.glyph ? h('span', { 'aria-hidden': 'true' }, l.glyph) : null, l.text]);

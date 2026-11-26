@@ -23,7 +23,7 @@ test('календарь: недели с понедельника, пустые
   assert.equal(sixth.future, true);
   assert.equal(sixth.date, null);
   assert.equal(v.title, 'Траты по дням · Ноябрь 2026');
-  assert.equal(v.sub, '1–5 ноября · без аренды и регулярных');   // решение 64: «все траты» — у «Категорий», с жильём
+  assert.equal(v.sub, '1–5 ноября · как в «Потрачено»');   // решение 98, ответ 2 (было «без аренды и регулярных», решение 64)
   assert.equal(daysView({ ...NOV, scope: 'scale' }, 'sum').sub, '1–5 ноября · в лимитах');   // решение 51
 });
 
@@ -60,7 +60,7 @@ test('прошлый месяц — все дни; трат нет — пуст�
     points: Array.from({ length: 31 }, (_, i) => ({ date: `2026-10-${String(i + 1).padStart(2, '0')}`, rsd: 0, scale: 0, plan: 6000 })) };
   const v = daysView(oct, 'sum');
   assert.equal(v.cells.filter((c) => c.future).length, 0);
-  assert.equal(v.sub, '1–31 октября · без аренды и регулярных');
+  assert.equal(v.sub, '1–31 октября · как в «Потрачено»');
   assert.equal(v.note, 'Трат нет. Нажмите на день — откроются его операции.');
 });
 
@@ -71,7 +71,7 @@ test('месяц без нормы (до начала учёта): плана д
     const v = daysView(early, mode);
     assert.equal(v.canPlan, false, mode);
     assert.equal(v.mode, 'sum', mode);
-    assert.equal(v.sub, '1–5 ноября · без аренды и регулярных', mode);
+    assert.equal(v.sub, '1–5 ноября · как в «Потрачено»', mode);
     assert.deepEqual(v.legend.map((l) => l.text), ['до 4 тыс.', 'до 8', 'до 15', 'больше 15 тыс.'], mode);
     assert.equal(v.cells.find((c) => c.d === '2').aria, sp('2 ноября: 22 000 RSD'), mode);
   }

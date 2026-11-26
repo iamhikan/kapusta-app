@@ -250,6 +250,9 @@ export function headView(ctx, body) {
   // R-13 (ревью 26.11): вернули больше, чем потратили (обмен с выигрышем) — «+N», без «из» и без полосы: «−189 из 588»
   // читалось как «потратили минус 189»
   const back = lim != null && !ctx.note && body.total < 0;
+  // экран дня из «По дням» (R-2): то же число, что клетка, — «как в „Потрачено“» (spent fin); прежний сервер — без него
+  const day = ctx.days && body.days && body.days[0];
+  const spent = day && day.spent != null ? `в «Потрачено» ${fmt(day.spent)}` : '';
   return {
     title: ctx.title, period: ctx.period ? periodTitle(ctx.period) : monthTitle(ctx.month),
     sum: back ? `+${fmt(-body.total)}` : fmt(body.total),
@@ -257,7 +260,7 @@ export function headView(ctx, body) {
       : ctx.note || (lim == null ? '' : covered ? 'в пределах конверта' : over ? `сверх ${fmt(body.total - lim)}`
         : `из ${fmt(lim)}`), tone: bad ? 'bad' : back ? 'good' : '',
     fill: lim == null || back ? null : lim > 0 ? Math.max(0, Math.min(1, body.total / lim)) : 1,
-    sub: [lim == null ? '' : word, records(body.count), days].filter(Boolean).join(' · '),
+    sub: [spent, lim == null ? '' : word, records(body.count), days].filter(Boolean).join(' · '),
     basis: lim != null && ctx.basis ? `сумма в норме — ${ctx.basis}` : '',
   };
 }
