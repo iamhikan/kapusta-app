@@ -240,14 +240,19 @@ export function headView(ctx, body) {
   const over = lim != null && body.total > lim && !covered;
   // жильё и кредит РФ (E14): «сверх» — курс дня оплаты, в «Потрачено» не идёт — число есть, красного нет
   const bad = over && !ctx.contract;
-  // у спортпита — «В норме 2 433 + конверт 7 300»: limit — сумма с конвертом
-  const word = `${ctx.limitWord || 'Лимит'} ${ctx.carry ? `${fmt(ctx.norm ?? lim - ctx.carry)} + конверт ${fmt(ctx.carry)}` : fmt(lim)}`;
+  // у спортпита — «В норме 2 433 + конверт 7 300»: limit — сумма с конвертом; обмен валюты — норма на потери к курсу
+  const word = `${ctx.limitWord || 'Лимит'} ${ctx.carry ? `${fmt(ctx.norm ?? lim - ctx.carry)} + конверт ${fmt(ctx.carry)}` : fmt(lim)}`
+    + (ctx.fx ? ' на потери к курсу' : '');
+  // R-13 (ревью 26.11): вернули больше, чем потратили (обмен с выигрышем) — «+N», без «из» и без полосы: «−189 из 588»
+  // читалось как «потратили минус 189»
+  const back = lim != null && !ctx.note && body.total < 0;
   return {
-    title: ctx.title, period: ctx.period ? periodTitle(ctx.period) : monthTitle(ctx.month), sum: fmt(body.total),
-    note: ctx.note || (lim == null ? '' : covered ? 'в пределах конверта' : over ? `сверх ${fmt(body.total - lim)}`
-      : `из ${fmt(lim)}`), tone: bad ? 'bad' : '',
-    // возврат больше трат (обмен с выигрышем) — полоса пустая, а не отрицательной ширины
-    fill: lim == null ? null : lim > 0 ? Math.max(0, Math.min(1, body.total / lim)) : 1,
+    title: ctx.title, period: ctx.period ? periodTitle(ctx.period) : monthTitle(ctx.month),
+    sum: back ? `+${fmt(-body.total)}` : fmt(body.total),
+    note: back ? (ctx.fx ? 'выигрыш к курсу НБС' : 'вернули больше, чем потратили')
+      : ctx.note || (lim == null ? '' : covered ? 'в пределах конверта' : over ? `сверх ${fmt(body.total - lim)}`
+        : `из ${fmt(lim)}`), tone: bad ? 'bad' : back ? 'good' : '',
+    fill: lim == null || back ? null : lim > 0 ? Math.max(0, Math.min(1, body.total / lim)) : 1,
     sub: [lim == null ? '' : word, records(body.count), days].filter(Boolean).join(' · '),
     basis: lim != null && ctx.basis ? `сумма в норме — ${ctx.basis}` : '',
   };

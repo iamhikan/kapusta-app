@@ -10,7 +10,7 @@ import { canNext, periodEnd, shiftPeriod } from './period.js';
 import { offline } from './snapshot.js';
 import { body as jobBody, category, job, path as jobPath, picker, result } from './recat.js';
 import { itemPrice } from './shop.js';
-import { gaugeOf } from './regular.js';
+import { FX, gaugeOf } from './regular.js';
 
 // фаза 15: ключи фокуса (js/a11y.js). Заголовок открытого экрана и лист принимают фокус скриптом; стрелка «вперёд»
 // неактивна у текущего месяца — фокус на «назад»
@@ -174,7 +174,8 @@ function head(entry, nav) {
   const g = ctx.params && ctx.params.regular && nav.health
     ? gaugeOf(ctx.params.regular, nav.health(entry.month), nav.budget(entry.month)) : null;
   const v = headView({ title: ctx.title, limit: g ? g.limit : nav.limitOf(ctx, entry.month), note: nav.noteOf(ctx, entry.month),
-    limitWord: ctx.limitWord, ...(g ? { norm: g.norm, carry: g.carry, over: g.over, basis: g.basis, contract: g.contract } : {}),
+    limitWord: ctx.limitWord, fx: !!ctx.params && ctx.params.regular === FX,
+    ...(g ? { norm: g.norm, carry: g.carry, over: g.over, basis: g.basis, contract: g.contract } : {}),
     month: entry.month, period: ctx.period, to: range(entry, today).to }, body);
   const shift = (dir) => {
     if (ctx.period) entry.ctx = { ...ctx, period: shiftPeriod(ctx.period, dir) };
@@ -188,7 +189,7 @@ function head(entry, nav) {
       h('div', { class: 'month-title' }, h('h1', TITLE, v.title), h('p', { class: 'muted small' }, v.period)),
       arrow(1, `Следующий ${word}`, ICONS.right, ctx.period ? canNext(ctx.period, today) : entry.month < today.slice(0, 7))),
     h('div', { class: 'big' }, h('span', { class: `big-num ${v.tone}` }, v.sum),
-      h('span', { class: `muted ${v.tone}` }, v.note || 'RSD')),
+      h('span', { class: `muted ${v.tone === 'bad' ? 'bad' : ''}` }, v.note || 'RSD')),
     v.fill == null ? null : h('span', { class: 'bar thin' },
       h('span', { class: `fill ${v.tone}`, style: { width: `${(v.fill * 100).toFixed(1)}%` } })),
     // на чём сумма в норме (регулярная) — второй строкой вплотную к подписи
