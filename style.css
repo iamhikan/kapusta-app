@@ -162,6 +162,7 @@ h1, h2, p { margin: 0; }
 .link { font-size: 15px; color: var(--accent-ink); padding: 8px 0; }
 /* R-4: пояснение меток над первым днём «Операций»; «Понятно» — слева, зона касания 44 px */
 .marks-note .link { align-self: flex-start; min-height: 44px; font-weight: 600; }
+.marks-note p, .card > p.why-norm { text-wrap: pretty; }   /* без висячего слова в последней строке (детектор) */
 .curve-body { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 8px; }
 .chart { display: block; }
 .chart .grid { stroke: var(--line); stroke-width: 1; }

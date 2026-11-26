@@ -20,5 +20,5 @@ export function summary(v) {
     v.stats.length ? [h('div', { class: 'sep' }),
       h('div', { class: 'stats' }, ...v.stats.map((s) => h('div', {}, h('div', { class: 'muted small' }, s.label),
         h('div', { class: `stat ${s.tone}` }, s.value))))] : null,
-    v.why ? h('p', { class: 'muted small' }, v.why) : null);   // R-21: причина «нормы нет» и нормы ≤ 0
+    v.why ? h('p', { class: 'muted small why-norm' }, v.why) : null);   // R-21: причина «нормы нет» и нормы ≤ 0
 }
