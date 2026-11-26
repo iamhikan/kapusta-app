@@ -197,9 +197,10 @@ export function opRow(op, { inCategory = false, account = '', bare = false } = {
   const base = { ref: op.ref, where: op.count > 1 ? `${op.where} · ${records(op.count)}` : op.where, marks, note: itemName(op.hit), noteTone: '', gray: false,
     group: (op.group || []).map((g) => opRow(g, { bare })), count: op.count || 1, tile: tileOfOp(op) };
   if (op.kind === 'exchange') {
-    // R-6: у обмена регулярная — только разница к курсу НБС (решение 88): значок — у строки выигрыша или потери
+    // R-6: у обмена регулярная — только разница к курсу НБС (решение 88): значок — у строки выигрыша или потери, после
+    // неё, как в строке траты (повтор ревью p46a, п. 12)
     const ex = exchange(op);
-    return { ...base, gray: true, ...ex, note: glyph && ex.note ? `${glyph} ${ex.note}` : ex.note };
+    return { ...base, gray: true, ...ex, note: glyph && ex.note ? `${ex.note} ${glyph}` : ex.note };
   }
   if (op.kind === 'transfer') {
     const from = op.legs.filter((l) => l.number < 0).map((l) => l.name);

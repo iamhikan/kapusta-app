@@ -87,7 +87,7 @@ test('коммуналка сверх своей доли — строкой с�
 // как метка в чате: 🔁 регулярная, 📌 обязательная (коммуналка). Было: «регулярная: сумма в норме — медиана за 3 мес.»
 const shown = (el) => (typeof el === 'string' ? el : el.classes.includes('sr') ? '' : el.kids.map(shown).join(' '));
 
-test('R-9: строка перебора — «🔁 банк +406 … в «Потрачено» идёт только перебор +406»; коммуналка — 📌; без основы суммы', async () => {
+test('R-9: строка перебора — «банк 🔁 +406 … в «Потрачено» идёт только перебор +406»; коммуналка — 📌; без основы суммы', async () => {
   const bank = { key: 'банк', label: 'банк', kind: 'regular', basis: 'обычно за месяц', spent: 2941, limit: 2535,
     norm: 2535, carry: 0, over: 406 };
   const util = { key: 'коммуналка', label: 'коммуналка', kind: 'mandatory', basis: 'доля семьи, среднее с 05.2026',
@@ -95,10 +95,10 @@ test('R-9: строка перебора — «🔁 банк +406 … в «По�
   const v = view(await served({ ...HEALTH, regulars: [bank, util, HEALTH.regulars[1]] }));
   const rowOf = (name) => limitRow(v.limits.find((l) => l.name === name), { open() {} });
   const b = rowOf('банк');
-  assert.equal(flat(shown(one(b, 'limit-name'))), '🔁 банк +406');
-  assert.equal(flat(shown(b)), '🔁 банк +406 2 941 / 2 535 в «Потрачено» идёт только перебор +406');
+  assert.equal(flat(shown(one(b, 'limit-name'))), 'банк 🔁 +406');   // повтор ревью, п. 12: значок — после имени
+  assert.equal(flat(shown(b)), 'банк 🔁 +406 2 941 / 2 535 в «Потрачено» идёт только перебор +406');
   assert.equal(flat(heard(b)), 'банк: 2 941 из 2 535, сверх на 406, в «Потрачено» идёт только перебор +406');
-  assert.equal(flat(shown(one(rowOf('коммуналка'), 'limit-name'))), '📌 коммуналка +1 446');
+  assert.equal(flat(shown(one(rowOf('коммуналка'), 'limit-name'))), 'коммуналка 📌 +1 446');
   assert.match(flat(shown(rowOf('коммуналка'))), /в «Потрачено» идёт только перебор \+1 446$/);
   // у спортпита с конвертом — тоже про «Потрачено»: «3 000 в норме + 5 000 конверт» — на его экране
   assert.match(flat(shown(rowOf('спортпит'))), /в «Потрачено» идёт только перебор \+1 000$/);
@@ -459,4 +459,20 @@ test('R-15: на экране регулярной — «сумма в норм�
     const h = header(opsScreen(await openFromBudget(nav, '2026-11', 'связь'), nav));
     assert.equal(h.basis, 'сумма в норме — обычно за месяц', basis);
   }
+});
+
+// повтор ревью p46a (п. 12): значок метки стоял в «Здоровье» перед именем, в «Операциях» — после категории. Правило одно,
+// как в чате (`fin last` — после категории, `fin spent` — «учёба 15 684 🔁»): в строке значок — после имени. Перед
+// именем — только у заголовка группы («🔁 Регулярные платежи», как «🔁 Регулярные сверх нормы» градусника)
+test('повтор ревью, п. 12: в строке «Здоровья» значок — после имени, рядом с ним; имя сжимается многоточием, значок — нет', async () => {
+  const bank = { key: 'банк', label: 'банк', kind: 'regular', spent: 2941, limit: 2535, norm: 2535, carry: 0, over: 406 };
+  const v = view(await served({ ...HEALTH, regulars: [bank] }));
+  const row = limitRow(v.limits.find((l) => l.name === 'банк'), { open() {} });
+  const title = one(row, 'limit-title');
+  assert.ok(title, 'имя и значок — одной группой');
+  assert.deepEqual(title.kids.map((k) => [k.classes.join(' '), shown(k)]), [['ellipsis', 'банк'], ['limit-glyph', '🔁']]);
+  // у лимита без значка — имя, как было
+  const plain = limitRow(v.limits.find((l) => l.name === 'красота'), { open() {} });
+  assert.equal(one(plain, 'limit-title'), null);
+  assert.equal(shown(one(plain, 'limit-name').kids[0]), 'красота');
 });

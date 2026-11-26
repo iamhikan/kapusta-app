@@ -193,6 +193,9 @@ h1, h2, p { margin: 0; }
 .limit > svg, .line.op > svg { color: var(--muted); flex-shrink: 0; }
 /* плашка «+N» не съедает имя: не входит рядом — уходит строкой ниже (R-3, ревью 26.11: 320 px — «комм…») */
 .limit-name { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-width: 0; }
+/* значок метки 🔁 📌 — после имени, как в «Операциях» и в чате (повтор ревью p46a, п. 12); узко — многоточие у имени */
+.limit-title { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.limit-glyph { flex: none; }
 .ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge { flex-shrink: 0; font-size: 12px; font-weight: 600; line-height: 18px; color: var(--bad-ink);
   background: color-mix(in srgb, var(--bad) 16%, transparent); border-radius: 6px; padding: 0 6px; }

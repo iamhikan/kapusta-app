@@ -424,3 +424,10 @@ test('R-31 п. 3 (стенд S5): имя на «Категориях» — до 
   assert.equal(d['-webkit-line-clamp'], '2');
   assert.equal(d['white-space'], 'normal');
 });
+
+test('повтор ревью p46a, п. 12: значок метки в строке лимита — после имени и не уходит в многоточие', () => {
+  const t = decls('.limit-title');
+  assert.equal(t.display, 'flex');
+  assert.equal(t['min-width'], '0', 'длинное имя сжимается многоточием');
+  assert.equal(decls('.limit-glyph').flex, 'none', 'значок не сжимается');
+});

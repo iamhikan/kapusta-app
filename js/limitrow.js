@@ -38,9 +38,11 @@ export function limitRow(l, { plan = null, open }) {
     h('span', { class: 'limit-body' },
       h('span', { class: 'sr' }, limitSay(l)),
       h('span', { class: 'row', 'aria-hidden': 'true' },
-        // значок перебора регулярной (R-9): 🔁 или 📌 перед именем, как строка «🔁 Регулярные сверх нормы» в чате
-        h('span', { class: 'limit-name' }, l.glyph ? h('span', { class: 'limit-glyph' }, l.glyph) : null,
-          h('span', { class: 'ellipsis' }, l.name),
+        // значок регулярной (R-9): 🔁 или 📌 после имени, как в строке «Операций» и в чате («учёба 15 684 🔁»; повтор
+        // ревью p46a, п. 12: было перед именем). Имя и значок — одной группой: узко многоточие у имени, значок виден
+        h('span', { class: 'limit-name' },
+          l.glyph ? h('span', { class: 'limit-title' }, h('span', { class: 'ellipsis' }, l.name),
+            h('span', { class: 'limit-glyph' }, l.glyph)) : h('span', { class: 'ellipsis' }, l.name),
           l.over ? h('span', { class: `badge${l.covered ? ' calm' : ''}` }, l.over) : null),
         // решение 63: перерасход, который покрыл резерв, — без красного; подпись «покрыто резервом» — ниже (hint)
         h('span', { class: 'nowrap' }, h('b', { class: l.over && !l.covered ? 'bad' : '' }, l.spent),
