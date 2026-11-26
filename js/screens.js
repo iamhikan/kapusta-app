@@ -181,19 +181,30 @@ function dayHead(d) {
   const say = daySay(d);
   const total = !d.sum ? null : say ? h('span', {}, h('span', { 'aria-hidden': 'true' }, dayTotal(d)), h('span', { class: 'sr' }, say))
     : h('span', {}, dayTotal(d));
-  return h('div', { class: 'day-head muted small' }, h('span', {}, dayLabel(d.date)), total);
+  // заголовок h2 под h1 экрана: диктор переходит по дням (повтор 2 ревью p48a, находка 6; был простой текст)
+  return h('h2', { class: 'day-head muted small' }, h('span', {}, dayLabel(d.date)), total);
 }
 
 // R-3 (стенд, 320 px): подпись с меткой — три части: категория, значок, «· откуда»; значок остаётся на виду (было
 // «образование …» — значок уходил в многоточие). Узко «откуда» не входит рядом — уходит строкой ниже (повтор ревью
-// p46a, находка 11: сжималось до «·»); точка — своя ячейка, в начале новой строки её не видно (style.css)
-function subLine(text) {
+// p46a, находка 11: сжималось до «·»); точка — своя ячейка, в начале новой строки её не видно (style.css). Строка без
+// метки — так же, без значка; перевод — «откуда» и «→ куда»; «откуда» длиннее строки — переносом по словам (повтор 2
+// ревью p48a, Q3 и находка 7: было многоточие). Где «откуда» — знает opRow (tail)
+function subLine(text, tail) {
+  const src = (t) => h('span', { class: 'sub-src' }, t);
   const m = /^(.*?)( ?(?:🔁|📌)+)((?: · .*)?)$/u.exec(text);
-  if (!m) return h('span', { class: 'op-sub muted small' }, text);
-  const [, cats, glyph, tail] = m;
+  if (!m) {
+    const at = tail && text.endsWith(tail.sep + tail.text) ? text.length - tail.sep.length - tail.text.length : -1;
+    if (at < 0) return h('span', { class: 'op-sub muted small' }, text);
+    const head = text.slice(0, at);
+    if (tail.sep === ' → ') return h('span', { class: 'op-sub muted small flow' }, h('span', {}, head), h('span', {}, `→ ${tail.text}`));
+    return h('span', { class: 'op-sub muted small split plain' }, head ? h('span', { class: 'sub-cats' }, head) : null,
+      h('span', { class: 'sub-tail' }, tail.sep ? h('span', { class: 'sub-sep' }, tail.sep) : null, src(tail.text)));
+  }
+  const [, cats, glyph, rest] = m;
   return h('span', { class: 'op-sub muted small split' }, cats ? h('span', { class: 'sub-cats' }, cats) : null,
     h('span', { class: 'sub-glyph' }, ...glyphs(glyph)),
-    tail ? h('span', { class: 'sub-tail' }, h('span', { class: 'sub-sep' }, ' · '), tail.slice(3)) : null);
+    rest ? h('span', { class: 'sub-tail' }, h('span', { class: 'sub-sep' }, ' · '), src(rest.slice(3))) : null);
 }
 
 export function opLine(r, nav, opts = {}) {
@@ -202,7 +213,7 @@ export function opLine(r, nav, opts = {}) {
     h('span', { class: 'grow' },
       h('span', { class: 'op-where' }, h('span', { class: 'ellipsis' }, r.where),
         ...r.marks.map(mark)),
-      r.sub ? subLine(r.sub) : null,
+      r.sub ? subLine(r.sub, r.tail) : null,
       r.note ? h('span', { class: `op-note small ${r.noteTone}` }, ...glyphs(r.note)) : null),
     h('span', { class: 'op-amount' }, sum(r.amount, r.income ? 'good' : ''),
       r.amountSub ? h('span', { class: 'muted small' }, r.amountSub) : null),
@@ -379,6 +390,10 @@ function emptyBody(entry, nav) {
       tap(); entry.f.q = ''; entry.typed = ''; nav.focus('title'); loadOps(entry, nav); } } }, 'Очистить поиск') : null);
 }
 
+// значок пояснения: на экране — эмодзи, диктору — его имя (повтор 2 ревью p48a, находка 6: слышал «— регулярная трата…»)
+const GLYPH_NAME = { '🔁': 'Значок повтора', '📌': 'Значок канцелярской кнопки' };
+const glyphName = (g) => [h('span', { 'aria-hidden': 'true' }, g), GLYPH_NAME[g] ? h('span', { class: 'sr' }, GLYPH_NAME[g]) : null];
+
 // R-4 (ревью 26.11): над первым днём — что значат 🔁 и 📌 словами чата, «без 🔁📌» и минус дня (R-8). «Понятно» прячет
 // пояснение на этом устройстве. На экране регулярной его нет: шапка там — «В норме N»
 function marksBlock(entry, nav) {
@@ -387,7 +402,7 @@ function marksBlock(entry, nav) {
   const lines = marksNote(pagesOf(entry));
   if (!lines.length) return null;
   const line = (l) => h('p', { class: 'small' }, l.say ? [h('span', { 'aria-hidden': 'true' }, l.text), h('span', { class: 'sr' }, l.say)]
-    : [l.glyph ? h('span', { 'aria-hidden': 'true' }, l.glyph) : null, l.text]);
+    : [l.glyph ? glyphName(l.glyph) : null, l.text]);
   return h('section', { class: 'card pad stack-s marks-note' }, ...lines.map(line),
     h('button', { type: 'button', class: 'link', 'data-focus': 'marks-ok', on: { click: () => {
       tap(); if (nav.hideMarks) nav.hideMarks(); nav.focus('title'); nav.render(); } } }, 'Понятно'));

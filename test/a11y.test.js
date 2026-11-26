@@ -736,3 +736,21 @@ test('находка 9: фокус не на «Показать ещё» (стр
   await loadOps(touch.entry, touch.n, true);
   assert.equal(focusKey(), 'BODY');
 });
+
+// ——— p50a (повтор 2 ревью p48a, находка 6): диктор переходит по дням «Операций» заголовками ———
+
+test('находка 6: дата дня в «Операциях» — заголовок h2 под h1 экрана: диктор переходит по дням; слышит дату и итог', () => {
+  const { root, entry, n } = opsSetup();
+  entry.pages = [{ days: [{ date: '2026-11-10', sum: 77760, plain: 1300, ops: [{ ...OP, regular: 'подписки' }] },
+    { date: '2026-11-09', sum: 300, ops: [{ ...OP, ref: 'sms:2' }] }], total: 78060, count: 2, next: null }];
+  n.render();
+  const heads = find(root, (e) => /^h[1-6]$/.test(e.tag));
+  assert.deepEqual(heads.map((e) => [e.tag, e.classes.includes('day-head')]), [['h1', false], ['h2', true], ['h2', true]]);
+  const norm = (s) => s.replace(/\s+/g, ' ').trim();
+  assert.equal(norm(heard(heads[1])), '10 ноября, вт траты 77 760, без регулярных и обязательных 1 300');
+  assert.equal(norm(heard(heads[2])), '9 ноября, пн 300');
+  // экран категории (и дня, лимита): h1 — в шапке экрана, дни — так же h2
+  const cat = { ...newOps('2026-11', { title: 'Продукты', params: { cat: 'Expenses:Family:Food' } }), pages: entry.pages };
+  const tree = opsScreen(cat, { ...nav, limitOf: () => null, noteOf: () => '' });
+  assert.deepEqual(find(tree, (e) => /^h[1-6]$/.test(e.tag)).map((e) => e.tag), ['h1', 'h2', 'h2']);
+});

@@ -74,6 +74,9 @@ body {
 }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 h1, h2, p { margin: 0; }
+/* абзац — без одного слова в последней строке (детектор `straggler`, повтор 2 ревью p48a, находка 7: «минуту.» на экране
+   ошибки при 320 px, «октября» в шапке «Продуктов», «117,61)» в описании обмена) */
+p { text-wrap: pretty; }
 .screen {
   display: flex; flex-direction: column; gap: 14px; max-width: 560px; margin: 0 auto;
   padding: calc(12px + var(--tg-content-safe-area-inset-top, 0px))
@@ -199,6 +202,9 @@ h1, h2, p { margin: 0; }
 /* значок метки 🔁 📌 — после имени, как в «Операциях» и в чате (повтор ревью p46a, п. 12); узко — многоточие у имени */
 .limit-title { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .limit-glyph { flex: none; }
+/* имя лимита — до двух строк, потом многоточие, как в «Операциях» (повтор 2 ревью p48a, находка 7: 320 px — «разовые и
+   подар…») */
+.limit-name .ellipsis { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge { flex-shrink: 0; font-size: 12px; font-weight: 600; line-height: 18px; color: var(--bad-ink);
   background: color-mix(in srgb, var(--bad) 16%, transparent); border-radius: 6px; padding: 0 6px; }
@@ -299,8 +305,15 @@ button { -webkit-tap-highlight-color: transparent; }
 .op-sub.split > :first-child { margin-left: 1em; }
 .sub-cats { flex: none; max-width: calc(100% - 2.6em); overflow: hidden; text-overflow: ellipsis; }
 .sub-glyph { flex: none; }
-.sub-tail { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.sub-sep { display: inline-block; width: 1em; text-align: center; }
+.sub-tail { flex: 0 1 auto; min-width: 0; display: flex; }
+.sub-sep { display: inline-block; flex: none; width: 1em; text-align: center; }
+/* «откуда» длиннее строки — переносом по словам рядом с точкой, а не «Райффайзен Ангел…» (повтор 2 ревью p48a,
+   находка 7); строка без метки — та же подпись без значка, категориям — вся строка (Q3) */
+.sub-src { min-width: 0; white-space: normal; }
+.op-sub.plain > .sub-cats { max-width: calc(100% - 1em); }
+/* перевод «откуда → куда»: «→ куда» не входит — строкой ниже целиком, со стрелкой (Q3: было «нал Алексея → на…») */
+.op-sub.flow { display: flex; flex-wrap: wrap; column-gap: 0.3em; }
+.op-sub.flow > span { min-width: 0; white-space: normal; }
 .op-note { font-weight: 600; }
 .op-amount { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; text-align: right;
   font-weight: 600; }
@@ -388,8 +401,10 @@ section .title { font-size: 17px; font-weight: 600; }
 .chart.bars .hatch-fg { fill: var(--accent); }
 .chart.bars .bar-col.partial { fill: url(#bars-partial); }
 .date { font: inherit; color: var(--fg); background: none; border: 0; min-height: 34px; }
-.chips.periods { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-.chips.periods .chip-btn { padding: 0 4px; justify-content: center; font-size: 13px; }
+.chips.periods { display: grid; grid-template-columns: repeat(5, minmax(min-content, 1fr)); gap: 6px; }
+/* колонка не уже своей подписи: при 320 px «Квартал» касался краёв чипа (0,8 px) — теперь он шире, «Год» и «Свой» уже,
+   не меньше 44 px; с 375 px — одной ширины, как было (повтор 2 ревью p48a, находка 7) */
+.chips.periods .chip-btn { padding: 0 5px; justify-content: center; font-size: 13px; }
 /* Мак молчит — плашка над снимком «Здоровья» (холст 6.1) */
 .offline { display: flex; align-items: center; gap: 10px; padding: 4px 14px; border-radius: 12px;
   background: color-mix(in srgb, var(--warn) 14%, var(--bg)); color: var(--fg); font-size: 14px; line-height: 1.3; }
@@ -498,7 +513,7 @@ section .title { font-size: 17px; font-weight: 600; }
   /* «Операции»: «чек» — под именем, если рядом не входит; имя и подпись — целиком, переносом */
   .op-where { flex-wrap: wrap; }
   .op-sub, .op-sub.split > span { white-space: normal; }
-  .op .op-where .ellipsis, .cat-row .cat-name .ellipsis { -webkit-line-clamp: none; }
+  .op .op-where .ellipsis, .cat-row .cat-name .ellipsis, .limit-name .ellipsis { -webkit-line-clamp: none; }
   /* имена с многоточием (лимит, трата, «Самые дорогие») — целиком, переносом; слово шире строки («SAMOSTALNA
      TRGOVINSKA», «супермаркеты,») — переносом внутри слова, а не за край */
   .ellipsis { white-space: normal; }
@@ -506,7 +521,7 @@ section .title { font-size: 17px; font-weight: 600; }
   /* подпись с меткой — обычным текстом, по словам: сдвиг и обрезка слева (находка 11) срезали бы значок у края */
   .op-sub.split { display: block; margin-left: 0; clip-path: none; }
   .op-sub.split > :first-child { margin-left: 0; }
-  .sub-sep { display: inline; }
+  .sub-sep, .sub-tail { display: inline; }
   /* плитки счёта и категории — украшение (aria-hidden, имя — в тексте): отнимали у имени 48 px из 131 */
   .line.bal > .tile, .op:not(.line) > .cat-tile { display: none; }
   /* остаток: имя — во всю ширину, под ним суммы, справа; стрелка — у правого края */
@@ -517,9 +532,10 @@ section .title { font-size: 17px; font-weight: 600; }
   /* строка «Операций»: имя и подпись — во всю ширину, под ними сумма, справа */
   .op:not(.line) { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
   .op:not(.line) > .op-amount { justify-self: end; }
-  /* «план на сегодня 223 578» шире полосы — строкой под полосой, а не за край карточки (место у черты — в style) */
+  /* «план на сегодня 223 578» шире полосы — строкой под полосой, а не за край карточки (место у черты — в style); шире
+     карточки — переносом по словам, число не делится (неразрывный пробел, повтор 2 ревью p48a, находка 4) */
   .plan-cap { height: auto; margin-bottom: 0; }
-  .plan-cap > span { position: static; transform: none !important; }
+  .plan-cap > span { position: static; transform: none !important; white-space: normal; }
   .section-head { flex-wrap: wrap; row-gap: 0; }
   .section-head > span { text-align: left; }
   /* «Категории»: имя — первой строкой во всю ширину, сумма — второй, «доля · к …» — третьей; чипы периода — по два */

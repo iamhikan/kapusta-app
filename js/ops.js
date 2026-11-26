@@ -230,21 +230,25 @@ export function opRow(op, { inCategory = false, account = '', bare = false } = {
         amount: full(op.rsd, 'RSD'), amountSub: '' };
     }
     const main = to[0] || { number: op.rsd, currency: 'RSD' };
+    // «→ куда» отдельно (tail): узко уходит строкой ниже целиком (повтор 2 ревью p48a, Q3)
     return { ...base, gray: true, sub: [...new Set(from)].join(', ') + (to.length ? ` → ${into}` : ''),
-      amount: full(main.number, main.currency), amountSub: '' };
+      tail: to.length ? { sep: ' → ', text: into } : null, amount: full(main.number, main.currency), amountSub: '' };
   }
   // операции счёта (решение 48): счёт — в шапке, под строкой его не повторяем
   const own = account && op.account && op.account.startsWith(account);
   // сверка нала (`pad`, решение 72) — «сверка остатка», как у сверки через начальный остаток (решение 68)
   const cats = inCategory ? glyph : [op.cats.join(', '), glyph].filter(Boolean).join(' ');   // значок — после категории
   const sub = op.opening === 'check' ? 'сверка остатка' : [cats, own ? '' : op.src].filter(Boolean).join(' · ');
+  // «откуда» отдельно (повтор 2 ревью p48a, Q3): узко уходит строкой ниже целиком. По тексту подписи его не найти — имя
+  // счёта бывает с точкой («ПР · UniCredit»)
+  const tail = op.opening === 'check' || own || !op.src ? null : { sep: cats ? ' · ' : '', text: op.src };
   if (op.kind === 'income') {
-    return { ...base, sub, amount: `+${full(op.amount.number, op.amount.currency)}`, noteTone: 'good',
+    return { ...base, sub, tail, amount: `+${full(op.amount.number, op.amount.currency)}`, noteTone: 'good',
       amountSub: op.amount.currency !== 'RSD' ? `${money(op.rsd)} RSD` : '', income: true };
   }
   const foreign = op.amount && op.amount.currency !== 'RSD' && op.total == null;
   // поправка дублей SMS (R-30, решение 98): fin шлёт одной строкой с `correction` — серая, как служебная
-  return { ...base, sub, gray: op.kind === 'other' || !!op.correction,
+  return { ...base, sub, tail, gray: op.kind === 'other' || !!op.correction,
     amount: foreign ? cur(op.amount.number, op.amount.currency) : full(op.rsd, 'RSD'),   // RSD — у каждой суммы (ревью)
     amountSub: op.total != null ? `из платежа ${money(op.total)}` : foreign ? `${money(op.rsd)} RSD` : '' };   // R-16: «из» в шапке — из нормы
 }
