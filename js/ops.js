@@ -155,9 +155,10 @@ function exchange(op) {
   const out = op.legs.filter((l) => l.number < 0);
   const into = op.legs.filter((l) => l.number > 0);
   const rate = op.rate ? ` · по ${money(op.rate.deal)}, НБС ${money(op.rate.nbs)}` : '';
-  // повтор ревью p46a (язык): «выигрыш на обмене +N» (было «выигрыш +N к курсу НБС»); курс сделки и НБС — в подписи
-  const note = op.fx > 0 ? [`выигрыш на обмене +${fmt(op.fx)}`, 'good']
-    : op.fx < 0 ? [`потеря на обмене −${fmt(-op.fx)}`, 'warn'] : ['по курсу НБС', ''];
+  // повтор ревью p46a (язык): «выигрыш на обмене +N» (было «выигрыш +N к курсу НБС»); курс сделки и НБС — в подписи.
+  // Узко (320 px) подпись — в две строки: число держится за «обмене», одно на строку не уходит
+  const note = op.fx > 0 ? [`выигрыш на обмене\u00a0+${fmt(op.fx)}`, 'good']
+    : op.fx < 0 ? [`потеря на обмене\u00a0−${fmt(-op.fx)}`, 'warn'] : ['по курсу НБС', ''];
   return { sub: `${op.src}${rate}`, amount: out.length ? full(-out[0].number, out[0].currency) : '',
     amountSub: into.length ? `→ ${full(into[0].number, into[0].currency)}` : '', note: note[0], noteTone: note[1] };
 }
@@ -201,7 +202,7 @@ export function opRow(op, { inCategory = false, account = '', bare = false } = {
     // R-6: у обмена регулярная — только разница к курсу НБС (решение 88): значок — у строки выигрыша или потери, после
     // неё, как в строке траты (повтор ревью p46a, п. 12)
     const ex = exchange(op);
-    return { ...base, gray: true, ...ex, note: glyph && ex.note ? `${ex.note} ${glyph}` : ex.note };
+    return { ...base, gray: true, ...ex, note: glyph && ex.note ? `${ex.note}\u00a0${glyph}` : ex.note };
   }
   if (op.kind === 'transfer') {
     const from = op.legs.filter((l) => l.number < 0).map((l) => l.name);

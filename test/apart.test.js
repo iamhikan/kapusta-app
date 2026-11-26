@@ -89,18 +89,18 @@ test('R-6: обмен — «выигрыш на обмене +782 🔁», у и�
   const r = opRow(EXCHANGE);
   assert.equal(r.where, 'Обмен');
   assert.deepEqual(r.marks, []);
-  assert.equal(r.note, 'выигрыш на обмене +782 🔁');
+  assert.equal(r.note, 'выигрыш на обмене\u00a0+782\u00a0🔁');
   assert.equal(r.sub, 'нал Алексея · по 118, НБС 117,61');
-  assert.equal(opRow({ ...EXCHANGE, fx: -40 }).note, 'потеря на обмене −40 🔁');
-  assert.equal(opRow(EXCHANGE, { inCategory: true, bare: true }).note, 'выигрыш на обмене +782');
-  assert.equal(opRow({ ...EXCHANGE, regular: undefined }).note, 'выигрыш на обмене +782');
+  assert.equal(opRow({ ...EXCHANGE, fx: -40 }).note, 'потеря на обмене\u00a0−40\u00a0🔁');
+  assert.equal(opRow(EXCHANGE, { inCategory: true, bare: true }).note, 'выигрыш на обмене\u00a0+782');
+  assert.equal(opRow({ ...EXCHANGE, regular: undefined }).note, 'выигрыш на обмене\u00a0+782');
   const row = rowOf(opsScreen(list([EXCHANGE]), navOf()), 'add:x');
-  assert.match(eye(row), /выигрыш на обмене \+782 🔁/);
-  assert.match(flat(heard(row)), /выигрыш на обмене \+782\s*регулярная трата/);
+  assert.match(eye(row), /выигрыш на обмене\s\+782\s🔁/);
+  assert.match(flat(heard(row)), /выигрыш на обмене\s\+782\s*регулярная трата/);
   const card = cardScreen({ kind: 'card', ref: 'add:x', data: { ...EXCHANGE, refs: ['add:x'], similar: [], postings: [],
     apart: ['🔁 — регулярная трата: у неё своя норма, в «Потрачено» идёт только то, что сверх нормы'] } }, navOf());
   const notes = all(card, 'good').map(eye);
-  assert.ok(notes.includes('выигрыш на обмене +782'), notes.join(' | '));
+  assert.ok(notes.includes('выигрыш на обмене\u00a0+782'), notes.join(' | '));
 });
 
 test('R-3 (стенд 320 px): подпись с меткой — три части: категория, значок, «· откуда»; без метки — одной строкой, как была', () => {

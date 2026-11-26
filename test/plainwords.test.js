@@ -58,11 +58,12 @@ const EXCHANGE = { ref: 'add:x', date: '2026-11-25', where: 'Обмен', what: 
   rsd: -782, fx: 782, receipt: false, flag: false, rate: { deal: 118, nbs: 117.61, currency: 'EUR' },
   legs: [{ name: 'нал Алексея', number: -2000, currency: 'EUR' }, { name: 'нал Алексея', number: 236000, currency: 'RSD' }] };
 
+// стенд S9B, 320 px: подпись обмена — в две строки; число держится за «обмене», значок — за числом (одни не уходят)
 test('«Операции»: у обмена — «выигрыш на обмене +782» и «потеря на обмене −40»; курс сделки и НБС — в подписи, как был', () => {
   const win = opRow(EXCHANGE);
-  assert.deepEqual([win.note, win.noteTone, win.sub], ['выигрыш на обмене +782', 'good', 'нал Алексея · по 118, НБС 117,61']);
-  assert.deepEqual([opRow({ ...EXCHANGE, fx: -40 }).note, opRow({ ...EXCHANGE, fx: -40 }).noteTone], ['потеря на обмене −40', 'warn']);
-  assert.equal(opRow({ ...EXCHANGE, regular: 'обмен валюты' }).note, 'выигрыш на обмене +782 🔁');
+  assert.deepEqual([win.note, win.noteTone, win.sub], ['выигрыш на обмене\u00a0+782', 'good', 'нал Алексея · по 118, НБС 117,61']);
+  assert.deepEqual([opRow({ ...EXCHANGE, fx: -40 }).note, opRow({ ...EXCHANGE, fx: -40 }).noteTone], ['потеря на обмене\u00a0−40', 'warn']);
+  assert.equal(opRow({ ...EXCHANGE, regular: 'обмен валюты' }).note, 'выигрыш на обмене\u00a0+782\u00a0🔁');
   assert.equal(opRow({ ...EXCHANGE, fx: 0 }).note, 'по курсу НБС');   // разницы нет — так и есть
 });
 
