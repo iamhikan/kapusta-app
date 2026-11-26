@@ -182,8 +182,9 @@ test('норма исчерпана в текущем месяце — «мож�
 
 test('резерв: под лимитами — из чего он (свои + перерасход других, решение 51) и чей перерасход покрыт', () => {
   assert.equal(view(NOW).reserve, 'Резерв: свои 0 + перерасход других 2 000 — покрыл «питомцы».');
-  assert.equal(view(SHORT).reserve,
-    'Резерв: свои 0 + перерасход других 3 000 — покрыл «питомцы», «одежда» частично.');
+  // R-10 (ревью 26.11): резерв кончился — сколько покрыл из всего перерасхода; «частично» относилось к одному слову
+  assert.equal(view(SHORT).reserve, sp('Резерв кончился: покрыл 3 000 из 5 000 перерасхода — «питомцы», «одежда».'));
+  assert.equal(view(SHORT).limits.find((l) => l.note).hint, view(SHORT).reserve);
   assert.ok(!JSON.stringify(view(SHORT)).includes('перевал'));
   const calm = { ...NOW, limits: NOW.limits.filter((l) => !l.eaten && !l.over) };
   assert.equal(view(calm).reserve, '');
