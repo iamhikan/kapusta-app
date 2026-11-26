@@ -181,7 +181,8 @@ function dayHead(d) {
   const say = daySay(d);
   const total = !d.sum ? null : say ? h('span', {}, h('span', { 'aria-hidden': 'true' }, dayTotal(d)), h('span', { class: 'sr' }, say))
     : h('span', {}, dayTotal(d));
-  return h('div', { class: 'day-head muted small' }, h('span', {}, dayLabel(d.date)), total);
+  // заголовок h2 под h1 экрана: диктор переходит по дням (повтор 2 ревью p48a, находка 6; был простой текст)
+  return h('h2', { class: 'day-head muted small' }, h('span', {}, dayLabel(d.date)), total);
 }
 
 // R-3 (стенд, 320 px): подпись с меткой — три части: категория, значок, «· откуда»; значок остаётся на виду (было
@@ -379,6 +380,10 @@ function emptyBody(entry, nav) {
       tap(); entry.f.q = ''; entry.typed = ''; nav.focus('title'); loadOps(entry, nav); } } }, 'Очистить поиск') : null);
 }
 
+// значок пояснения: на экране — эмодзи, диктору — его имя (повтор 2 ревью p48a, находка 6: слышал «— регулярная трата…»)
+const GLYPH_NAME = { '🔁': 'Значок повтора', '📌': 'Значок канцелярской кнопки' };
+const glyphName = (g) => [h('span', { 'aria-hidden': 'true' }, g), GLYPH_NAME[g] ? h('span', { class: 'sr' }, GLYPH_NAME[g]) : null];
+
 // R-4 (ревью 26.11): над первым днём — что значат 🔁 и 📌 словами чата, «без 🔁📌» и минус дня (R-8). «Понятно» прячет
 // пояснение на этом устройстве. На экране регулярной его нет: шапка там — «В норме N»
 function marksBlock(entry, nav) {
@@ -387,7 +392,7 @@ function marksBlock(entry, nav) {
   const lines = marksNote(pagesOf(entry));
   if (!lines.length) return null;
   const line = (l) => h('p', { class: 'small' }, l.say ? [h('span', { 'aria-hidden': 'true' }, l.text), h('span', { class: 'sr' }, l.say)]
-    : [l.glyph ? h('span', { 'aria-hidden': 'true' }, l.glyph) : null, l.text]);
+    : [l.glyph ? glyphName(l.glyph) : null, l.text]);
   return h('section', { class: 'card pad stack-s marks-note' }, ...lines.map(line),
     h('button', { type: 'button', class: 'link', 'data-focus': 'marks-ok', on: { click: () => {
       tap(); if (nav.hideMarks) nav.hideMarks(); nav.focus('title'); nav.render(); } } }, 'Понятно'));
