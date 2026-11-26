@@ -33,6 +33,11 @@ export function limitLegend(items) {
     ...items.map((l) => h('span', { class: 'legend-item' }, swatch(l), l.text)));
 }
 
+// итог над лимитами «Здоровья» (повтор 2 ревью, находка 2): вывод словами обычным текстом, до легенды и строк
+export function limitsSummary(text) {
+  return text ? h('p', { class: 'note-text small limits-sum' }, text) : null;
+}
+
 // l — строка view().limits или скрытого лимита; plan — доля месяца для черты (null — без черты); open — по тапу
 export function limitRow(l, { plan = null, open }) {
   // focus — свой ключ строки (регулярная в «Бюджете», R-11: «regular:подписки»), иначе — лимит

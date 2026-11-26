@@ -88,3 +88,59 @@ test('«Бюджет»: регулярная сверх нормы — как н
   assert.equal(said(edu), 'образование: 15 684 из 14 322, сверх на 1 362, в «Потрачено» идёт только то, что сверх нормы');
   assert.equal(all(edu, 'badge').length, 1);
 });
+
+// находка 2: по умолчанию все 6 строк — сверх, а вывода нет; строка резерва — арифметика без вывода. Стало: одна строка
+// итога над лимитами и вывод в конце строки резерва. Числа — копия данных 26.11 (Ангелина видит те же лимиты).
+const NOV = {
+  ...HEALTH, norm: 257975, spent: 244303, left: 13672,
+  limits: [L('красота', 53342, 5876, 'over'), L('транспорт', 26273, 5876, 'over'), L('питомцы', 9726, 4113, 'over'),
+    L('здоровье', 31144, 14103, 'over'), L('дом и хозяйство', 14398, 11752, 'over'),
+    L('резерв', 62886, 62886, 'fast', { eaten: 51892 }), L('разовые и подарки', 22983, 23505, 'fast'),
+    L('путешествия', 15804, 17629, 'fast'), L('продукты', 38884, 52886, 'ok'), L('спорт', 3649, 8814, 'ok'),
+    L('еда вне дома', 10691, 29381, 'ok'), L('развлечения', 1500, 5876, 'ok'), L('одежда', 0, 15278, 'ok')],
+  regulars: [REG('банк', 4641, 2535), REG('коммуналка', 13491, 12045, 'mandatory'), REG('образование', 15684, 14322)],
+};
+const ANGELINA = (({ available, ...rest }) => rest)(NOV);
+
+test('«Здоровье»: над лимитами — одна строка итога: сколько сверх, на сколько, что с резервом и сколько сверх своей нормы', () => {
+  for (const h of [NOV, ANGELINA]) {
+    assert.equal(flat(view(h).overview),
+      'Сверх лимита — 5 из 13, перерасход 93 163; резерв кончился. Сверх своей нормы — 3 траты, всего 4 914.');
+  }
+  // резерв покрыл весь перерасход — так и сказано, без тревоги
+  const calm = { ...HEALTH, regulars: [], limits: [L('питомцы', 6000, 4000, 'covered'), L('продукты', 1000, 9000, 'ok'),
+    L('резерв', 2500, 30000, 'ok', { eaten: 2000 })] };
+  assert.equal(flat(view(calm).overview), 'Сверх лимита — 1 из 3, перерасход 2 000; всё покрыл резерв.');
+  // только регулярные — без строки о лимитах; ничего сверх — строки нет
+  const reg = { ...HEALTH, limits: [L('продукты', 1000, 9000, 'ok')], regulars: [REG('банк', 2941, 2535)] };
+  assert.equal(flat(view(reg).overview), 'Сверх своей нормы — 1 трата, всего 406.');
+  assert.equal(view({ ...reg, regulars: [] }).overview, '');
+  // резерва строкой нет (прежний сервер) — без слов о резерве
+  assert.equal(flat(view({ ...HEALTH, regulars: [] }).overview), 'Сверх лимита — 2 из 3, перерасход 6 000.');
+});
+
+test('«Здоровье»: итог — абзацем над легендой и строками лимитов, обычным текстом (не только цветом)', async () => {
+  const { limitsSummary } = await import('../js/limitrow.js');
+  const p = limitsSummary(view(NOV).overview);
+  assert.equal(p.tag, 'p');
+  assert.ok(p.classes.includes('limits-sum'));
+  assert.ok(!p.classes.includes('bad') && !p.classes.includes('muted'));
+  assert.equal(limitsSummary(''), null);
+  const { readFileSync } = await import('node:fs');
+  const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+  const at = (s) => app.indexOf(s);
+  assert.ok(at('limitsSummary(v.overview)') > at("h('h2', {}, 'Лимиты')") && at('limitsSummary(v.overview)') < at('limitLegend(v.legend)'));
+});
+
+test('строка резерва кончается выводом: «Не покрыто 41 271: на столько меньше осталось другим лимитам.»', () => {
+  const res = view(NOV).limits.find((l) => l.name === 'резерв');
+  assert.equal(flat(res.hint), 'свои 10 994 + перерасход других 51 892 из 93 163 — «красота», «транспорт», «питомцы», '
+    + '«здоровье», «дом и хозяйство». Не покрыто 41 271: на столько меньше осталось другим лимитам.');
+  assert.match(res.hint, /из 93/);   // «из» и число не рвутся
+  // сервер сказал «кончился», а округлённые суммы сошлись — непокрытого нуля не пишем
+  const even = { ...HEALTH, limits: [L('питомцы', 6000, 4000, 'over'), L('резерв', 2500, 2500, 'fast', { eaten: 2000 })] };
+  assert.doesNotMatch(view(even).limits.find((l) => l.name === 'резерв').hint, /Не покрыто/);
+  // резерв не кончился — вывод уже есть: кого покрыл
+  const calm = { ...HEALTH, limits: [L('питомцы', 6000, 4000, 'covered'), L('резерв', 2500, 30000, 'ok', { eaten: 2000 })] };
+  assert.equal(flat(view(calm).limits.find((l) => l.name === 'резерв').hint), 'свои 500 + перерасход других 2 000 — покрыл «питомцы».');
+});

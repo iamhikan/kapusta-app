@@ -105,10 +105,26 @@ function reserveNote(r) {
   if (!r) return '';
   const own = `свои ${fmt(r.res.spent - r.res.eaten)} + перерасход других ${fmt(r.res.eaten)}`;
   if (r.short) {
+    // повтор 2 ревью (находка 2): в конце — вывод. Не покрытое резервом съедает остаток других лимитов: «Осталось из
+    // нормы» = их остаток − не покрыто − сверх нормы регулярных
     const all = r.hit.reduce((sum, l) => sum + l.over, 0);
-    return `Резерв кончился: ${own} из\u00a0${fmt(all)} — ${quoted(r.hit)}.`;   // «из» и число — на одной строке
+    const left = all - r.res.eaten;
+    return `Резерв кончился: ${own} из\u00a0${fmt(all)} — ${quoted(r.hit)}.`   // «из» и число — на одной строке
+      + (left > 0 ? ` Не покрыто ${fmt(left)}: на столько меньше осталось другим лимитам.` : '');
   }
   return `Резерв: ${own} — покрыл ${quoted(r.hit)}.`;
+}
+
+// повтор 2 ревью p48a (находка 2): по умолчанию все строки — сверх, а вывода нет. Одна строка итога над лимитами:
+// сколько лимитов сверх и на сколько, что с резервом; регулярные сверх своей нормы — вторым предложением.
+// Ничего сверх — строки нет
+function overview(h, rv, regs) {
+  const hot = h.limits.filter((l) => l.state === 'over' || l.state === 'covered');
+  const res = !rv ? '' : rv.short ? '; резерв кончился' : '; всё покрыл резерв';
+  const sum = (rows) => fmt(rows.reduce((s, l) => s + l.over, 0));
+  return [hot.length ? `Сверх лимита — ${hot.length} из ${h.limits.length}, перерасход ${sum(hot)}${res}.` : '',
+    regs.length ? `Сверх своей нормы — ${count(regs.length, ['трата', 'траты', 'трат'])}, всего ${sum(regs)}.` : '']
+    .filter(Boolean).join(' ');
 }
 
 function curveNote(h) {
@@ -178,7 +194,7 @@ export function view(h) {
     // в самой строке — из чего он и что покрыл (решение 63: раньше — серым абзацем под списком)
     if (l.eaten) {
       row.note = `перерасход ${quoted(rv.hit)} · резерв покрыл ${fmt(l.eaten)}`;
-      row.hint = note.replace(/^Резерв: /, '');
+      row.hint = note.replace(/^Резерв(?: кончился)?: /, '');   // «кончился» — в строке итога над лимитами
     }
     return { ...row, heat: share };
   });
@@ -218,6 +234,7 @@ export function view(h) {
     // решение 63: строка резерва видна сразу — под горячими лимитами, даже если по порядку она дальше первых TOP
     top: [...limits.slice(0, TOP), ...limits.slice(TOP).filter((l) => l.note)],
     limitsShown: Math.min(TOP, limits.length),
+    overview: overview(h, rv, h.regulars || []),
     // R-9 (ревью 26.11): «Показать все 16» — это 13 лимитов и 3 строки сверх нормы; кнопка говорит, из чего число
     moreLabel: `Показать все: ${count(h.limits.length, ['лимит', 'лимита', 'лимитов'])}`
       + (regulars.length ? ` и ${count(regulars.length, ['трата', 'траты', 'трат'])} сверх нормы` : ''),
