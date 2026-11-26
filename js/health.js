@@ -93,13 +93,15 @@ function count(n, [one, few, many]) {
 
 function reserveNote(r) {
   // из чего резерв и чей перерасход покрыл (решение 51). Кончился — сколько покрыл из всего перерасхода (R-10, ревью
-  // 26.11: было «… «дом и хозяйство» частично» — будто частично только последний)
+  // 26.11: было «… «дом и хозяйство» частично» — будто частично только последний). Повтор ревью (п. 8): и свои траты —
+  // слагаемые дают число строки «62 886 / 62 886» (было «покрыл 51 961 из 92 843», свои 10 925 не названы)
   if (!r) return '';
+  const own = `свои ${fmt(r.res.spent - r.res.eaten)} + перерасход других ${fmt(r.res.eaten)}`;
   if (r.short) {
     const all = r.hit.reduce((sum, l) => sum + l.over, 0);
-    return `Резерв кончился: покрыл ${fmt(r.res.eaten)} из ${fmt(all)} перерасхода — ${quoted(r.hit)}.`;
+    return `Резерв кончился: ${own} из ${fmt(all)} — ${quoted(r.hit)}.`;
   }
-  return `Резерв: свои ${fmt(r.res.spent - r.res.eaten)} + перерасход других ${fmt(r.res.eaten)} — покрыл ${quoted(r.hit)}.`;
+  return `Резерв: ${own} — покрыл ${quoted(r.hit)}.`;
 }
 
 function curveNote(h) {
