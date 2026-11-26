@@ -81,8 +81,30 @@ export async function loadOps(entry, nav, more = false) {
   entry.loading = false;
   if (r.error === 'stale' || r.error === 'stranger') return nav.problem(r.error);
   if (r.error) [entry.error, entry.fail] = [r.detail || r.error, r.error];
-  else entry.pages.push(r.data);
+  else {
+    const before = days(entry).reduce((n, d) => n + d.ops.length, 0);
+    entry.pages.push(r.data);
+    // повтор ревью p46a, находка 9 (WCAG 2.4.3): фокус был на «Показать ещё» — теперь на первой новой строке; кнопка
+    // ушла под 50 новых строк (видно 0 из 48 px)
+    if (more) nav.focus(firstNew(entry, before), 'ops-more');
+  }
   nav.render();
+}
+
+// ключ фокуса строки дня (opLine): группа записей — по дню, номеру и месту; операция — по ref; теневая у Ангелины —
+// без карточки и без ключа
+const groupKey = (d, i, op) => `${d.date}:${i}:${op.where}`;
+const rowKey = (d, i, op) => ((op.group || []).length ? `grp:${groupKey(d, i, op)}` : op.ref ? `op:${op.ref}` : null);
+
+// первая строка с ключом после первых n операций списка (день на стыке страниц — один день)
+function firstNew(entry, n) {
+  let k = 0;
+  for (const d of days(entry)) {
+    for (const [i, op] of d.ops.entries()) {
+      if (k++ >= n && rowKey(d, i, op)) return rowKey(d, i, op);
+    }
+  }
+  return null;
 }
 
 // градусник в шапке операций лимита или регулярной (E10): «Здоровье» месяца (лимит, перебор, envelopes) и, у прежнего
@@ -389,7 +411,7 @@ export function opsScreen(entry, nav) {
       dayHead(d),
       h('section', { class: 'card list' }, ...d.ops.map((op, i) => opLine(opRow(op, { inCategory: !!(params.cat || params.limit || params.regular),
         account: entry.ctx ? '' : entry.f.account, bare: !!params.regular }), nav,
-        { expanded: entry.expanded, key: `${d.date}:${i}:${op.where}` }))))),
+        { expanded: entry.expanded, key: groupKey(d, i, op) }))))),
     // М14: следующие 50 не пришли — под списком тот же вид ошибки (М2) и «Повторить»; кнопки «Показать ещё» нет —
     // подгрузка при прокрутке не повторяет запрос сама (было: ошибка молчала, список прежний)
     last && last.next && entry.error ? failBody('ops', entry, nav, () => loadOps(entry, nav, true), 'ops-more')

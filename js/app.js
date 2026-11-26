@@ -108,7 +108,7 @@ const nav = {
   render: () => render(),
   back: () => back(),                  // R-19: «К списку» и «Назад» у отказа fin
   under: () => (stack.length > 1 ? stack[stack.length - 2].kind : null),
-  focus: (key) => paint.focus(key),
+  focus: (key, from) => paint.focus(key, from),   // from — кнопка, с которой фокус уходит (находка 9)
   problem: (kind, detail) => problem(kind, detail),
   get hasSnap() { return hasSnap; },
   snapshot: () => openSnapshot(),

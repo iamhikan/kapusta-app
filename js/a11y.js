@@ -36,6 +36,7 @@ export function modal(root) {
 export function painter(root, doc, live) {
   let memo = null;   // ключ кнопки с фокусом; держится через скелет загрузки, пока кнопка не появится
   let next = null;   // куда поставить фокус после перерисовки: в лист, на кнопку, что открыла лист
+  let reveal = false;   // next — новое место фокуса вместо кнопки (focus с from): показать его в окне
   let said = '';
   const inPlay = () => {
     const a = doc.activeElement;
@@ -56,7 +57,8 @@ export function painter(root, doc, live) {
     modal(root);
     const key = next || memo;
     next = null;
-    if (key) place(key, typing, seen);
+    if (key) place(key, typing, seen || reveal);
+    reveal = false;
     say();
   }
 
@@ -86,7 +88,13 @@ export function painter(root, doc, live) {
 
   return {
     show,
-    focus(key) { if (key && inPlay()) next = key; },
+    // from — ключ кнопки, с которой фокус уходит (повтор ревью p46a, находка 9: «Показать ещё» — на первую новую
+    // строку): фокус на ней или ждёт её, пока она неактивна («Загружаю…»); новое место докручивается в окно
+    focus(key, from = null) {
+      if (!key) return;
+      if (from == null) { if (inPlay()) next = key; return; }
+      if ((inPlay() ? keyOf(doc.activeElement) : memo) === from) [next, reveal] = [key, true];
+    },
     // фокус в поле, а нажали строку (тап на iPhone фокус не переносит) — запоминаем нажатую строку
     current: () => {
       if (!inPlay()) return memo;

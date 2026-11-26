@@ -7,7 +7,7 @@ import { view } from '../js/health.js';
 import { limitRow } from '../js/limitrow.js';
 import { moreScreen } from '../js/more.js';
 import { catsScreen, newCats } from '../js/catscreen.js';
-import { cardScreen, failBody, monthHead, newOps, offlineBody, opsScreen, problemScreen } from '../js/screens.js';
+import { cardScreen, failBody, loadOps, monthHead, newOps, offlineBody, opsScreen, problemScreen } from '../js/screens.js';
 import { screen } from '../js/api.js';
 import { painter } from '../js/a11y.js';
 import { h } from '../js/dom.js';
@@ -272,7 +272,7 @@ function opsSetup() {
   const s = setup();
   const entry = newOps('2026-11');
   entry.pages = [{ days: [], total: 0, count: 0, next: null }];
-  const n = { ...nav, render: () => s.p.show(opsScreen(entry, n), btn('tab:ops')), focus: (k) => s.p.focus(k) };
+  const n = { ...nav, render: () => s.p.show(opsScreen(entry, n), btn('tab:ops')), focus: (k, from) => s.p.focus(k, from) };
   n.render();
   return { ...s, entry, n };
 }
@@ -550,22 +550,19 @@ test('R-18, М6: карточка не открылась (503) — фокус �
   assert.equal(doc.activeElement.textContent, 'Lidl');
 });
 
-test('R-18, М14: следующие 50 не пришли (503) — фокус на «Повторить» под списком, не в BODY и не наверх; пришли — на «Показать ещё»', () => {
+test('R-18, М14: следующие 50 не пришли (503) — фокус на «Повторить» под списком, не в BODY и не наверх; пришли — на первой новой строке', async () => {
   const { root, entry, n } = opsSetup();
-  const page = (next) => ({ days: [{ date: '2026-11-10', sum: 400, ops: [OP] }], total: 400, count: 1, next });
-  entry.pages = [page('c1')];
+  const page = (ref, next) => ({ days: [{ date: '2026-11-10', sum: 400, ops: [{ ...OP, ref }] }], total: 400, count: 1, next });
+  entry.pages = [page('sms:1', 'c1')];
   n.render();
   byKey(root, 'ops-more').focus();
   Object.assign(entry, { error: 'HTTP 503 · ledger не грузится', fail: 'fault' });
   n.render();
   assert.equal(doc.activeElement.textContent, 'Повторить');
   assert.ok(doc.activeElement.closest('.empty'), '«Повторить» — та, что под списком');
-  Object.assign(entry, { error: null, fail: null, loading: true });   // «Повторить»: «Загружаю…»
-  n.render();
-  entry.loading = false;
-  entry.pages.push(page('c2'));
-  n.render();
-  assert.equal(doc.activeElement.textContent, 'Показать ещё');
+  n.get = async () => ({ data: page('sms:2', 'c2') });   // «Повторить»: те же следующие 50 пришли
+  await loadOps(entry, n, true);
+  assert.equal(focusKey(), 'op:sms:2', 'находка 9: на первой новой строке, а не на «Показать ещё» под ними');
 });
 
 test('R-18, М2 на «Здоровье»: Капуста ошиблась (503) — фокус на заголовок ошибки; «Повторить» удался — на заголовок месяца', () => {
@@ -654,6 +651,15 @@ function withLayout(rectOf, fn) {
   try { fn(); } finally { [proto.getBoundingClientRect, proto.scrollIntoView, globalThis.innerHeight] = saved; }
 }
 
+async function withLayoutAsync(rectOf, fn) {
+  const proto = El.prototype;
+  const saved = [proto.getBoundingClientRect, proto.scrollIntoView, globalThis.innerHeight];
+  proto.getBoundingClientRect = function rect() { return rectOf(this); };
+  proto.scrollIntoView = function scroll(opts) { this.scrolledTo = opts; };
+  globalThis.innerHeight = 844;
+  try { await fn(); } finally { [proto.getBoundingClientRect, proto.scrollIntoView, globalThis.innerHeight] = saved; }
+}
+
 test('R-18, М14: «Показать ещё» было на виду — «Повторить» на его месте показана: страница докручивается ближайшим краем', () => {
   const { root, entry, n } = opsSetup();
   entry.pages = [{ days: [{ date: '2026-11-10', sum: 400, ops: [OP] }], total: 400, count: 1, next: 'c1' }];
@@ -677,4 +683,56 @@ test('R-18: строку с фокусом прокрутили прочь кл�
     assert.equal(focusKey(), 'op:sms:1');
     assert.equal(doc.activeElement.scrolledTo, undefined);
   });
+});
+
+// ——— p48a, повтор ревью p46a, находка 9 (WCAG 2.4.3): «Показать ещё» удалось — фокус на первой новой строке ———
+// Было: фокус оставался на кнопке, а кнопка уходила под 50 новых строк — видно 0 из 48 px. Первая новая строка стоит
+// там, где была кнопка: человек читает дальше с неё, Tab ведёт по новым строкам, диктор называет новую операцию
+
+const opOf = (ref, extra = {}) => ({ ...OP, ref, ...extra });
+const pageOf = (days, next = null) => ({ days, total: 0, count: 0, next });
+
+test('находка 9: «Показать ещё» — следующие 50 пришли: фокус на первой новой строке, она на месте кнопки и на виду', async () => {
+  const { root, entry, n } = opsSetup();
+  entry.pages = [pageOf([{ date: '2026-11-10', sum: 400, ops: [opOf('sms:1')] }], 'c1')];
+  n.render();
+  // день на стыке страниц — один день: первая новая строка — в той же карточке, под последней старой
+  n.get = async () => ({ data: pageOf([{ date: '2026-11-10', sum: 800, ops: [opOf('sms:2')] },
+    { date: '2026-11-09', sum: 300, ops: [opOf('sms:3')] }], 'c2') });
+  await withLayoutAsync(() => ({ top: 700, bottom: 756 }), async () => {
+    byKey(root, 'ops-more').focus();
+    byKey(root, 'ops-more').click();
+    await new Promise((r) => setTimeout(r));
+    assert.equal(focusKey(), 'op:sms:2');
+    assert.deepEqual(doc.activeElement.scrolledTo, { block: 'nearest' }, 'строка — на виду, над вкладками');
+  });
+  assert.equal(doc.activeElement.closest('.list').kids.length, 2, 'в карточке дня — старая и новая строки');
+});
+
+test('находка 9: первая новая — группа записей или теневая строка Ангелины без карточки: фокус на первой, что нажимается', async () => {
+  const { root, entry, n } = opsSetup();
+  entry.pages = [pageOf([{ date: '2026-11-10', sum: 400, ops: [opOf('sms:1')] }], 'c1')];
+  n.render();
+  const shadow = opOf(null, { where: 'Без описания' });
+  const group = opOf('sms:5', { where: 'Lidl', count: 2, group: [opOf('sms:5'), opOf('sms:6')] });
+  n.get = async () => ({ data: pageOf([{ date: '2026-11-09', sum: 900, ops: [shadow, group] }]) });
+  byKey(root, 'ops-more').focus();
+  await loadOps(entry, n, true);
+  assert.equal(focusKey(), 'grp:2026-11-09:1:Lidl');
+});
+
+test('находка 9: фокус не на «Показать ещё» (строка выше, касание на iPhone) — подгрузка при прокрутке его не двигает', async () => {
+  const { root, entry, n } = opsSetup();
+  entry.pages = [pageOf([{ date: '2026-11-10', sum: 400, ops: [opOf('sms:1')] }], 'c1')];
+  n.render();
+  n.get = async () => ({ data: pageOf([{ date: '2026-11-09', sum: 300, ops: [opOf('sms:2')] }], 'c2') });
+  byKey(root, 'op:sms:1').focus();
+  await loadOps(entry, n, true);
+  assert.equal(focusKey(), 'op:sms:1');
+  const touch = opsSetup();                            // касание на iPhone фокус не ставит: он не «в игре»
+  touch.entry.pages = [pageOf([{ date: '2026-11-10', sum: 400, ops: [opOf('sms:1')] }], 'c1')];
+  touch.n.render();
+  touch.n.get = n.get;
+  await loadOps(touch.entry, touch.n, true);
+  assert.equal(focusKey(), 'BODY');
 });
