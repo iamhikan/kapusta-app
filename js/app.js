@@ -7,7 +7,7 @@ import { h, icon, tap, ICONS, tg } from './dom.js';
 import { tile } from './tiles.js';
 import { limitLegend, limitRow } from './limitrow.js';
 import { summary } from './summary.js';
-import { cardScreen, loadCard, loadOps, newOps, opsScreen, stepKey } from './screens.js';
+import { cardScreen, loadCard, loadOps, monthHead, newOps, opsScreen, problemScreen } from './screens.js';
 import { catsScreen, loadCats, newCats } from './catscreen.js';
 import { isPeriod, periodOf } from './period.js';
 import { restore, save, snapView } from './snapshot.js';
@@ -213,27 +213,8 @@ function skeleton() {
 }
 
 function problem(kind, detail) {
-  // М2: у отказа fin его слова — текст экрана (s.text), мелким шрифтом — только причина ошибки или молчания
-  const s = screen(kind, detail);
-  const pic = s.icon === 'logo' ? h('div', { class: 'logo' }, 'К')
-    : icon(s.icon === 'lock' ? ['M7 11V7a5 5 0 0 1 10 0v4', 'M5 11h14v10H5z'] : ['M12 9v4', 'M12 17h.01',
-      'M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'], 56);
-  const act = s.link ? h('a', { class: 'button', href: s.link, 'data-focus': 'problem' }, s.linkText)
-    : s.retry ? h('button', { class: 'button', type: 'button', 'data-focus': 'problem', on: { click: () => { tap(); load(month); } } },
-      'Повторить')
-      : h('button', { class: 'button', type: 'button', 'data-focus': 'problem', on: { click: () => tg && tg.close() } }, 'Закрыть');
-  show(h('div', { class: 'problem', 'data-say': `${s.title}. ${s.text}` }, h('div', { class: 'problem-icon' }, pic), h('h1', {}, s.title),
-    h('p', {}, s.text), act, s.detail ? h('p', { class: 'small detail' }, s.detail) : null));
-}
-
-function monthNav(v, snapped) {
-  // в снимке — один месяц: листать нечего (холст 6.1)
-  const arrow = (dir, label, enabled, d) => h('button', { class: 'arrow', type: 'button', 'aria-label': label,
-    disabled: !enabled || snapped, ...stepKey(dir), on: { click: () => { tap(); load(shiftMonth(month, dir)); } } }, icon(d));
-  return h('header', { class: 'month' },
-    arrow(-1, 'Прошлый месяц', true, ICONS.left),
-    h('div', { class: 'month-title' }, h('h1', {}, v.title), h('p', { class: 'muted small' }, v.sub)),
-    arrow(1, 'Следующий месяц', v.canNext, ICONS.right));
+  // М2 на весь экран (js/screens.js): «Повторить» — снова «Здоровье» месяца, «Закрыть» — закрыть Капусту
+  show(problemScreen(screen(kind, detail), { retry: () => load(month), close: () => tg && tg.close() }));
 }
 
 function banner(s) {
@@ -341,7 +322,7 @@ function balances(v, data) {
 function healthScreen(data, snapped = false) {
   const v = view(data);
   const s = snapped ? snapView(data) : null;
-  return h('div', { class: 'screen with-tabs' }, s ? banner(s) : null, monthNav(v, snapped), summary(v), pace(v, data),
+  return h('div', { class: 'screen with-tabs' }, s ? banner(s) : null, monthHead(v, { snapped, step: (dir) => load(shiftMonth(month, dir)) }), summary(v), pace(v, data),
     ...limits(v, data), ...balances(v, data), h('p', { class: 'fresh muted small' }, s ? s.fresh : v.fresh));
 }
 

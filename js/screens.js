@@ -18,6 +18,31 @@ export const TITLE = { 'data-focus': 'title', tabindex: '-1' };
 export const DIALOG = { role: 'dialog', 'aria-modal': 'true', tabindex: '-1', 'data-focus': 'sheet' };
 export const stepKey = (dir) => (dir < 0 ? { 'data-focus': 'month:prev' } : { 'data-focus': 'month:next', 'data-focus-alt': 'month:prev' });
 
+// шапка «Здоровья»: месяц и стрелки; в снимке — один месяц, листать нечего (холст 6.1). Заголовок — с ключом title:
+// после удачного «Повторить» на экране ошибки фокус встаёт на него, а не в BODY (R-18)
+export function monthHead(v, { snapped = false, step }) {
+  const arrow = (dir, label, enabled, d) => h('button', { class: 'arrow', type: 'button', 'aria-label': label,
+    disabled: !enabled || snapped, ...stepKey(dir), on: { click: () => { tap(); step(dir); } } }, icon(d));
+  return h('header', { class: 'month' },
+    arrow(-1, 'Прошлый месяц', true, ICONS.left),
+    h('div', { class: 'month-title' }, h('h1', TITLE, v.title), h('p', { class: 'muted small' }, v.sub)),
+    arrow(1, 'Следующий месяц', v.canNext, ICONS.right));
+}
+
+// М2 на весь экран: вход, «Здоровье» без ответа. У отказа fin его слова — текст экрана (s.text), мелким шрифтом — только
+// причина ошибки или молчания. Заголовок — с ключом title: фокус не падает в BODY (R-18)
+export function problemScreen(s, { retry, close }) {
+  const pic = s.icon === 'logo' ? h('div', { class: 'logo' }, 'К')
+    : icon(s.icon === 'lock' ? ['M7 11V7a5 5 0 0 1 10 0v4', 'M5 11h14v10H5z'] : ['M12 9v4', 'M12 17h.01',
+      'M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'], 56);
+  const act = s.link ? h('a', { class: 'button', href: s.link, 'data-focus': 'problem' }, s.linkText)
+    : s.retry ? h('button', { class: 'button', type: 'button', 'data-focus': 'problem', on: { click: () => { tap(); retry(); } } },
+      'Повторить')
+      : h('button', { class: 'button', type: 'button', 'data-focus': 'problem', on: { click: () => close() } }, 'Закрыть');
+  return h('div', { class: 'problem', 'data-say': `${s.title}. ${s.text}` }, h('div', { class: 'problem-icon' }, pic),
+    h('h1', TITLE, s.title), h('p', {}, s.text), act, s.detail ? h('p', { class: 'small detail' }, s.detail) : null);
+}
+
 export function newOps(month, ctx = null) {
   return { kind: 'ops', month, ctx, f: { q: '', transfers: false, account: '', who: '', source: '', flag: false },
     pages: [], error: null, loading: false, expanded: new Set(), sheet: false, scroll: 0 };
@@ -190,7 +215,7 @@ function toolbar(entry, nav) {
       } } }));
   // «Фильтры» — в строке поиска: месяц, «Фильтры» и «Переводы» в один ряд не помещались (ревью, 403 px из 358)
   // заголовок экрана — для диктора (critique 12.11, P2 № 4): на экране «Операции» уже есть вкладка; у счёта h1 — его имя
-  return h('div', { class: 'toolbar' }, f.account ? null : h('h1', { class: 'sr' }, 'Операции'), h('div', { class: 'search-row' }, search,
+  return h('div', { class: 'toolbar' }, f.account ? null : h('h1', { class: 'sr', ...TITLE }, 'Операции'), h('div', { class: 'search-row' }, search,
     chip('filters', 'Фильтры', false, () => { entry.sheet = true; nav.focus('sheet'); nav.render(); }, ICONS.filter)),
     h('div', { class: 'chips wrap' },
       h('span', { class: 'chip-month' },
@@ -226,21 +251,22 @@ function sheet(entry, nav) {
       'Показать')));
 }
 
-export function failBody(kind, entry, nav, retry) {
+// key — ключ фокуса «Повторить»: под списком (М14) — тот же, что у «Показать ещё», фокус остаётся внизу (R-18)
+export function failBody(kind, entry, nav, retry, key = 'retry') {
   // М2: Мак молчит — холст 6.2 со ссылкой на снимок; fin ответил отказом или ошибкой (entry.fail) — его словами, без
   // снимка: Мак не спит
-  if (entry.fail !== 'refused' && entry.fail !== 'fault') return offlineBody(kind, entry, nav, retry);
+  if (entry.fail !== 'refused' && entry.fail !== 'fault') return offlineBody(kind, entry, nav, retry, key);
   const s = screen(entry.fail, entry.error);
   return h('div', { class: 'empty', 'data-say': `${s.title}. ${s.text}` }, h('h2', {}, s.title), h('p', { class: 'muted' }, s.text),
-    h('button', { type: 'button', class: 'button', 'data-focus': 'retry', on: { click: () => { tap(); retry(); } } }, 'Повторить'),
+    h('button', { type: 'button', class: 'button', 'data-focus': key, on: { click: () => { tap(); retry(); } } }, 'Повторить'),
     s.detail ? h('p', { class: 'small detail muted' }, s.detail) : null);
 }
 
-export function offlineBody(kind, entry, nav, retry) {
+export function offlineBody(kind, entry, nav, retry, key = 'retry') {
   // холст 6.2: Мак молчит — «Повторить» и ссылка на снимок «Здоровья» (операций и категорий в снимке нет)
   const o = offline(kind, nav.hasSnap);
   return h('div', { class: 'empty', 'data-say': `${o.title}. ${o.text}` }, h('h2', {}, o.title), h('p', { class: 'muted' }, o.text),
-    h('button', { type: 'button', class: 'button', 'data-focus': 'retry', on: { click: () => { tap(); retry(); } } }, 'Повторить'),
+    h('button', { type: 'button', class: 'button', 'data-focus': key, on: { click: () => { tap(); retry(); } } }, 'Повторить'),
     o.link ? h('button', { type: 'button', class: 'link', 'data-focus': 'snapshot', on: { click: () => nav.snapshot() } }, o.link) : null,
     h('p', { class: 'small detail muted' }, entry.error));
 }
@@ -265,7 +291,7 @@ export function opsScreen(entry, nav) {
         { expanded: entry.expanded, key: `${d.date}:${i}:${op.where}` }))))),
     // М14: следующие 50 не пришли — под списком тот же вид ошибки (М2) и «Повторить»; кнопки «Показать ещё» нет —
     // подгрузка при прокрутке не повторяет запрос сама (было: ошибка молчала, список прежний)
-    last && last.next && entry.error ? failBody('ops', entry, nav, () => loadOps(entry, nav, true))
+    last && last.next && entry.error ? failBody('ops', entry, nav, () => loadOps(entry, nav, true), 'ops-more')
       : last && last.next ? h('button', { type: 'button', class: 'more card', disabled: entry.loading, 'data-focus': 'ops-more',
         on: { click: () => { tap(); loadOps(entry, nav, true); } } }, entry.loading ? 'Загружаю…' : 'Показать ещё') : null);
   }

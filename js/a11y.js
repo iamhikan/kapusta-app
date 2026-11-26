@@ -55,8 +55,9 @@ export function painter(root, doc, live) {
     let el = find(root, key);
     if (el && el.disabled && el.getAttribute(ALT)) el = find(root, el.getAttribute(ALT));
     // кнопки с ключом на готовом экране нет (строки категории за месяц нет, решение 74) — на заголовок экрана, не в BODY;
+    // у экрана ошибки без заголовка с ключом (карточка, М6) — на «Повторить» (R-18, ревью 26.11);
     // на скелете загрузки (aria-busy) — ждём кнопку
-    if (!el && !root.querySelector('[aria-busy]')) el = find(root, 'title');
+    if (!el && !root.querySelector('[aria-busy]')) el = find(root, 'title') || find(root, 'retry') || find(root, 'problem');
     if (!el || el.disabled || (el.tagName === 'INPUT' && !typing)) { memo = key; return; }
     el.focus({ preventScroll: true });
     if (typing && el.setSelectionRange) el.setSelectionRange(typing.start, typing.end);

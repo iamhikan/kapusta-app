@@ -7,7 +7,8 @@ import { view } from '../js/health.js';
 import { limitRow } from '../js/limitrow.js';
 import { moreScreen } from '../js/more.js';
 import { catsScreen, newCats } from '../js/catscreen.js';
-import { cardScreen, failBody, newOps, offlineBody, opsScreen } from '../js/screens.js';
+import { cardScreen, failBody, monthHead, newOps, offlineBody, opsScreen, problemScreen } from '../js/screens.js';
+import { screen } from '../js/api.js';
 import { painter } from '../js/a11y.js';
 import { h } from '../js/dom.js';
 import { returnTo } from '../js/back.js';
@@ -523,4 +524,81 @@ test('«По дням» без нормы (до начала учёта): пер
   const planned = { ...days, norm: 200000, points: days.points.map((p) => ({ ...p, plan: 7000 })) };
   assert.equal(find(moreScreen({ kind: 'days', month: '2025-11', mode: 'sum', data: planned }, nav),
     (e) => e.getAttribute('role') === 'radiogroup').length, 1);
+});
+
+// ——— p43a, R-18 (ревью 26.11, WCAG 2.4.3): на экранах ошибок фокус не падает в BODY ———
+
+const OP = { ref: 'sms:1', where: 'Lidl', amount: { number: -400, currency: 'RSD' }, rsd: -400, cats: ['алкоголь'],
+  src: 'Freedom', marks: [], group: [] };
+
+test('R-18, М6: карточка не открылась (503) — фокус на «Повторить», не в BODY; карточка пришла — на её заголовок', () => {
+  const s = setup();
+  s.p.show(btn('op:sms:1'));
+  byKey(s.root, 'op:sms:1').focus();
+  s.p.focus('title');                                  // nav.push: на новом экране фокус — на заголовок
+  const entry = { kind: 'card', ref: 'sms:1', data: null, error: null };
+  const n = { ...nav, render: () => s.p.show(cardScreen(entry, n)), focus: (k) => s.p.focus(k) };
+  n.render();                                          // скелет карточки, ждём ответ
+  Object.assign(entry, { error: 'HTTP 503 · ledger не грузится', fail: 'fault' });
+  n.render();
+  assert.equal(doc.activeElement.textContent, 'Повторить');
+  Object.assign(entry, { error: null, fail: null });   // «Повторить»: скелет, пока ждём
+  n.render();
+  entry.data = CARD;
+  n.render();
+  assert.equal(focusKey(), 'title');
+  assert.equal(doc.activeElement.textContent, 'Lidl');
+});
+
+test('R-18, М14: следующие 50 не пришли (503) — фокус на «Повторить» под списком, не в BODY и не наверх; пришли — на «Показать ещё»', () => {
+  const { root, entry, n } = opsSetup();
+  const page = (next) => ({ days: [{ date: '2026-11-10', sum: 400, ops: [OP] }], total: 400, count: 1, next });
+  entry.pages = [page('c1')];
+  n.render();
+  byKey(root, 'ops-more').focus();
+  Object.assign(entry, { error: 'HTTP 503 · ledger не грузится', fail: 'fault' });
+  n.render();
+  assert.equal(doc.activeElement.textContent, 'Повторить');
+  assert.ok(doc.activeElement.closest('.empty'), '«Повторить» — та, что под списком');
+  Object.assign(entry, { error: null, fail: null, loading: true });   // «Повторить»: «Загружаю…»
+  n.render();
+  entry.loading = false;
+  entry.pages.push(page('c2'));
+  n.render();
+  assert.equal(doc.activeElement.textContent, 'Показать ещё');
+});
+
+test('R-18, М2 на «Здоровье»: Капуста ошиблась (503) — фокус на заголовок ошибки; «Повторить» удался — на заголовок месяца', () => {
+  const s = setup();
+  const month = () => monthHead(view(NOW), { step() {} });
+  s.p.show(month());
+  byKey(s.root, 'month:prev').focus();                 // стрелка «прошлый месяц»
+  s.p.show(h('div', { 'aria-busy': 'true' }));          // скелет «Здоровья»
+  s.p.show(problemScreen(screen('fault', 'HTTP 503 · ledger не грузится'), { retry() {}, close() {} }));
+  assert.equal(focusKey(), 'title');
+  assert.equal(doc.activeElement.textContent, 'Капуста ошиблась');
+  byKey(s.root, 'problem').focus();                    // «Повторить»
+  s.p.show(h('div', { 'aria-busy': 'true' }));
+  s.p.show(month());
+  assert.equal(focusKey(), 'title');
+  assert.equal(doc.activeElement.textContent, 'Ноябрь 2026');
+});
+
+test('R-18: заголовки экрана ошибки, месяца «Здоровья» и скрытый «Операции» принимают фокус скриптом (tabindex=-1)', () => {
+  const { root } = opsSetup();
+  const titles = [
+    byKey(problemScreen(screen('down'), { retry() {}, close() {} }), 'title'),
+    byKey(monthHead(view(NOW), { step() {} }), 'title'),
+    byKey(root, 'title'),
+  ];
+  assert.deepEqual(titles.map((t) => t && t.textContent), ['Капуста не отвечает', 'Ноябрь 2026', 'Операции']);
+  for (const t of titles) assert.equal(t.getAttribute('tabindex'), '-1');
+});
+
+test('R-18: на экране ошибки без заголовка с ключом фокус — на «Повторить»', () => {
+  const { p } = setup();
+  p.show(btn('op:sms:1'));
+  doc.body.querySelector('[data-focus]').focus();
+  p.show(h('div', {}, failBody('card', { error: 'нет такой операции', fail: 'refused' }, nav, () => {})));
+  assert.equal(doc.activeElement.textContent, 'Повторить');
 });
