@@ -52,9 +52,12 @@ export function money(n) {
   return `${sign}${whole}${cents ? `,${String(cents).padStart(2, '0')}` : ''}`;
 }
 
-// итог дня «Операций»: траты дня; есть регулярные или обязательные — и траты без них (plain, Алексей 26.11.2026)
+// итог дня «Операций»: траты дня; есть регулярные или обязательные — и траты без них (plain, Алексей 26.11.2026).
+// Экран «Обмен валюты» (fx): день — выигрыш или потеря, как строки обмена (повтор 2 ревью p48a, находка 1: было
+// «25 ноября −3 888» над строками «выигрыш на обмене +346», «+3 542»)
 export function dayTotal(d) {
   if (!d.sum) return '';
+  if (d.fx) return d.sum < 0 ? `выигрыш\u00a0+${money(-d.sum)}` : `потеря\u00a0${money(-d.sum)}`;
   return d.plain == null ? money(d.sum) : `${money(d.sum)} · без 🔁📌 ${money(d.plain)}`;
 }
 
@@ -274,6 +277,9 @@ export function headView(ctx, body) {
   // R-13 (ревью 26.11): вернули больше, чем потратили (обмен с выигрышем) — «+N», без «из» и без полосы: «−189 из 588»
   // читалось как «потратили минус 189»
   const back = lim != null && !ctx.note && body.total < 0;
+  // повтор 2 ревью p48a (находка 1): потеря на обмене — «−N» и «потеря на обмене», как строка обмена; сверх нормы —
+  // ещё «сверх N» красным. Полоса — сколько нормы на потери ушло
+  const loss = !!ctx.fx && lim != null && !ctx.note && body.total > 0;
   // экран дня из «По дням» (R-2): то же число, что клетка, — «как в „Потрачено“» (spent fin); прежний сервер — без него
   const day = ctx.days && body.days && body.days[0];
   const spent = day && day.spent != null ? `в «Потрачено» ${fmt(day.spent)}` : '';
@@ -290,10 +296,12 @@ export function headView(ctx, body) {
   }
   return {
     title: ctx.title, period: ctx.period ? periodTitle(ctx.period) : monthTitle(ctx.month),
-    sum: back ? `+${fmt(-body.total)}` : fmt(body.total),
+    sum: back ? `+${fmt(-body.total)}` : fmt(loss ? -body.total : body.total),
     note: back ? (ctx.fx ? 'выигрыш на обмене' : 'вернули больше, чем потратили')
-      : ctx.note || (lim == null ? '' : covered ? 'в пределах конверта' : over ? `сверх ${fmt(body.total - lim)}`
-        : `из ${fmt(lim)}`), tone: bad ? 'bad' : back ? 'good' : '',
+      : loss ? `потеря на обмене${over ? `, сверх ${fmt(body.total - lim)}` : ''}`
+        : ctx.note || (lim == null ? '' : covered ? 'в пределах конверта' : over ? `сверх ${fmt(body.total - lim)}`
+          : `из ${fmt(lim)}`), tone: bad ? 'bad' : back ? 'good' : '',
+    ...(loss && !over ? { noteTone: 'warn' } : {}),
     fill: lim == null || back ? null : lim > 0 ? Math.max(0, Math.min(1, body.total / lim)) : 1,
     sub: [spent, lim == null ? '' : word, records(body.count), days].filter(Boolean).join(' · '),
     basis: lim != null && ctx.basis ? `сумма в норме — ${ctx.basis}` : '',

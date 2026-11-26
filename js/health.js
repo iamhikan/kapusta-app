@@ -92,8 +92,11 @@ function count(n, [one, few, many]) {
 }
 
 // подпись строки сверх нормы (R-9): что она делает с «Потрачено» — те же слова, что пояснение 🔁 fin (names.APART_NOTE).
-// Повтор ревью p46a (язык): было «в «Потрачено» идёт только перебор +406» — «перебор» Ангелине ничего не говорит
-export const overHint = (over) => `в «Потрачено» идёт только то, что сверх нормы:\u00a0+${fmt(over)}`;
+// Повтор ревью p46a (язык): было «в «Потрачено» идёт только перебор +406» — «перебор» Ангелине ничего не говорит.
+// Повтор 2 ревью (находки 1, 2): числа в подписи нет — оно на плашке «сверх 406»; «+» — только выигрыш
+export const OVER_HINT = 'в «Потрачено» идёт только то, что сверх нормы';
+// плашка перерасхода — словом, а не «+N»: «+» на том же экране значит выигрыш (повтор 2 ревью p48a, находка 1)
+const overBy = (n) => `сверх\u00a0${fmt(n)}`;
 
 function reserveNote(r) {
   // из чего резерв и чей перерасход покрыл (решение 51). Кончился — сколько покрыл из всего перерасхода (R-10, ревью
@@ -102,10 +105,26 @@ function reserveNote(r) {
   if (!r) return '';
   const own = `свои ${fmt(r.res.spent - r.res.eaten)} + перерасход других ${fmt(r.res.eaten)}`;
   if (r.short) {
+    // повтор 2 ревью (находка 2): в конце — вывод. Не покрытое резервом съедает остаток других лимитов: «Осталось из
+    // нормы» = их остаток − не покрыто − сверх нормы регулярных
     const all = r.hit.reduce((sum, l) => sum + l.over, 0);
-    return `Резерв кончился: ${own} из\u00a0${fmt(all)} — ${quoted(r.hit)}.`;   // «из» и число — на одной строке
+    const left = all - r.res.eaten;
+    return `Резерв кончился: ${own} из\u00a0${fmt(all)} — ${quoted(r.hit)}.`   // «из» и число — на одной строке
+      + (left > 0 ? ` Не\u00a0покрыто\u00a0${fmt(left)}: на столько меньше осталось другим лимитам.` : '');
   }
   return `Резерв: ${own} — покрыл ${quoted(r.hit)}.`;
+}
+
+// повтор 2 ревью p48a (находка 2): по умолчанию все строки — сверх, а вывода нет. Одна строка итога над лимитами:
+// сколько лимитов сверх и на сколько, что с резервом; регулярные сверх своей нормы — вторым предложением.
+// Ничего сверх — строки нет
+function overview(h, rv, regs) {
+  const hot = h.limits.filter((l) => l.state === 'over' || l.state === 'covered');
+  const res = !rv ? '' : rv.short ? '; резерв кончился' : '; всё покрыл резерв';
+  const sum = (rows) => fmt(rows.reduce((s, l) => s + l.over, 0));
+  return [hot.length ? `Сверх лимита — ${hot.length} из ${h.limits.length}, перерасход\u00a0${sum(hot)}${res}.` : '',
+    regs.length ? `Сверх своей нормы — ${count(regs.length, ['трата', 'траты', 'трат'])}, всего\u00a0${sum(regs)}.` : '']
+    .filter(Boolean).join(' ');
 }
 
 function curveNote(h) {
@@ -168,14 +187,14 @@ export function view(h) {
     const limitAt = share > 1 ? l.limit / l.spent : null;
     // решение 82: подпись — label, в «Операции» — key (имя budget.yaml)
     const row = { key: l.key, name: l.label, ops: { limit: l.key }, spent: fmt(l.spent), limit: fmt(l.limit),
-      over: l.over ? `+${fmt(l.over)}` : '', fill: limitAt ?? Math.max(0, Math.min(1, share)), limitAt,
+      over: l.over ? overBy(l.over) : '', fill: limitAt ?? Math.max(0, Math.min(1, share)), limitAt,
       color: COLOR[l.state], state: h.closed && l.state === 'ok' ? 'в лимите' : SAY[l.state], covered: calm };
     if (calm) row.hint = 'покрыто резервом';
     // резерв: операции перерасхода других лимитов, в шапке — чей перерасход и сколько покрыто (решение 51);
     // в самой строке — из чего он и что покрыл (решение 63: раньше — серым абзацем под списком)
     if (l.eaten) {
       row.note = `перерасход ${quoted(rv.hit)} · резерв покрыл ${fmt(l.eaten)}`;
-      row.hint = note.replace(/^Резерв: /, '');
+      row.hint = note.replace(/^Резерв(?: кончился)?: /, '');   // «кончился» — в строке итога над лимитами
     }
     return { ...row, heat: share };
   });
@@ -187,9 +206,9 @@ export function view(h) {
     // делает с «Потрачено». Основа суммы («обычно за месяц», конверт) — на экране регулярной (было: «регулярная: сумма
     // в норме — медиана за 3 мес.»)
     glyph: r.kind === 'mandatory' ? '📌' : '🔁',
-    spent: fmt(r.spent), limit: fmt(r.limit), over: `+${fmt(r.over)}`, fill: r.limit / r.spent,
+    spent: fmt(r.spent), limit: fmt(r.limit), over: overBy(r.over), fill: r.limit / r.spent,
     limitAt: r.limit / r.spent, color: COLOR.over, state: '', heat: r.limit ? r.spent / r.limit : Infinity,
-    hint: overHint(r.over) }));
+    hint: OVER_HINT }));
   // порядок лимитов — сервера (горячие первыми); строка регулярной встаёт перед первым лимитом холоднее её
   for (const r of regulars.sort((a, b) => b.heat - a.heat)) {
     const at = limits.findIndex((l) => !(l.ops && l.ops.regular) && l.heat < r.heat);
@@ -215,6 +234,7 @@ export function view(h) {
     // решение 63: строка резерва видна сразу — под горячими лимитами, даже если по порядку она дальше первых TOP
     top: [...limits.slice(0, TOP), ...limits.slice(TOP).filter((l) => l.note)],
     limitsShown: Math.min(TOP, limits.length),
+    overview: overview(h, rv, h.regulars || []),
     // R-9 (ревью 26.11): «Показать все 16» — это 13 лимитов и 3 строки сверх нормы; кнопка говорит, из чего число
     moreLabel: `Показать все: ${count(h.limits.length, ['лимит', 'лимита', 'лимитов'])}`
       + (regulars.length ? ` и ${count(regulars.length, ['трата', 'траты', 'трат'])} сверх нормы` : ''),

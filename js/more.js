@@ -109,7 +109,7 @@ function budgetBody(entry, nav) {
   const regular = (r) => h('button', { type: 'button', class: 'line op', 'data-focus': `regular:${r.name}`,
     on: { click: () => openRegular(r) } },
   h('span', { class: 'grow' }, h('span', {}, r.name), r.note ? h('span', { class: 'muted small' }, r.note) : null),
-  h('span', { class: 'nowrap' }, r.sum), icon(ICONS.right, 16));
+  h('span', { class: r.tone ? `nowrap ${r.tone}` : 'nowrap' }, r.sum), icon(ICONS.right, 16));   // выигрыш — зелёным
   // R-11 (решение 98, ответ 5): строка с полосой «потрачено / в норме» — как лимит на «Здоровье»
   const gauged = (r) => limitRow(r.gauge, { open: () => openRegular(r) });
   // R-12: жильё и кредит РФ — «✓ оплачено 11 ноября · по договору 650 €» («ждёт оплаты»), разница — строкой ниже

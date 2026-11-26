@@ -85,7 +85,7 @@ test('решение 82: резерв покрыл не всё — «части�
   assert.deepEqual(v.limits.filter((l) => l.over).map((l) => l.color), ['var(--bar-orange)', 'var(--bar-orange)']);
   const short = { ...covered, limits: covered.limits.map((l) => (l.state === 'covered' ? { ...l, state: 'over' } : l)) };
   const s = view(await served(short));
-  assert.equal(s.reserve, 'Резерв кончился: свои 0 + перерасход других 3\u00a0000 из\u00a03\u00a0001 — «подарки», «банк и страховки».');   // R-10, повтор п. 8
+  assert.equal(s.reserve, 'Резерв кончился: свои 0 + перерасход других 3\u00a0000 из\u00a03\u00a0001 — «подарки», «банк и страховки». Не\u00a0покрыто\u00a01: на столько меньше осталось другим лимитам.');   // R-10, повтор п. 8; вывод — повтор 2 ревью
   assert.deepEqual(s.limits.filter((l) => l.over).map((l) => l.color), ['var(--bad)', 'var(--bad)']);
 });
 

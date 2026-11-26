@@ -90,12 +90,12 @@ test('Ангелине — без «Весь доход» (сервер его �
   assert.ok(!JSON.stringify(v).includes('Весь доход'));
 });
 
-test('лимиты: горячие сверху, «+N» сверх лимита; цвет полоски — по state сервера (решения 69, 82)', () => {
+test('лимиты: горячие сверху, «сверх N» словами (повтор 2 ревью, находка 1: было «+N»); цвет полоски — по state сервера (решения 69, 82)', () => {
   const v = view(NOW);
   const [pets, travel, food] = v.limits;
   assert.equal(pets.name, 'питомцы');
   assert.deepEqual(pets.ops, { limit: 'питомцы' });               // тап — операции лимита за месяц (решение 3)
-  assert.equal(pets.over, '+2 000');
+  assert.equal(pets.over, 'сверх 2 000');
   assert.equal(pets.color, 'var(--bar-orange)');                 // covered — решение 63: перерасход покрыл резерв
   const bare = { ...NOW, limits: [{ ...NOW.limits[0], state: 'over' }] };
   assert.equal(view(bare).limits[0].color, 'var(--bad)');        // over — резерв не покрыл: красная
@@ -200,8 +200,9 @@ test('резерв: под лимитами — из чего он (свои + �
   assert.equal(view(NOW).reserve, 'Резерв: свои 0 + перерасход других 2 000 — покрыл «питомцы».');
   // R-10 (ревью 26.11): резерв кончился — сколько покрыл из всего перерасхода; «частично» относилось к одному слову.
   // Повтор ревью (п. 8): и свои траты резерва — как у резерва, который не кончился
-  assert.equal(view(SHORT).reserve, sp('Резерв кончился: свои 0 + перерасход других 3 000 из\u00a05 000 — «питомцы», «одежда».'));
-  assert.equal(view(SHORT).limits.find((l) => l.note).hint, view(SHORT).reserve);
+  assert.equal(view(SHORT).reserve, sp('Резерв кончился: свои 0 + перерасход других 3 000 из\u00a05 000 — «питомцы», «одежда». Не\u00a0покрыто\u00a02 000: на столько меньше осталось другим лимитам.'));
+  // строка резерва — без «Резерв кончился:»: это сказано в строке итога над лимитами (повтор 2 ревью, находка 2)
+  assert.equal(view(SHORT).limits.find((l) => l.note).hint, view(SHORT).reserve.replace(/^Резерв кончился: /, ''));
   assert.ok(!JSON.stringify(view(SHORT)).includes('перевал'));
   const calm = { ...NOW, limits: NOW.limits.filter((l) => !l.eaten && !l.over) };
   assert.equal(view(calm).reserve, '');
@@ -213,10 +214,10 @@ test('резерв кончился — «свои 10 925 + перерасход
   const res = L('резерв', 62886, 62886, 'fast', { eaten: 51961 });
   const v = view({ ...NOW, limits: [L('транспорт', 70000, 20000, 'over'), L('здоровье', 56946, 14103, 'over'), res] });
   // «из 92 843» не рвётся на две строки (стенд, 320 px: «из» в конце строки, число — на следующей)
-  assert.equal(v.reserve, sp('Резерв кончился: свои 10 925 + перерасход других 51 961 из\u00a092 843 — «транспорт», «здоровье».'));
+  assert.equal(v.reserve, sp('Резерв кончился: свои 10 925 + перерасход других 51 961 из\u00a092 843 — «транспорт», «здоровье». Не\u00a0покрыто\u00a040 882: на столько меньше осталось другим лимитам.'));
   const row = v.limits.find((l) => l.name === 'резерв');
   assert.deepEqual([row.spent, row.limit], [sp('62 886'), sp('62 886')]);
-  assert.equal(row.hint, v.reserve);
+  assert.equal(row.hint, v.reserve.replace(/^Резерв кончился: /, ''));
 });
 
 test('строка резерва открывает операции перерасхода других; шапка — чей перерасход и сколько покрыто (решение 51)', () => {
@@ -292,7 +293,7 @@ const SHORT = { ...NOW, limits: [{ ...NOW.limits[0], state: 'over' }, ...NOW.lim
 
 test('решение 63: перерасход, который покрыл резерв, — оранжевая полоска и «покрыто резервом»; резерв кончился — красная', () => {
   const pets = view(NOW).limits.find((l) => l.name === 'питомцы');
-  assert.deepEqual([pets.covered, pets.color, pets.hint, pets.over], [true, 'var(--bar-orange)', 'покрыто резервом', sp('+2 000')]);
+  assert.deepEqual([pets.covered, pets.color, pets.hint, pets.over], [true, 'var(--bar-orange)', 'покрыто резервом', sp('сверх 2 000')]);
   for (const l of view(SHORT).limits.filter((x) => x.over)) {
     assert.deepEqual([l.covered, l.color, l.state, l.hint], [false, 'var(--bad)', 'сверх лимита', undefined], l.name);
   }

@@ -135,13 +135,15 @@ const pagesOf = (entry) => (entry.ctx && entry.ctx.days
   ? entry.pages.map((p) => ({ ...p, days: (p.days || []).map(({ plain, ...d }) => d) })) : entry.pages);
 
 function days(entry) {
-  // страницы по 50: день на стыке страниц — одним днём (сумма дня от сервера — за весь день)
+  // страницы по 50: день на стыке страниц — одним днём (сумма дня от сервера — за весь день). Экран «Обмен валюты» —
+  // день выигрышем или потерей (fx, повтор 2 ревью p48a, находка 1)
+  const fx = !!(entry.ctx && entry.ctx.params && entry.ctx.params.regular === FX);
   const out = [];
   for (const p of pagesOf(entry)) {
     for (const d of p.days) {
       const last = out[out.length - 1];
       if (last && last.date === d.date) last.ops.push(...d.ops);
-      else out.push({ ...d, ops: [...d.ops] });
+      else out.push({ ...d, fx, ops: [...d.ops] });
     }
   }
   return out;
@@ -423,7 +425,8 @@ export function opsScreen(entry, nav) {
   } else if (!list.length) {
     body = emptyBody(entry, nav);
   } else {
-    body = h('div', { class: 'stack' }, marksBlock(entry, nav), ...list.map((d) => h('div', { class: 'day' },
+    // «Обмен валюты»: день выигрыша или потери — цвет итога даёт класс дня (style.css)
+    body = h('div', { class: 'stack' }, marksBlock(entry, nav), ...list.map((d) => h('div', { class: d.fx ? `day ${d.sum < 0 ? 'gain' : 'loss'}` : 'day' },
       dayHead(d),
       h('section', { class: 'card list' }, ...d.ops.map((op, i) => opLine(opRow(op, { inCategory: !!(params.cat || params.limit || params.regular),
         account: entry.ctx ? '' : entry.f.account, bare: !!params.regular }), nav,

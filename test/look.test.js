@@ -11,7 +11,7 @@ import { opRow } from '../js/ops.js';
 import { planCard } from '../js/more.js';
 import { readFileSync } from 'node:fs';
 
-const OVER = { name: 'транспорт', spent: '24 900', limit: '5 800', over: '+19 100', fill: 5800 / 24900, limitAt: 5800 / 24900,
+const OVER = { name: 'транспорт', spent: '24 900', limit: '5 800', over: 'сверх 19 100', fill: 5800 / 24900, limitAt: 5800 / 24900,
   color: 'var(--bar-orange)', state: 'сверх лимита, покрыто резервом', hint: 'покрыто резервом', covered: true };
 const UNDER = { name: 'путешествия', spent: '15 400', limit: '17 600', over: '', fill: 0.875, limitAt: null,
   color: 'var(--bar-yellow)', state: 'выше плана' };

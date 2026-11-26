@@ -1,6 +1,6 @@
 // «Бюджет» (этап 7) — продолжение «Все лимиты» на «Здоровье»: ответ /api/budget -> что видит человек. Куда идёт доход
 // (fin limits) и деньги на месяц (fin plan) — только Алексею: Ангелине сервер их не шлёт (решение 11).
-import { amountLines, fmt, overHint } from './health.js';
+import { amountLines, fmt, OVER_HINT } from './health.js';
 import { monthTitle } from './ops.js';
 import { FX, dealOf, regularOf } from './regular.js';
 
@@ -42,18 +42,24 @@ const glyphOf = (name) => GLYPH[name] || (/^Регулярные/.test(name) ? '
 // (решение 78, правка 1): перебор — плашкой «+N», штриховкой и подписью про «Потрачено», как на «Здоровье» (R-9).
 // Числа — envelopes «Здоровья» месяца; limit — сумма с конвертом (спортпит), под полосой — из чего она. Вернули больше,
 // чем потратили (обмен с выигрышем, R-13), — без полосы и «из»: «+189», словами — в подписи. Повтор ревью p46a (язык):
-// «выигрыш на обмене» (было «к курсу НБС»), «сверх нормы» (было «перебор») — как на «Здоровье» и в чате
+// «выигрыш на обмене» (было «к курсу НБС»), «сверх нормы» (было «перебор») — как на «Здоровье» и в чате.
+// Повтор 2 ревью p48a (находка 1): «+N» — только выигрыш, и он зелёный (было без цвета рядом с красной плашкой
+// перерасхода); потеря на обмене в пределах нормы — «−N» и «потеря на обмене», как строка обмена в «Операциях»
 function withGauge(row, e, note) {
+  const norm = BARE_NOTE.test(note) ? note : '';
   if (e.spent < 0) {
     const word = row.name === FX ? 'выигрыш на обмене' : 'вернули больше, чем потратили';
-    return { ...row, sum: `+${fmt(-e.spent)}`, note: [word, BARE_NOTE.test(note) ? note : ''].filter(Boolean).join(' · ') };
+    return { ...row, sum: `+${fmt(-e.spent)}`, tone: 'good', note: [word, norm].filter(Boolean).join(' · ') };
+  }
+  if (row.name === FX && e.spent > 0 && !(e.over > 0)) {
+    return { ...row, sum: fmt(-e.spent), tone: 'warn', note: ['потеря на обмене', norm].filter(Boolean).join(' · ') };
   }
   const over = e.over > 0;
   const limitAt = over ? e.limit / e.spent : null;
-  const hint = over ? overHint(e.over)
+  const hint = over ? OVER_HINT
     : e.carry ? `в норме ${fmt(e.norm)} + конверт ${fmt(e.carry)}` : BARE_NOTE.test(note) ? note : '';
   return { ...row, note: '', gauge: { name: row.name, focus: `regular:${row.name}`, spent: fmt(e.spent), limit: fmt(e.limit),
-    over: over ? `+${fmt(e.over)}` : '', fill: limitAt ?? (e.limit > 0 ? Math.min(1, e.spent / e.limit) : 0), limitAt,
+    over: over ? `сверх\u00a0${fmt(e.over)}` : '', fill: limitAt ?? (e.limit > 0 ? Math.min(1, e.spent / e.limit) : 0), limitAt,
     color: over ? 'var(--bad)' : 'var(--bar-green)', state: '', hint } };
 }
 const BARE_NOTE = /^в норме /;

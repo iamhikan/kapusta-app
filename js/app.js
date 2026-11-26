@@ -5,7 +5,7 @@ import { balanceRow, fmt, shiftMonth, view } from './health.js';
 import { BOX, curve } from './chart.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
 import { tile } from './tiles.js';
-import { limitLegend, limitRow } from './limitrow.js';
+import { limitLegend, limitRow, limitsSummary } from './limitrow.js';
 import { summary } from './summary.js';
 import { cardScreen, loadCard, loadOps, monthHead, newOps, opsScreen, problemScreen } from './screens.js';
 import { catsScreen, loadCats, newCats } from './catscreen.js';
@@ -315,6 +315,7 @@ function limits(v, data) {
     // решение 49: легенда цветов полосок — одной строкой у заголовка, а не абзацем под списком
     // правка 1: легенда — одной строкой под заголовком (было — справа от него, в две строки по 12 px)
     h('div', { class: 'section-head' }, h('h2', {}, 'Лимиты')),
+    limitsSummary(v.overview),   // итог: сколько сверх и что с резервом (повтор 2 ревью, находка 2)
     limitLegend(v.legend),
     h('section', { class: 'card list' }, ...shown.map((l) => limitRow(l, { plan: data.closed ? null : v.plan,
       open: () => opsOf(l.name, l.ops, data, !!l.note, l.limitWord) })), more),
