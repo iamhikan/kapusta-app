@@ -105,8 +105,9 @@ test('R-9: строка перебора — «🔁 банк +406 … в «По�
   for (const name of ['банк', 'коммуналка', 'спортпит']) {
     assert.doesNotMatch(shown(rowOf(name)) + heard(rowOf(name)), /медиана|сумма в норме|конверт|регулярная:/, name);
   }
-  // лимит — без значка
+  // лимит — без значка; «+406» не уходит один на строку при 320 px
   assert.equal(one(rowOf('красота'), 'limit-glyph'), null);
+  assert.match(v.limits.find((l) => l.name === 'банк').hint, /перебор\u00a0\+406$/);
 });
 
 // E10 (Алексей 20.11.2026): «нажать на категорию регулярных трат и увидеть все её транзакции, внутри — свой
@@ -390,4 +391,60 @@ test('R-11: «Бюджет» — строка регулярной с полос
   edu.handlers.click({});
   const entry = nav.pushed.at(-1);
   assert.deepEqual([entry.ctx.title, entry.ctx.params, entry.ctx.limitWord], ['Образование', { regular: 'образование' }, 'В норме']);
+});
+
+// R-12 (решение 98, ответ 5): шапка жилья и кредита РФ — платёж в валюте договора и «✓ оплачено <день>» (или «ждёт
+// оплаты»), без полосы; динары и сумма в норме по курсу 1-го — строкой ниже; разница — своей строкой: в «Потрачено»
+// не идёт. Было: «76 460 сверх 70» с полной зелёной полосой, «32 009 из 32 855» (обещание остатка, которого нет)
+const deal46 = (key, basis, spent, norm, due, paid, on) => ({ ...deal(key, basis, spent, norm), due, paid, paid_on: on });
+const NOV46 = { ...NOV, envelopes: [...NOV_ENV,
+  deal46('жильё', 'по договору 650 €', 76460, 76390, { number: 650, currency: 'EUR' }, { number: 650, currency: 'EUR' },
+    ['2026-11-11']),
+  deal46('кредит РФ', 'по графику 25 000 ₽', 32009, 32855, { number: 25000, currency: 'RUB' },
+    { number: 24937.26, currency: 'RUB' }, ['2026-11-13'])] };
+const dealHead = (tree) => {
+  const card = all(tree, 'card')[0];
+  const note = one(card, 'big').kids[1];
+  return { sum: flat(seen(one(card, 'big-num'))), note: flat(seen(note)), noteClass: note.getAttribute('class'),
+    bar: !!one(card, 'bar'), sub: flat(seen(one(card, 'head-sub'))), basis: flat(seen(one(card, 'basis') || '')),
+    rate: flat(seen(one(card, 'rate') || '')) };
+};
+
+test('R-12: жильё — «650 € ✓ оплачено 11 ноября», без полосы; разница с нормой — своей строкой', async () => {
+  const nav = navOf({ health: { '2026-11': await served(NOV46) },
+    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, ALEKSEY)) },
+    tx: { 'жильё 2026-11': { total: 76460, count: 1 }, 'кредит РФ 2026-11': { total: 32009, count: 1 } } });
+  assert.deepEqual(dealHead(opsScreen(await openFromBudget(nav, '2026-11', 'жильё'), nav)), { sum: '650 €',
+    note: '✓ оплачено 11 ноября', noteClass: 'good', bar: false,
+    sub: '76 460 RSD · в норме 76 390 по курсу 1 ноября · 1 запись · 1–20 ноября',
+    basis: 'сумма в норме — по договору 650 €', rate: '+70 — курс дня оплаты, в «Потрачено» не идёт' });
+  assert.deepEqual(dealHead(opsScreen(await openFromBudget(nav, '2026-11', 'кредит РФ'), nav)), { sum: '24 937 ₽',
+    note: '✓ оплачено 13 ноября', noteClass: 'good', bar: false,
+    sub: '32 009 RSD · в норме 32 855 по курсу 1 ноября · 1 запись · 1–20 ноября',
+    basis: 'сумма в норме — по графику 25 000 ₽', rate: '−846 — курс дня оплаты и сумма платежа, в «Потрачено» не идёт' });
+});
+
+test('R-12: до оплаты — «650 € ждёт оплаты», без полосы и без строки курса; в «Бюджете» — те же слова', async () => {
+  const none = { ...NOV46, envelopes: NOV46.envelopes.map((e) => (e.contract
+    ? { ...e, spent: 0, over: 0, paid: { ...e.paid, number: 0 }, paid_on: [] } : e)) };
+  const nav = navOf({ health: { '2026-11': await served(none) },
+    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG)) } });
+  assert.deepEqual(dealHead(opsScreen(await openFromBudget(nav, '2026-11', 'жильё'), nav)), { sum: '650 €',
+    note: 'ждёт оплаты', noteClass: 'muted ', bar: false, sub: 'в норме 76 390 по курсу 1 ноября · 1–20 ноября',
+    basis: 'сумма в норме — по договору 650 €', rate: '' });
+  const screen = moreScreen({ kind: 'budget', month: '2026-11', data: nav.budget('2026-11') }, nav);
+  const rent = all(screen, '<button').find((b) => b.getAttribute('data-focus') === 'regular:жильё');
+  assert.equal(flat(shown(rent)), 'жильё ждёт оплаты · по договору 650 € 76 390');
+});
+
+test('R-12: «Бюджет» — строка жилья: «✓ оплачено 11 ноября · по договору 650 €» и разница строкой ниже', async () => {
+  const nav = navOf({ health: { '2026-11': await served(NOV46) },
+    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, ALEKSEY)) } });
+  const screen = moreScreen({ kind: 'budget', month: '2026-11', data: nav.budget('2026-11') }, nav);
+  const line = (name) => all(screen, '<button').find((b) => b.getAttribute('data-focus') === `regular:${name}`);
+  assert.equal(flat(shown(line('жильё'))),
+    'жильё ✓ оплачено 11 ноября · по договору 650 € +70 — курс дня оплаты, в «Потрачено» не идёт 76 390');
+  assert.equal(flat(shown(line('кредит РФ'))), 'кредит РФ ✓ оплачено 13 ноября · 24 937 ₽, по графику 25 000 ₽'
+    + ' −846 — курс дня оплаты и сумма платежа, в «Потрачено» не идёт 32 855');
+  assert.equal(one(line('жильё'), 'good').kids.join(''), '✓ оплачено 11 ноября');
 });

@@ -130,6 +130,8 @@ test('R-15: «по договору 650 €», «по графику 25 000 ₽�
 // (вопрос «где мы по счетам месяца» — 9 нажатий). Теперь у каждой регулярной (и коммуналки) — потрачено против суммы
 // в норме и полоса, как у лимита: перебор — плашкой «+N», штриховкой и подписью про «Потрачено» (как на «Здоровье»).
 // У группы регулярных — «ушло N из M». Числа — envelopes «Здоровья» месяца: живой ответ 26.11.2026
+// неразрывные пробелы (числа, «перебор +N», валюта) — проверяются отдельно, здесь — слова и числа
+const plain = (x) => JSON.parse(JSON.stringify(x).replace(/\u00a0/g, ' '));
 const ENV = (key, spent, norm, extra = {}) => ({ key, label: key, kind: 'regular', basis: 'обычно за месяц', spent,
   limit: norm + (extra.carry || 0), norm, carry: 0, over: Math.max(0, spent - norm - (extra.carry || 0)), ...extra });
 const NOV_HEALTH = { month: '2026-11', closed: false, envelopes: [ENV('спортпит', 0, 5411, { basis: 'среднее за 3 мес.' }),
@@ -148,7 +150,7 @@ test('R-11: регулярные в «Бюджете» — «потрачено 
   const v = budgetView({ ...ALEKSEY, groups: NOV_GROUPS }, NOV_HEALTH);
   const gauges = v.groups.map((g) => g.rows.map((r) => (r.gauge
     ? [r.gauge.name, r.gauge.spent, r.gauge.limit, r.gauge.over, r.gauge.color, r.gauge.hint, r.gauge.focus] : [r.name, r.sum, r.note])));
-  assert.deepEqual(gauges, [
+  assert.deepEqual(plain(gauges), plain([
     [['коммуналка', sp('13 491'), sp('12 045'), sp('+1 446'), 'var(--bad)', sp('в «Потрачено» — только перебор +1 446'), 'regular:коммуналка']],
     [['спортпит', '0', sp('5 411'), '', 'var(--bar-green)', '', 'regular:спортпит'],
       ['подписки', sp('13 786'), sp('20 684'), '', 'var(--bar-green)', '', 'regular:подписки'],
@@ -158,14 +160,15 @@ test('R-11: регулярные в «Бюджете» — «потрачено 
       ['банк', sp('2 941'), sp('2 535'), '+406', 'var(--bad)', 'в «Потрачено» — только перебор +406', 'regular:банк'],
       // R-13: вернули больше, чем потратили — без «из» и полосы; «5 €» — «в норме 5 €» (R-15)
       ['обмен валюты', '+189', 'выигрыш к курсу НБС · в норме 5 €']],
-    [['ПР коммуналка', '915', 'в среднем с мая 2026']]]);
+    [['ПР коммуналка', '915', 'в среднем с мая 2026']]]));
   const subs = v.groups[1].rows[1].gauge;
   assert.ok(Math.abs(subs.fill - 13786 / 20684) < 1e-9 && subs.limitAt == null);
   const edu = v.groups[1].rows[3].gauge;
   assert.ok(Math.abs(edu.fill - 14322 / 15684) < 1e-9 && edu.limitAt === edu.fill);   // штриховка — сверх суммы
   // у группы регулярных — сколько ушло из суммы группы; значки групп — как метки в «Операциях» и в чате
-  assert.deepEqual(v.groups.map((g) => [g.name, g.sum, g.glyph]), [['Обязательные', sp('12 045'), '📌'],
-    ['Регулярные по карте', sp('ушло 35 290 из 47 812'), '🔁'], ['ПР', '915', '']]);
+  assert.deepEqual(plain(v.groups.map((g) => [g.name, g.sum, g.glyph])), [['Обязательные', '12 045', '📌'],
+    ['Регулярные по карте', 'ушло 35 290 из 47 812', '🔁'], ['ПР', '915', '']]);
+  assert.equal(v.groups[1].sum, sp('ушло\u00a035 290 из\u00a047 812'));   // узко — перенос только перед «из»
 });
 
 test('R-11: спортпит с конвертом — «из» суммы с конвертом, подпись — из чего она; без envelopes — строки как были', () => {
@@ -178,4 +181,40 @@ test('R-11: спортпит с конвертом — «из» суммы с к
   assert.deepEqual(old.groups[0].rows.map((r) => [r.name, r.sum, r.note, r.gauge]).slice(0, 2),
     [['спортпит', sp('5 411'), 'в среднем за 3 мес.', undefined], ['подписки', sp('20 684'), 'обычно за месяц', undefined]]);
   assert.equal(old.groups[0].sum, sp('47 812'));
+});
+
+// R-12 (решение 98, ответ 5): договорный платёж — «оплачено» или «ждёт оплаты», а не лимит. Было: «76 460 сверх 70» с
+// зелёной полосой и «32 009 из 32 855» — обещание остатка, которого нет. Стало: «✓ оплачено» в валюте договора (due,
+// paid, paid_on fin), разница с суммой в норме — отдельной строкой: она в «Потрачено» не идёт (E14)
+const DEAL = (key, basis, spent, norm, due, paid, on) => ({ key, label: key, kind: 'mandatory', basis, spent, limit: norm,
+  norm, carry: 0, over: Math.max(0, spent - norm), contract: true, due, paid, paid_on: on });
+const DEALS = { month: '2026-11', closed: false, envelopes: [
+  DEAL('жильё', 'по договору 650 €', 76460, 76390, { number: 650, currency: 'EUR' }, { number: 650, currency: 'EUR' },
+    ['2026-11-11']),
+  DEAL('кредит РФ', 'по графику 25 000 ₽', 32009, 32855, { number: 25000, currency: 'RUB' },
+    { number: 24937.26, currency: 'RUB' }, ['2026-11-13'])] };
+const MANDATORY = { ...ALEKSEY, groups: [{ name: 'Обязательные', rsd: 109245, avg_months: null,
+  rows: [{ name: 'жильё', rsd: 76390, note: '(650 €)' }, { name: 'кредит РФ', rsd: 32855, note: '(25 000 ₽)' }] }] };
+
+test('R-12: жильё и кредит РФ — «✓ оплачено» в валюте договора, разница — своей строкой; до оплаты — «ждёт оплаты»', () => {
+  const rows = budgetView(MANDATORY, DEALS).groups[0].rows;
+  assert.deepEqual(plain(rows.map((r) => [r.name, r.sum, r.note, r.deal, r.gauge ?? null])), plain([
+    ['жильё', sp('76 390'), '', { paid: true, status: '✓ оплачено 11 ноября', terms: 'по договору 650 €',
+      rate: '+70 — курс дня оплаты, в «Потрачено» не идёт' }, null],
+    ['кредит РФ', sp('32 855'), '', { paid: true, status: '✓ оплачено 13 ноября',
+      terms: '24 937 ₽, по графику 25 000 ₽', rate: '−846 — курс дня оплаты и сумма платежа, в «Потрачено» не идёт' },
+    null]]));
+  assert.equal(rows[1].deal.terms, '24\u00a0937\u00a0₽, по графику 25\u00a0000\u00a0₽');   // при 320 px было «25 / 000 ₽»
+  // платежа ещё нет — «ждёт оплаты», разницы нет; закрытый месяц без платежа — «платежа не было»
+  const none = { ...DEALS, envelopes: DEALS.envelopes.map((e) => ({ ...e, spent: 0, over: 0, paid: { ...e.paid, number: 0 },
+    paid_on: [] })) };
+  assert.deepEqual(plain(budgetView(MANDATORY, none).groups[0].rows.map((r) => [r.deal.status, r.deal.terms, r.deal.rate])),
+    [['ждёт оплаты', 'по договору 650 €', ''], ['ждёт оплаты', 'по графику 25 000 ₽', '']]);
+  assert.equal(budgetView(MANDATORY, { ...none, closed: true }).groups[0].rows[0].deal.status, 'платежа не было');
+  // два платежа в месяце — оба дня; прежний сервер (без due и paid) — подпись, как была
+  const two = { ...DEALS, envelopes: [{ ...DEALS.envelopes[0], paid_on: ['2026-11-04', '2026-11-20'] }] };
+  assert.equal(budgetView(MANDATORY, two).groups[0].rows[0].deal.status, '✓ оплачено 4 и 20 ноября');
+  const old = { ...DEALS, envelopes: DEALS.envelopes.map(({ due, paid, paid_on: on, ...e }) => e) };
+  assert.deepEqual(budgetView(MANDATORY, old).groups[0].rows.map((r) => [r.note, r.deal]),
+    [['по договору 650 €', undefined], ['по графику 25 000 ₽', undefined]]);
 });

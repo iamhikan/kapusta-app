@@ -183,7 +183,7 @@ export function view(h) {
     glyph: r.kind === 'mandatory' ? '📌' : '🔁',
     spent: fmt(r.spent), limit: fmt(r.limit), over: `+${fmt(r.over)}`, fill: r.limit / r.spent,
     limitAt: r.limit / r.spent, color: COLOR.over, state: '', heat: r.limit ? r.spent / r.limit : Infinity,
-    hint: `в «Потрачено» — только перебор +${fmt(r.over)}` }));
+    hint: `в «Потрачено» — только перебор\u00a0+${fmt(r.over)}` }));
   // порядок лимитов — сервера (горячие первыми); строка регулярной встаёт перед первым лимитом холоднее её
   for (const r of regulars.sort((a, b) => b.heat - a.heat)) {
     const at = limits.findIndex((l) => !(l.ops && l.ops.regular) && l.heat < r.heat);

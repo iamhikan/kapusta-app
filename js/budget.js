@@ -2,7 +2,7 @@
 // (fin limits) и деньги на месяц (fin plan) — только Алексею: Ангелине сервер их не шлёт (решение 11).
 import { amountLines, fmt } from './health.js';
 import { monthTitle } from './ops.js';
-import { FX, regularOf } from './regular.js';
+import { FX, dealOf, regularOf } from './regular.js';
 
 const FOR_MONTH = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь',
   'ноябрь', 'декабрь'];
@@ -49,7 +49,7 @@ function withGauge(row, e, note) {
   }
   const over = e.over > 0;
   const limitAt = over ? e.limit / e.spent : null;
-  const hint = over ? `в «Потрачено» — только перебор +${fmt(e.over)}`
+  const hint = over ? `в «Потрачено» — только перебор\u00a0+${fmt(e.over)}`
     : e.carry ? `в норме ${fmt(e.norm)} + конверт ${fmt(e.carry)}` : BARE_NOTE.test(note) ? note : '';
   return { ...row, note: '', gauge: { name: row.name, focus: `regular:${row.name}`, spent: fmt(e.spent), limit: fmt(e.limit),
     over: over ? `+${fmt(e.over)}` : '', fill: limitAt ?? (e.limit > 0 ? Math.min(1, e.spent / e.limit) : 0), limitAt,
@@ -90,12 +90,15 @@ export function budgetView(b, health = null) {
         const row = { name: r.name, sum: fmt(r.rsd), note: noteOf(r, /^Регулярные/.test(g.name), env),
           ...(g.name !== 'ПР' && regular(r.name) ? { regular: regular(r.name) } : {}) };
         const e = row.regular && env.get(r.name);
+        // R-12: жильё и кредит РФ — «✓ оплачено» в валюте договора и разница строкой; fin до p46a — подпись, как была
+        const deal = e && e.contract ? dealOf(e, !!health.closed) : null;
+        if (deal) return { ...row, note: '', deal: { paid: deal.paid, status: deal.status, terms: deal.terms, rate: deal.rate } };
         return e && !e.contract ? withGauge(row, e, row.note) : row;
       });
       // R-11: у группы регулярных — сколько ушло из её суммы (envelopes есть у каждой строки)
       const spent = g.rows.map((r) => env.get(r.name));
       const gone = /^Регулярные/.test(g.name) && spent.length && spent.every(Boolean)
-        ? `ушло ${fmt(spent.reduce((x, e) => x + e.spent, 0))} из ${fmt(g.rsd)}` : '';
+        ? `ушло\u00a0${fmt(spent.reduce((x, e) => x + e.spent, 0))} из\u00a0${fmt(g.rsd)}` : '';   // узко — перенос только перед «из»
       return { name: g.name, glyph: glyphOf(g.name), sum: gone || fmt(g.rsd),
         sub: g.avg_months ? `в среднем за ${g.avg_months} мес.` : '', rows };
     }),

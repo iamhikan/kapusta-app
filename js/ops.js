@@ -261,6 +261,17 @@ export function headView(ctx, body) {
   // экран дня из «По дням» (R-2): то же число, что клетка, — «как в „Потрачено“» (spent fin); прежний сервер — без него
   const day = ctx.days && body.days && body.days[0];
   const spent = day && day.spent != null ? `в «Потрачено» ${fmt(day.spent)}` : '';
+  // R-12 (решение 98, ответ 5): жильё и кредит РФ — платёж в валюте договора и «✓ оплачено 11 ноября» («ждёт оплаты»),
+  // без полосы: договорный платёж — не лимит. Динары и сумма в норме по курсу 1-го — строкой ниже, разница — своей
+  // строкой (rate): в «Потрачено» не идёт. deal — dealOf (regular.js); fin до p46a — шапка «сверх N», как была
+  if (ctx.deal && lim != null && !ctx.period) {
+    const d = ctx.deal;
+    const nb = (x) => x.replace(/ (?=\S+$)/, '\u00a0');   // «1 запись», «1 ноября» не рвутся на две строки
+    return { title: ctx.title, period: monthTitle(ctx.month), sum: d.sum, note: d.status, tone: '', noteTone: d.paid ? 'good' : '',
+      fill: null, sub: [body.count ? `${fmt(body.total)} RSD` : '', `в норме ${fmt(lim)} по курсу ${nb(`1 ${OF_MONTH[Number(ctx.month.slice(5)) - 1]}`)}`,
+        body.count ? nb(records(body.count)) : '', days].filter(Boolean).join(' · '),
+      basis: ctx.basis ? `сумма в норме — ${ctx.basis}` : '', rate: d.rate };
+  }
   return {
     title: ctx.title, period: ctx.period ? periodTitle(ctx.period) : monthTitle(ctx.month),
     sum: back ? `+${fmt(-body.total)}` : fmt(body.total),
