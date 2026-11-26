@@ -137,7 +137,7 @@ function budgetBody(entry, nav) {
       h('section', { class: 'card list' }, ...g.rows.map((r) => (r.gauge ? gauged(r) : r.deal ? deal(r) : r.regular ? regular(r) : row(r.name, r.sum, r.note)))),
       g.sub ? h('p', { class: 'note-text muted small' }, g.sub) : null]),
     v.savings || v.norm ? h('section', { class: 'card list' }, v.savings ? row(v.savings.name, v.savings.sum, v.savings.note) : null,
-      v.norm ? row(v.norm.name, v.norm.sum, '', 'strong') : null) : null,
+      v.norm ? row(v.norm.name, v.norm.sum, v.norm.note || '', 'strong') : null) : null,
     h('div', { class: 'section-head' }, h('h2', {}, v.limits.title), h('span', { class: 'muted small' }, v.limits.sub)),
     h('section', { class: 'card list' }, ...v.limits.rows.map((r) => h('button', { type: 'button', class: 'line op',
       'data-focus': `limit:${r.name}`, on: { click: () => open(nav, newOps(entry.month, { title: r.name.charAt(0).toUpperCase()
