@@ -55,7 +55,8 @@ test('лимит и категория — «трат «…» нет» и стр
 
 test('экран: «Очистить поиск» снимает запрос и грузит список заново', () => {
   const asked = [];
-  const nav = { today: () => TODAY, accounts: () => [], balanceOf: () => null, queued: () => [], render() {}, focus() {},
+  const focused = [];
+  const nav = { today: () => TODAY, accounts: () => [], balanceOf: () => null, queued: () => [], render() {}, focus: (k) => focused.push(k),
     get: async (p) => { asked.push(p); return { data: { days: [], count: 0, total: 0, next: null } }; } };
   const e = { ...entry({ f: { ...F, q: 'zzzqqq' } }), pages: [{ days: [], count: 0, total: 0, next: null }],
     expanded: new Set() };
@@ -65,6 +66,7 @@ test('экран: «Очистить поиск» снимает запрос и
   const clear = all(screen, '<button').find((b) => seen(b) === 'Очистить поиск');
   clear.handlers.click({});
   assert.equal(e.f.q, '');
+  assert.deepEqual(focused, ['title'], 'фокус — на заголовок экрана: поле поиска скрипт не фокусирует (клавиатура телефона)');
   assert.equal(asked.length, 1);
   assert.doesNotMatch(asked[0], /q=/);
 });

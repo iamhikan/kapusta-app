@@ -293,7 +293,8 @@ export function offlineBody(kind, entry, nav, retry, key = 'retry') {
     h('p', { class: 'small detail muted' }, detailFor(entry.error, isFamily(nav))));
 }
 
-// R-14 (ревью 26.11): пустой список — правдой о своём месте; у поиска — «Очистить поиск» (фокус — в поле поиска)
+// R-14 (ревью 26.11): пустой список — правдой о своём месте; у поиска — «Очистить поиск» (фокус — на заголовок: поле
+// скрипт не фокусирует, иначе откроется клавиатура телефона)
 function emptyBody(entry, nav) {
   const ctx = entry.ctx;
   const g = ctx && ctx.params && ctx.params.regular && nav.health
@@ -301,7 +302,7 @@ function emptyBody(entry, nav) {
   const v = emptyView(entry, g, nav.today());
   return h('div', { class: 'empty' }, h('h2', {}, v.title), v.text ? h('p', { class: 'muted' }, v.text) : null,
     v.clear ? h('button', { type: 'button', class: 'button', 'data-focus': 'clear-q', on: { click: () => {
-      tap(); entry.f.q = ''; entry.typed = ''; nav.focus('ops-q'); loadOps(entry, nav); } } }, 'Очистить поиск') : null);
+      tap(); entry.f.q = ''; entry.typed = ''; nav.focus('title'); loadOps(entry, nav); } } }, 'Очистить поиск') : null);
 }
 
 // R-4 (ревью 26.11): над первым днём — что значат 🔁 и 📌 словами чата, «без 🔁📌» и минус дня (R-8). «Понятно» прячет
