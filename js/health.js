@@ -103,7 +103,7 @@ function reserveNote(r) {
   const own = `свои ${fmt(r.res.spent - r.res.eaten)} + перерасход других ${fmt(r.res.eaten)}`;
   if (r.short) {
     const all = r.hit.reduce((sum, l) => sum + l.over, 0);
-    return `Резерв кончился: ${own} из ${fmt(all)} — ${quoted(r.hit)}.`;
+    return `Резерв кончился: ${own} из\u00a0${fmt(all)} — ${quoted(r.hit)}.`;   // «из» и число — на одной строке
   }
   return `Резерв: ${own} — покрыл ${quoted(r.hit)}.`;
 }
