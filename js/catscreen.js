@@ -99,11 +99,12 @@ export function catRow(v, r, onClick) {
     + `${r.sum} RSD`, `доля ${r.share}`, r.delta ? `${v.cmpHead} ${r.delta}` : ''].filter(Boolean).join(', '),
     'data-focus': `cat:${r.key}`, on: { click: () => onClick(r) } },
   h('span', { class: 'cat-name' }, h('span', { class: 'dot', style: { background: r.color } }),
-    h('span', { class: 'grow' }, h('span', { class: 'ellipsis' }, r.name),
-      !r.bar && r.limit ? h('span', { class: 'muted small limit-of' }, r.limit) : null)),   // «в лимите «дом и хозяйство»» переносится
+    h('span', { class: 'grow' }, h('span', { class: 'ellipsis' }, r.name))),
   h('span', { class: 'num' }, r.sum), h('span', { class: 'num muted small' }, r.share),
   v.cmpHead ? h('span', { class: `num small ${r.deltaTone}` }, r.delta) : null,
-  r.bar ? h('span', { class: 'cat-bar' }, limitBar(r.bar), h('span', { class: 'muted small' }, r.of)) : null);
+  r.bar ? h('span', { class: 'cat-bar' }, limitBar(r.bar), h('span', { class: 'muted small' }, r.of)) : null,
+  // общий лимит — подписью с его числами своей строкой на всю ширину (R-27): в колонке имени при 320 px она резала имя
+  !r.bar && r.limit ? h('span', { class: 'muted small cat-of' }, r.limit) : null);
 }
 
 function list(entry, nav, v) {

@@ -339,7 +339,8 @@ button { -webkit-tap-highlight-color: transparent; }
 .cat-row > :not(:first-child) { text-align: right; }
 .cat-name { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .dot { flex-shrink: 0; width: 10px; height: 10px; border-radius: 50%; }
-.limit-of { display: block; text-wrap: pretty; }   /* «лимит «дом и хозяйство»» — переносом, а не многоточием */
+/* общий лимит на «Категориях» (R-27) — строкой под категорией: «в лимите «здоровье»: 31 144 из 14 103» */
+.cat-row > .cat-of { grid-column: 1 / -1; padding-left: 20px; margin-top: -4px; text-align: left; text-wrap: pretty; }
 .num { white-space: nowrap; font-weight: 600; }
 .num.small { font-weight: 600; }
 .num.muted { font-weight: 400; }

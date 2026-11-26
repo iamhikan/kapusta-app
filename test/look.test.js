@@ -9,6 +9,7 @@ import { barsView } from '../js/cats.js';
 import { cardScreen, opLine } from '../js/screens.js';
 import { opRow } from '../js/ops.js';
 import { planCard } from '../js/more.js';
+import { readFileSync } from 'node:fs';
 
 const OVER = { name: 'транспорт', spent: '24 900', limit: '5 800', over: '+19 100', fill: 5800 / 24900, limitAt: 5800 / 24900,
   color: 'var(--bar-orange)', state: 'сверх лимита, покрыто резервом', hint: 'покрыто резервом', covered: true };
@@ -135,4 +136,17 @@ test('правка 6: «По месяцам» — текущий месяц шт
   const words = all(svg, '<text').map(seen);
   assert.ok(words.includes('по 13.11') && words.includes('норма') && words.includes('210'), words.join('|'));
   assert.ok(!seen(el).includes('светлее'));
+});
+
+// стенд S2 (R-27): подпись общего лимита с числами «в лимите «транспорт»: 26 273 из 5 876» в колонке имени при 320 px
+// резала имя до «тра…» и шла столбиком по слову. Подпись — своей строкой под строкой категории, на всю ширину
+test('R-27: подпись общего лимита — строкой под категорией на всю ширину, имя — в одну строку', () => {
+  const row = catRow({ rowClass: 'cat-row', cmpHead: 'к 1–26.10' }, { key: 'h', name: 'здоровье', sum: '12 351', share: '3 %',
+    delta: '+3 851', deltaTone: 'warn', color: '#43a047', limit: 'в лимите «здоровье»: 31 144 из 14 103', of: '', bar: null }, () => {});
+  const of = one(row, 'cat-of');
+  assert.ok(of && row.kids.includes(of), 'подпись — своя ячейка строки');
+  assert.equal(seen(of), 'в лимите «здоровье»: 31 144 из 14 103');
+  assert.doesNotMatch(seen(one(row, 'cat-name')), /в лимите/);
+  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  assert.match(css, /\.cat-row > \.cat-of \{[^}]*grid-column: 1 \/ -1;[^}]*text-align: left;/);
 });
