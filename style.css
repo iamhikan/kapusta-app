@@ -179,12 +179,14 @@ h1, h2, p { margin: 0; }
 .swatch.plan { border-top: 2px solid var(--muted); }
 .swatch.forecast { border-top: 2px dashed var(--accent); }
 /* легенда цветов полосок — одной строкой у «Лимиты» (решение 49) */
-.section-head:has(.legend) { gap: 12px; }
 .section-head .legend { gap: 2px 8px; justify-content: flex-end; font-size: 12px; }
 .section-head .legend-item { gap: 4px; }
 .swatch-bar { flex-shrink: 0; width: 10px; height: 6px; border-radius: 3px; }
 
-.section-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px; margin-bottom: -8px; }
+/* зазор — и без легенды (повтор ревью p46a, находка 10: при 320 px «ОСТАТКИналичные и карты…»); подпись в две строки —
+   справа, у своего края */
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 0 4px;
+  margin-bottom: -8px; }
 .section-head h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); padding: 8px 0; }
 .list > * + * { border-top: 1px solid var(--line); }
 .limit { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; min-height: 56px;
@@ -426,7 +428,7 @@ section .title { font-size: 17px; font-weight: 600; }
 .line.bal { gap: 12px; padding: 8px 12px 8px 16px; min-height: 56px; }
 .bal-amounts { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; text-align: right; white-space: nowrap; }
 .bal-amounts .num { font-weight: 600; }
-.section-head > span { padding: 8px 0; }
+.section-head > span { padding: 8px 0; text-align: right; }
 .acct-top { display: flex; align-items: center; gap: 12px; }
 .acct-name { font-size: 17px; font-weight: 600; }
 .acct-flow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }

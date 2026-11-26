@@ -5,16 +5,32 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-const RULES = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, sel, body]) => ({
-  sels: sel.trim().split(',').map((s) => s.trim()),
-  decls: Object.fromEntries(body.split(';').map((d) => d.trim()).filter(Boolean).map((d) => {
-    const i = d.indexOf(':');
-    return [d.slice(0, i).trim(), d.slice(i + 1).trim()];
-  })),
-}));
+// правила по порядку в файле; у правил внутри @media — его условие (media), у прочих — null
+const RULES = [];
+{
+  let media = null;
+  for (const m of css.matchAll(/@media([^{]+)\{|([^{}@]+)\{([^{}]*)\}|\}/g)) {
+    if (m[1] != null) { media = m[1].trim(); continue; }
+    if (m[2] == null) { media = null; continue; }   // конец блока @media
+    RULES.push({ media, sels: m[2].trim().split(',').map((s) => s.trim()),
+      decls: Object.fromEntries(m[3].split(';').map((d) => d.trim()).filter(Boolean).map((d) => {
+        const i = d.indexOf(':');
+        return [d.slice(0, i).trim(), d.slice(i + 1).trim()];
+      })) });
+  }
+}
 
-// объявления правил с этим селектором, по порядку в файле
-const decls = (sel) => Object.assign({}, ...RULES.filter((r) => r.sels.includes(sel)).map((r) => r.decls));
+// условие @media при ширине окна w (CSS px): только max-width и min-width в px; прочие условия — не выполнены
+function fits(media, w) {
+  if (media == null) return true;
+  const parts = [...media.matchAll(/\((max|min)-width:\s*([\d.]+)px\)/g)];
+  if (!parts.length) return false;
+  return parts.every(([, side, n]) => (side === 'max' ? w <= Number(n) : w >= Number(n)));
+}
+
+// объявления правил с этим селектором, по порядку в файле; w — ширина окна (без неё — только правила вне @media)
+const decls = (sel, w = null) => Object.assign({}, ...RULES.filter((r) => r.sels.includes(sel)
+  && (w == null ? r.media == null : fits(r.media, w))).map((r) => r.decls));
 const THEMES = { light: decls(':root'), dark: { ...decls(':root'), ...decls(':root[data-scheme="dark"]') } };
 
 function resolve(value, vars) {
@@ -88,11 +104,11 @@ const ratio = (a, b) => {
 
 // стиль элемента по его классам: правила из одних классов («.chip», «.chip.bad»), что подходят, — по числу классов,
 // затем по порядку в файле (как каскад для таких селекторов)
-function styleOf(classes) {
+function styleOf(classes, w = null) {
   const has = new Set(classes.split(/\s+/).filter(Boolean));
   const hits = [];
   RULES.forEach((r, i) => r.sels.forEach((s) => {
-    if (!/^(\.[\w-]+)+$/.test(s)) return;
+    if (!/^(\.[\w-]+)+$/.test(s) || !(w == null ? r.media == null : fits(r.media, w))) return;
     const need = s.slice(1).split('.');
     if (need.every((c) => has.has(c))) hits.push([need.length, i, r.decls]);
   }));
@@ -423,4 +439,14 @@ test('R-31 п. 3 (стенд S5): имя на «Категориях» — до 
   const d = decls('.cat-row .cat-name .ellipsis');
   assert.equal(d['-webkit-line-clamp'], '2');
   assert.equal(d['white-space'], 'normal');
+});
+
+// ——— p48a: вёрстка и фокус по повтору ревью p46a (docs/ui-review-2026-11-26.md, «Новые и оставшиеся находки») ———
+
+test('находка 10: заголовок раздела и подпись справа — с зазором и без легенды (320 px: «ОСТАТКИналичные и карты…»)', () => {
+  // зазор был только у заголовка с легендой (.section-head:has(.legend)); легенда давно ушла под заголовок
+  const [row, col = row] = (decls('.section-head').gap || '').split(/\s+/);
+  assert.ok(px(col) >= 8, `зазор ${decls('.section-head').gap}`);
+  // подпись в две строки при 320 px — справа, у своего края, как итог дня (R-33)
+  assert.equal(decls('.section-head > span')['text-align'], 'right');
 });
