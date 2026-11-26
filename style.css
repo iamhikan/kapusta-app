@@ -227,6 +227,8 @@ h1, h2, p { margin: 0; }
 .problem p { color: var(--muted); }
 .problem-icon { color: var(--muted); }
 .problem .detail { padding-top: 12px; overflow-wrap: anywhere; }
+/* S9C: ошибка «Здоровья» — с вкладками внизу (js/api.js, TABS) */
+.problem.with-tabs { padding-bottom: calc(84px + var(--tg-safe-area-inset-bottom, 0px)); }
 .logo { width: 72px; height: 72px; border-radius: 50%; background: #3f9d5f; color: #ffffff; font-size: 34px;
   font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .button { display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 24px;

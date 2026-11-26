@@ -10,7 +10,7 @@ import { summary } from './summary.js';
 import { cardScreen, loadCard, loadOps, monthHead, newOps, opsScreen, problemScreen } from './screens.js';
 import { catsScreen, loadCats, newCats } from './catscreen.js';
 import { isPeriod, periodOf } from './period.js';
-import { restore, save, snapView } from './snapshot.js';
+import { familyWords, keepView, restore, save, snapView, viewOf } from './snapshot.js';
 import { isMore, loadMore, moreScreen } from './more.js';
 import { body as jobBody, flush, path as jobPath, queue } from './recat.js';
 import { backStep, escapes, returnTo, showBack } from './back.js';
@@ -44,6 +44,8 @@ let pending = [];                      // смены категории в оч�
 let flushing = false;
 let accounts = [];                     // счета зрителя из остатков «Здоровья» — в фильтр «Операций» (решение 38)
 let viewer = null;                     // вид зрителя (view «Здоровья»): Ангелине ошибки — без технической строки (R-22)
+let knownView = Promise.resolve();     // S9C: вид из CloudStorage — до первого ответа «Здоровья»
+let viewKept = false;                  // вид кладём в CloudStorage раз за открытие
 // остатки по месяцам — шапка «Операций» счёта (решение 48): месяц списка, иначе текущий (R-25). Смена категории их не
 // сбрасывает: остатки от неё не меняются
 const balanceViews = new Map();
@@ -89,7 +91,7 @@ const nav = {
   },
   changed: () => stale(),
   accounts: () => accounts,
-  family: () => viewer === 'family',
+  family: () => familyWords(viewer),   // S9C: вида нет — слова для семьи
   balanceOf(account, m) {
     const v = balanceViews.get(m) || balanceViews.get(today().slice(0, 7));
     return v ? balanceRow(v, account) : null;
@@ -243,8 +245,9 @@ function problem(kind, detail) {
   // (R-19): другой месяц — «К текущему месяцу», текущий — «Прошлый месяц»; повтор дал бы тот же отказ
   const now = today().slice(0, 7);
   const s = kind === 'refused' ? refusedStep('health', { month: month || now }, { today: today() }) : null;
-  show(problemScreen(screen(kind, detail), { retry: () => load(month), close: () => tg && tg.close(), family: nav.family(),
-    step: s && { label: s.label, run: () => load(s.act === 'prev' ? shiftMonth(now, -1) : now) } }));
+  const what = screen(kind, detail);   // S9C: у ошибки «Здоровья» — вкладки (what.tabs)
+  show(problemScreen(what, { retry: () => load(month), close: () => tg && tg.close(), family: nav.family(),
+    step: s && { label: s.label, run: () => load(s.act === 'prev' ? shiftMonth(now, -1) : now) } }), ...(what.tabs ? [tabs()] : []));
 }
 
 function banner(s) {
@@ -389,12 +392,13 @@ async function load(next) {
   if (mine !== seq) return;
   retrying = false;
   if (r.error === 'down') return offlineHealth(mine, r.detail);
-  if (r.error) return onHealth() || r.error === 'stale' || r.error === 'stranger' ? problem(r.error, r.detail) : null;
+  if (r.error) return failed(mine, r.error, r.detail);
   month = r.data.month;
   cache.set(month, r.data);
   const fresh = view(r.data);
   accounts = fresh.accounts;
   viewer = r.data.view || viewer;
+  if (!viewKept && r.data.view) { viewKept = true; keepView(cloud, r.data.view); }   // S9C: для ошибки следующего открытия
   balanceViews.set(month, fresh);
   snap = null;
   // после каждого удачного ответа — снимок в CloudStorage (ключ на месяц, до 4096 знаков, решение 32)
@@ -429,11 +433,18 @@ async function sendQueue() {
   if (stack[stack.length - 1].kind === 'health') render();
 }
 
+async function failed(mine, kind, detail) {
+  // S9C: экран ошибки ждёт вид зрителя из CloudStorage — Ангелине не мелькнёт техническая строка
+  await knownView;
+  if (mine !== seq) return;
+  if (onHealth() || kind === 'stale' || kind === 'stranger') problem(kind, detail);
+}
+
 async function offlineHealth(mine, detail) {
   // Мак молчит: снимок этого месяца (или самый поздний) с пометкой «данные на …»; снимка нет — «не отвечает»
   const s = await restore(cloud, month || today().slice(0, 7));
   if (mine !== seq) return;
-  if (!s) return onHealth() ? problem('down', detail) : null;
+  if (!s) return failed(mine, 'down', detail);
   snap = s;
   hasSnap = true;
   month = s.month;
@@ -457,6 +468,12 @@ if (!tg || !tg.initData) {
     back();
   });
   queue.load(cloud).then((jobs) => { pending = jobs; sendQueue(); });
+  // S9C: вид зрителя — из CloudStorage. Ошибка «Операций» успела раньше — перерисовать: Алексею — техническая строка
+  knownView = viewOf(cloud).then((v) => {
+    if (viewer || !v) return;
+    viewer = v;
+    if (v === 'all' && !onHealth()) render();
+  });
   const start = startAt(location.search, today());
   stack = start.stack;
   if (stack[0].kind === 'ops') opsTab = stack[0];

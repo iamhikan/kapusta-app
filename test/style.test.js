@@ -424,3 +424,10 @@ test('R-31 п. 3 (стенд S5): имя на «Категориях» — до 
   assert.equal(d['-webkit-line-clamp'], '2');
   assert.equal(d['white-space'], 'normal');
 });
+
+test('S9C: экран ошибки «Здоровья» с вкладками — низ экрана не под вкладками (как у экранов с вкладками)', () => {
+  // .problem занимает всё окно (min-height: 100vh) и центрирует текст: без отступа «Повторить» и причина при низком
+  // окне уходят под вкладки
+  const pad = decls('.problem.with-tabs')['padding-bottom'] || '';
+  assert.equal(pad, decls('.screen.with-tabs')['padding-bottom']);
+});

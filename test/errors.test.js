@@ -173,3 +173,40 @@ test('R-22: карточка без Мака — «Операция приход
   assert.match(offline('card', false).text, /^Операция приходит с Мака\./);
   assert.match(offline('ops', false).text, /^Операции приходят с Мака\./);
 });
+
+// S9C (остаток R-22, находка 2 повтора 26.11): при первом открытии ответа «Здоровья» ещё нет — вид зрителя страница
+// берёт из CloudStorage (ключ view, его кладёт каждый удачный ответ). Вида нет нигде — слова для семьи: техническая
+// строка — только тому, про кого известно, что он Алексей (view all). На экране ошибки «Здоровья» — вкладки
+test('S9C: первое открытие, ошибка «Здоровья» — вид из CloudStorage; вида нет — «скажите Алексею», у Алексея — техническая строка', async () => {
+  const { problemScreen } = await import('../js/screens.js');
+  const { screen } = await import('../js/api.js');
+  const { familyWords, keepView, viewOf } = await import('../js/snapshot.js');
+  const items = {};
+  const cs = { setItem(k, v, cb) { items[k] = v; cb(null, true); }, getItem(k, cb) { cb(null, items[k] ?? ''); },
+    getKeys(cb) { cb(null, Object.keys(items)); } };
+  const detail = async (kind, why) => seen(one(problemScreen(screen(kind, why), { retry() {}, close() {},
+    family: familyWords(await viewOf(cs)) }), 'detail'));
+  for (const [kind, why] of [['fault', 'HTTP 503 · ledger не грузится'], ['down', 'сеть: TypeError: Load failed · mac.ts.net']]) {
+    assert.equal(await detail(kind, why), 'Если не пройдёт, скажите Алексею.', `вида нет: ${kind}`);
+    await keepView(cs, 'family');
+    assert.equal(await detail(kind, why), 'Если не пройдёт, скажите Алексею.', `Ангелина: ${kind}`);
+    await keepView(cs, 'all');
+    assert.equal(await detail(kind, why), why, `Алексей: ${kind}`);
+    delete items.view;
+  }
+  assert.equal(await viewOf(null), null, 'старый клиент без CloudStorage — вида нет');
+});
+
+test('S9C: экран ошибки «Здоровья» — с вкладками; вход не прошёл или чужой — без вкладок', async () => {
+  const { problemScreen } = await import('../js/screens.js');
+  const { screen } = await import('../js/api.js');
+  const page = (kind) => problemScreen(screen(kind, 'HTTP 503 · ledger не грузится'), { retry() {}, close() {} });
+  for (const kind of ['down', 'fault', 'refused']) {
+    assert.equal(screen(kind).tabs, true, kind);
+    assert.ok(page(kind).classes.includes('with-tabs'), `${kind}: место под вкладками`);
+  }
+  for (const kind of ['outside', 'stale', 'stranger']) {
+    assert.equal(screen(kind).tabs, false, kind);
+    assert.ok(!page(kind).classes.includes('with-tabs'), kind);
+  }
+});

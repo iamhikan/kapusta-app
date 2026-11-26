@@ -64,6 +64,28 @@ export async function restore(cs, month) {
   return unpack(await call((cb) => cs.getItem(k, cb)));
 }
 
+// S9C (остаток R-22): вид зрителя (view «Здоровья»: all — Алексей, family — Ангелина) — своим ключом. При первом
+// открытии ответа ещё нет, а ошибке надо знать, кому показать техническую строку. Ключа нет (до p48a) — вид из
+// последнего снимка (S2 кладёт view в ответ)
+const VIEW = 'view';
+const VIEWS = new Set(['all', 'family']);
+
+export async function keepView(cs, view) {
+  if (!cs || !VIEWS.has(view)) return false;
+  return (await call((cb) => cs.setItem(VIEW, view, cb))) === true;
+}
+
+export async function viewOf(cs) {
+  if (!cs) return null;
+  const v = await call((cb) => cs.getItem(VIEW, cb));
+  if (VIEWS.has(v)) return v;
+  const s = await restore(cs, null);
+  return s && VIEWS.has(s.view) ? s.view : null;
+}
+
+// вида нет — слова для семьи: техническая строка («HTTP 503 · …») — только тому, про кого известно, что он Алексей
+export const familyWords = (view) => view !== 'all';
+
 function when(now) {
   // «2026-11-11T23:40:12» -> «11.11 в 23:40»
   const [day, time] = String(now).split(/[ T]/);

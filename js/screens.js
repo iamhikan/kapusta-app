@@ -47,7 +47,8 @@ export function problemScreen(s, { retry, close, family = false, step = null }) 
     : s.retry ? h('button', { class: 'button', type: 'button', 'data-focus': 'problem', on: { click: () => { tap(); retry(); } } },
       'Повторить')
       : h('button', { class: 'button', type: 'button', 'data-focus': 'problem', on: { click: () => close() } }, 'Закрыть');
-  return h('div', { class: 'problem', 'data-say': `${s.title}. ${s.text}` }, h('div', { class: 'problem-icon' }, pic),
+  // S9C: у экрана с вкладками (s.tabs) — место под ними снизу
+  return h('div', { class: s.tabs ? 'problem with-tabs' : 'problem', 'data-say': `${s.title}. ${s.text}` }, h('div', { class: 'problem-icon' }, pic),
     h('h1', TITLE, s.title), h('p', {}, s.text), act, s.detail ? h('p', { class: 'small detail' }, detailFor(s.detail, family)) : null);
 }
 
