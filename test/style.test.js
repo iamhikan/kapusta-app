@@ -450,3 +450,30 @@ test('находка 10: заголовок раздела и подпись с�
   // подпись в две строки при 320 px — справа, у своего края, как итог дня (R-33)
   assert.equal(decls('.section-head > span')['text-align'], 'right');
 });
+
+// ширина имени в строке «Категорий» при окне w: поля экрана и строки — по 16 px, сумма «153 342» — до 64 px, доля 44 px,
+// «к …» 76 px. Имя — первая ячейка строки; в первой строке рядом с ним — колонки, которые оно не занимает
+const tracksOf = (cls, w) => styleOf(cls, w)['grid-template-columns'].split(/\s+(?![^(]*\))/);
+function nameWidth(w, cls = 'cat-row') {
+  const tracks = tracksOf(cls, w);
+  const line = (n) => (n < 0 ? tracks.length + 2 + n : n);
+  const [a, b = a + 1] = (decls('.cat-row > :first-child', w)['grid-column'] || '1').split('/').map((x) => line(Number(x)));
+  const rest = tracks.filter((_, i) => i < a - 1 || i >= b - 1);
+  const gap = px(styleOf(cls, w).gap.split(/\s+/).pop());
+  return w - 4 * 16 - rest.reduce((s, t) => s + (/^\d+px$/.test(t) ? px(t) : 64), 0) - rest.length * gap;
+}
+
+test('находка 1: «Категории» уже 390 px — доля и «к …» строкой под именем, имя не уже 120 px (320 px: было 48 — «жи…»)', () => {
+  for (const w of [320, 375]) {
+    assert.ok(nameWidth(w) >= 120, `${w} px: имя ${nameWidth(w)} px`);
+    assert.ok(nameWidth(w, 'cat-row no-cmp') >= 120, `${w} px без сравнения: имя ${nameWidth(w, 'cat-row no-cmp')} px`);
+    for (const cell of ['.cat-row > .cat-share', '.cat-row > .cat-delta']) {
+      assert.equal(decls(cell, w)['grid-row'], '2', `${w} px: ${cell} — строкой под именем`);
+      assert.equal(decls(cell, w)['text-align'], 'left', `${w} px: ${cell} — от края имени`);
+    }
+  }
+  // 390 px и шире — как было: четыре колонки в одну строку, имени хватает на «образование» (93 px) с точкой
+  assert.deepEqual(tracksOf('cat-row', 390), tracksOf('cat-row'));
+  assert.ok(nameWidth(390) - 20 >= 93, `390 px: имя ${nameWidth(390)} px`);
+  assert.equal(decls('.cat-row > .cat-share', 390)['grid-row'], undefined);
+});

@@ -100,8 +100,8 @@ export function catRow(v, r, onClick) {
     'data-focus': `cat:${r.key}`, on: { click: () => onClick(r) } },
   h('span', { class: 'cat-name' }, h('span', { class: 'dot', style: { background: r.color } }),
     h('span', { class: 'grow' }, h('span', { class: 'ellipsis' }, r.name))),
-  h('span', { class: 'num' }, r.sum), h('span', { class: 'num muted small' }, r.share),
-  v.cmpHead ? h('span', { class: `num small ${r.deltaTone}` }, r.delta) : null,
+  h('span', { class: 'num' }, r.sum), h('span', { class: 'num muted small cat-share' }, r.share),
+  v.cmpHead ? h('span', { class: `num small cat-delta ${r.deltaTone}` }, r.delta) : null,
   r.bar ? h('span', { class: 'cat-bar' }, limitBar(r.bar), h('span', { class: 'muted small' }, r.of)) : null,
   // общий лимит — подписью с его числами своей строкой на всю ширину (R-27): в колонке имени при 320 px она резала имя
   !r.bar && r.limit ? h('span', { class: 'muted small cat-of' }, r.limit) : null);
@@ -119,7 +119,7 @@ function list(entry, nav, v) {
   };
   return h('section', { class: 'card list cats' },
     h('div', { class: `${v.rowClass} cat-head muted small` }, h('span', {}, entry.cat ? 'подкатегория' : 'категория'),
-      h('span', {}, 'сумма'), h('span', {}, 'доля'), v.cmpHead ? h('span', {}, v.cmpHead) : null),
+      h('span', {}, 'сумма'), h('span', { class: 'cat-share' }, 'доля'), v.cmpHead ? h('span', { class: 'cat-delta' }, v.cmpHead) : null),
     ...v.rows.map((r) => catRow(v, r, open)));
 }
 
