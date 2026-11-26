@@ -159,13 +159,23 @@ function dayHead(d) {
   return h('div', { class: 'day-head muted small' }, h('span', {}, dayLabel(d.date)), total);
 }
 
+// R-3 (стенд, 320 px): подпись с меткой — три части: категория, значок, «· откуда». Узко — многоточие сначала у
+// «откуда», потом у категории; значок остаётся на виду (было «образование …» — значок уходил в многоточие)
+function subLine(text) {
+  const m = /^(.*?)( ?(?:🔁|📌)+)((?: · .*)?)$/u.exec(text);
+  if (!m) return h('span', { class: 'op-sub muted small' }, text);
+  const [, cats, glyph, tail] = m;
+  return h('span', { class: 'op-sub muted small split' }, cats ? h('span', { class: 'sub-cats' }, cats) : null,
+    h('span', { class: 'sub-glyph' }, ...glyphs(glyph)), tail ? h('span', { class: 'sub-tail' }, tail) : null);
+}
+
 export function opLine(r, nav, opts = {}) {
   const inner = [
     r.tile ? catTile(r.tile) : null,
     h('span', { class: 'grow' },
       h('span', { class: 'op-where' }, h('span', { class: 'ellipsis' }, r.where),
         ...r.marks.map(mark)),
-      r.sub ? h('span', { class: 'op-sub muted small' }, ...glyphs(r.sub)) : null,
+      r.sub ? subLine(r.sub) : null,
       r.note ? h('span', { class: `op-note small ${r.noteTone}` }, ...glyphs(r.note)) : null),
     h('span', { class: 'op-amount' }, sum(r.amount, r.income ? 'good' : ''),
       r.amountSub ? h('span', { class: 'muted small' }, r.amountSub) : null),

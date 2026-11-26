@@ -102,3 +102,19 @@ test('R-6: обмен — «🔁 выигрыш +782 к курсу НБС», у 
   const notes = all(card, 'good').map(eye);
   assert.ok(notes.includes('выигрыш +782 к курсу НБС'), notes.join(' | '));
 });
+
+test('R-3 (стенд 320 px): подпись с меткой — три части: категория, значок, «· откуда»; без метки — одной строкой, как была', () => {
+  const screen = opsScreen(list([spend('a:1', 'Английский', { regular: 'образование' }), spend('a:2', 'Пекара')]), navOf());
+  const sub = one(rowOf(screen, 'a:1'), 'op-sub');
+  assert.ok(sub.classes.includes('split'));
+  assert.equal(eye(one(sub, 'sub-cats')), 'образование');
+  assert.equal(eye(one(sub, 'sub-glyph')), ' 🔁');
+  assert.equal(eye(one(sub, 'sub-tail')), ' · Райффайзен РФ');
+  assert.equal(eye(sub), 'образование 🔁 · Райффайзен РФ');
+  const plain = one(rowOf(screen, 'a:2'), 'op-sub');
+  assert.ok(!plain.classes.includes('split'));
+  assert.equal(eye(plain), 'образование · Райффайзен РФ');
+  const bare = one(rowOf(opsScreen(list([spend('a:1', 'Английский', { regular: 'образование', cats: [] })], {
+    ctx: { title: 'Лимит', params: { limit: 'x' } } }), navOf()), 'a:1'), 'op-sub');
+  assert.equal(eye(bare), '🔁 · Райффайзен РФ');
+});

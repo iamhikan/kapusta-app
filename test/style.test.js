@@ -404,3 +404,17 @@ test('R-33: итог дня отделён от даты зазором и ух�
   const [row, col = row] = (d.gap || '').split(/\s+/);
   assert.ok(px(col) >= 8 && px(row) > 0, d.gap);
 });
+
+test('R-3 (стенд 320 px): значок метки в подписи строки не уходит в многоточие — сжимается сначала «откуда», потом категория', () => {
+  const sub = decls('.op-sub.split');
+  assert.equal(sub.display, 'flex');
+  const cats = decls('.sub-cats');
+  const tail = decls('.sub-tail');
+  assert.equal(decls('.sub-glyph').flex, 'none', 'значок не сжимается');
+  for (const d of [cats, tail]) {
+    assert.equal(d['min-width'], '0');
+    assert.equal(d['text-overflow'], 'ellipsis');
+  }
+  const shrink = (d) => Number(d.flex.split(/\s+/)[1]);
+  assert.ok(shrink(tail) >= 50 * shrink(cats), 'сначала сжимается «откуда»');
+});
