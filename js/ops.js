@@ -159,13 +159,13 @@ export function opRow(op, { inCategory = false, account = '' } = {}) {
     const start = startSum(op);
     if (start) {
       const [n, c] = start;
-      const sub = from.length ? [...new Set(from)].join(', ') : into ? `на ${into}` : '';
+      const sub = from.length ? [...new Set(from)].join(', ') : into ? `→ ${into}` : '';   // R-26: было «на карта ALTA, динары»
       return { ...base, gray: true, sub, amount: full(n, c), amountSub: c !== 'RSD' && op.rsd ? `≈ ${fmt(op.rsd)} RSD` : '' };
     }
     // приход без «откуда» (начальный остаток, поправка, сверка нала): весь приход по курсу НБС, а не первая из валют
     // (ревью); у сверки без остатка (нал — экрана банка нет, решение 68) — подпись «сверка остатка»
     if (!from.length) {
-      return { ...base, gray: true, sub: op.opening === 'check' ? 'сверка остатка' : into ? `на ${into}` : '',
+      return { ...base, gray: true, sub: op.opening === 'check' ? 'сверка остатка' : into ? `→ ${into}` : '',
         amount: full(op.rsd, 'RSD'), amountSub: '' };
     }
     const main = to[0] || { number: op.rsd, currency: 'RSD' };

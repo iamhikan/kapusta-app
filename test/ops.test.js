@@ -105,13 +105,13 @@ test('перелив — серым: откуда → куда', () => {
   assert.equal(r.amount, sp('1 000 RSD'));
 });
 
-test('приход на счёт без «откуда» (начальный остаток) — «на счёт», сумма по НБС, а не «Freedom → Freedom 0,01 $»', () => {
+test('приход на счёт без «откуда» (начальный остаток) — «→ счёт», сумма по НБС, а не «Freedom → Freedom 0,01 $»', () => {
   const r = opRow({ ref: 'add:o', date: '2026-11-11', where: 'Freedom', what: 'остаток', kind: 'transfer', cats: [],
     src: 'Freedom', rsd: 10814.4, receipt: false, flag: false,
     legs: [{ name: 'Freedom', number: 0.01, currency: 'USD' }, { name: 'Freedom', number: 48.58, currency: 'EUR' },
       { name: 'Freedom', number: 5098.86, currency: 'RSD' }] });
   assert.equal(r.gray, true);
-  assert.equal(r.sub, 'на Freedom');
+  assert.equal(r.sub, '→ Freedom');                                    // R-26: было «на Freedom», «на карта ALTA, динары»
   assert.equal(r.amount, sp('10 814,40 RSD'));
   assert.equal(r.amountSub, '');
 });
@@ -310,9 +310,9 @@ test('сверка в карточке: крупно — остаток, ряд�
   assert.equal(zero.row.amount, '0 RSD');
 });
 
-test('начальный остаток — как был: «на счёт», сумма по курсу НБС, «Откуда» — «начальный остаток»', () => {
+test('начальный остаток — как был: «→ счёт», сумма по курсу НБС, «Откуда» — «начальный остаток»', () => {
   const c = cardView({ ...CHECK, opening: 'start', after: undefined });
-  assert.equal(c.row.sub, 'на Freedom');
+  assert.equal(c.row.sub, '→ Freedom');
   assert.equal(c.row.amount, sp('9 000 RSD'));
   assert.equal(c.flow[0].lines[0].name, 'начальный остаток');
 });
@@ -322,7 +322,7 @@ test('начальный остаток в одной валюте — в вал
     kind: 'transfer', cats: [], src: 'карта, евро', rsd: 144914.6, receipt: false, flag: false, opening: 'start',
     legs: [{ name: 'карта, евро', number: 1234.5, currency: 'EUR' }] };
   const eur = opRow(START);
-  assert.deepEqual([eur.sub, eur.amount, eur.amountSub], ['на карта, евро', sp('1 234,50 €'), sp('≈ 144 915 RSD')]);
+  assert.deepEqual([eur.sub, eur.amount, eur.amountSub], ['→ карта, евро', sp('1 234,50 €'), sp('≈ 144 915 RSD')]);
   const card = cardView({ ...START, postings: [] }).row;
   assert.deepEqual([card.amount, card.amountSub], [sp('1 234,50 €'), sp('≈ 144 915 RSD')]);
   // долг (кредит): нога с минусом — «Откуда» кредит, сумма без знака
