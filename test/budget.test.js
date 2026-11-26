@@ -106,3 +106,19 @@ test('коммуналка: доля семьи — одна сумма в «О�
   const old = budgetView({ ...b, plan: { ...b.plan, parts: [{ name: 'коммуналка', rsd: 8427, full: 12045 }] } }, health);
   assert.deepEqual([old.groups[0].rows[1].note, old.plan.parts[0]], ['в среднем с мая 2026', sp('коммуналка 8 427')]);
 });
+
+// R-15 (ревью 26.11): у строк «Бюджета» под суммой — четыре смысла. Сумма по договору и по графику — словами, как в
+// шапке их «Операций» (basis сервера); сумма регулярной из budget.yaml — «в норме 5 €». «медиана» — ответ 6 (p46a)
+test('R-15: «по договору 650 €», «по графику 25 000 ₽», «в норме 5 €»; среднее и медиана — как были', () => {
+  const env = (key, kind, basis, extra = {}) => ({ key, label: key, kind, basis, spent: 0, limit: 1, norm: 1, carry: 0, over: 0, ...extra });
+  const health = { month: '2026-11', envelopes: [env('жильё', 'mandatory', 'по договору 650 €', { contract: true }),
+    env('кредит РФ', 'mandatory', 'по графику 25 000 ₽', { contract: true }), env('обмен валюты', 'regular', '5 EUR в месяц'),
+    env('связь', 'regular', 'медиана за 3 мес.')] };
+  const b = { ...ALEKSEY, groups: [
+    { name: 'Обязательные', rsd: 109245, avg_months: null, rows: [{ name: 'жильё', rsd: 76390, note: '(650 €)' },
+      { name: 'кредит РФ', rsd: 32855, note: '(25 000 ₽)' }] },
+    { name: 'Регулярные по карте', rsd: 4860, avg_months: 3, rows: [{ name: 'связь', rsd: 4272, note: '(медиана за 3 мес.)' },
+      { name: 'обмен валюты', rsd: 588, note: '(5 €)' }] }] };
+  const notes = budgetView(b, health).groups.flatMap((g) => g.rows.map((r) => r.note));
+  assert.deepEqual(notes, ['по договору 650 €', 'по графику 25 000 ₽', 'медиана за 3 мес.', 'в норме 5 €']);
+});

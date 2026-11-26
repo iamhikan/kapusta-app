@@ -21,6 +21,17 @@ const strip = (s) => (s || '').replace(/^\(|\)$/g, '');
 // решение 61: «в ср. с 05.2026» сервера — «в среднем с мая 2026», «в ср.» — «в среднем»
 const avg = (s) => s.replace(/^в ср\.(?: с (\d\d)\.(\d{4}))?/, (_, m, y) => (m ? `в среднем с ${OF_MONTH[Number(m) - 1]} ${y}` : 'в среднем'));
 
+// R-15 (ревью 26.11): под суммой строки — одно понятие словами. Жильё и кредит РФ — basis сервера, как в шапке их
+// «Операций» («по договору 650 €», «по графику 25 000 ₽»); сумма регулярной из budget.yaml («5 €») — «в норме 5 €»
+const BARE = /^[\d\s\u00a0]+(?:[,.]\d+)?\s?(?:€|₽|\$|RSD|EUR|RUB)$/u;
+
+function noteOf(r, regularGroup, env) {
+  const note = avg(strip(r.note));
+  const e = env.get(r.name);
+  if (e && e.contract && e.basis) return e.basis;
+  return regularGroup && BARE.test(note) ? `в норме ${note}` : note;
+}
+
 // решение 81: месяц без курса (до начала учёта) — сервер шлёт пустой бюджет: дохода, групп, лимитов, нормы и плана нет.
 // Слово — как плашка «Здоровья» (zone.word): /api/budget zone не шлёт
 const NONE = { sub: 'нормы нет', title: 'Бюджета нет', text: 'Месяц до начала учёта.' };
@@ -43,6 +54,7 @@ export function budgetView(b, health = null) {
   // коммуналка (решение 94): в «Обязательных» и в «Деньгах на месяц» — одна доля семьи, доля ПР — строка «ПР
   // коммуналка» в группе ПР; пометок «с долей ПР» и «без доли ПР» больше нет
   const regular = regularOf(b, health);   // E10: строка регулярной нажимается — её операции и градусник
+  const env = new Map(((health && health.envelopes) || []).map((e) => [e.key, e]));
   return {
     title: `Бюджет · ${monthTitle(b.month)}`,
     sub: b.income ? 'куда идёт доход' : 'обязательные траты и лимиты месяца',
@@ -50,7 +62,7 @@ export function budgetView(b, health = null) {
     alloc,
     groups: b.groups.map((g) => ({ name: g.name, sum: fmt(g.rsd), sub: g.avg_months ? `в среднем за ${g.avg_months} мес.` : '',
       rows: g.rows.map((r) => ({ name: r.name, sum: fmt(r.rsd),
-        note: avg(strip(r.note)),
+        note: noteOf(r, /^Регулярные/.test(g.name), env),
         ...(g.name !== 'ПР' && regular(r.name) ? { regular: regular(r.name) } : {}) })) })),
     savings: b.savings ? { name: 'Отложить', sum: fmt(b.savings.rsd), note: b.savings.set || '' } : null,
     norm: b.norm == null ? null : { name: NORM, sum: fmt(b.norm) },
