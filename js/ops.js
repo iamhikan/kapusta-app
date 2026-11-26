@@ -36,6 +36,10 @@ export const FLAG = 'Только с «!» — надо уточнить';
 
 const FROM = { walt: 'из кошелька Walt', sms: 'из SMS банка', calc: 'посчитала Капуста' };   // запись без автора: откуда пришла (решения 70, 71: было «из выписки банка»)
 
+// R-31 (ревью 26.11): имя позиции чека без штрихкода кассы в начале («9009301009805 SIR …» → «SIR …»); в найденной
+// позиции поиска («вид: позиция — сумма») — и после «вид: »
+export const itemName = (s) => String(s || '').replace(/(^|: )\d{8,14}\s+/u, '$1');
+
 export function money(n) {
   // «3 098,86», «6 220», «−500»: копейки — только если есть. Округляем до копеек всё число, потом делим на целые и
   // копейки (М9: было — целые отдельно, 1,999 давало «1»: копейки 100 терялись в остатке)
@@ -183,7 +187,7 @@ export function opRow(op, { inCategory = false, account = '' } = {}) {
   // регулярная и обязательная — в норме отдельно от шкалы, правило градусника; значки — как в чате (решение 97)
   const marks = [op.receipt && 'чек', op.flag && '!', op.secret && 'секрет', op.regular && '🔁 регулярная',
     op.mandatory && '📌 обязательная'].filter(Boolean);
-  const base = { ref: op.ref, where: op.count > 1 ? `${op.where} · ${records(op.count)}` : op.where, marks, note: op.hit || '', noteTone: '', gray: false,
+  const base = { ref: op.ref, where: op.count > 1 ? `${op.where} · ${records(op.count)}` : op.where, marks, note: itemName(op.hit), noteTone: '', gray: false,
     group: (op.group || []).map((g) => opRow(g)), count: op.count || 1, tile: tileOfOp(op) };
   if (op.kind === 'exchange') return { ...base, gray: true, ...exchange(op) };
   if (op.kind === 'transfer') {
@@ -354,7 +358,7 @@ export function cardView(c) {
     flow: sides,
     receipt: c.receipt && {
       shop: c.receipt.shop, total: money(c.receipt.total), url: taxLink(c.receipt.url),
-      items: c.receipt.items.map((it) => ({ name: it.name,
+      items: c.receipt.items.map((it) => ({ name: itemName(it.name),
         line: it.qty === 1 ? '' : `${String(it.qty).replace('.', ',')}${it.unit === 'шт' ? '' : ` ${it.unit}`} × ${money(it.price)}`,
         value: money(it.total), sub: [it.kind, it.cat].filter(Boolean).join(' · ') })),
     },

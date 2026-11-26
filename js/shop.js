@@ -1,7 +1,7 @@
 // Покупки (этап 7, решение 37): «История цены» — ответ /api/price, «По товарам» — ответ /api/basket. Числа считает
 // сервер (те же, что fin price и fin basket в чате); страница подписывает строки и рисует цену по датам.
 import { fmt } from './health.js';
-import { money, monthTitle, plural } from './ops.js';
+import { itemName, money, monthTitle, plural } from './ops.js';
 
 const OF_MONTH = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь',
   'ноябрь', 'декабрь'];
@@ -46,7 +46,7 @@ function chart(history, unit) {
 
 export function priceView(b, today) {
   const kindOnly = b.history == null;
-  const stores = b.stores.map((s) => ({ store: s.store, sub: `${s.name} · ${day(s.day, today)}`, price: money(s.price),
+  const stores = b.stores.map((s) => ({ store: s.store, sub: `${itemName(s.name)} · ${day(s.day, today)}`, price: money(s.price),
     per: s.per_price == null ? '' : `${money(s.per_price)} за ${s.per}`, mine: !!s.mine,
     open: s.mine ? null : { product: s.product } }));
   // с точкой: следом в той же подписи — «Цена за кг или л …» (critique 12.11)
@@ -61,7 +61,7 @@ export function priceView(b, today) {
   const change = b.change ? b.change.replace('-', '−') : '';
   const checks = plural(b.count, ['чек', 'чека', 'чеков']);
   return {
-    title: b.name,
+    title: itemName(b.name),
     sub: `${b.kind ? `вид «${b.kind}» · ` : ''}${checks} в ${b.store}`,
     big: { value: money(last.price), unit: unitWord(b.unit),
       meta: `${last.store}, ${day(last.day, today)}${change ? ` · с первой покупки ${change}` : ''}`,
@@ -89,7 +89,7 @@ export function basketView(b) {
     // решение 57: в корзине только продукты — чеки и сумма по ним, как «по 2 чекам на 1 470» в fin basket
     sub: `${monthTitle(b.month)} · продукты по ${plural(b.receipts, ['чеку', 'чекам', 'чекам'])} на ${fmt(b.total)} RSD`,
     shares: b.cats.slice(0, 6).map((c) => `${c.name} ${c.share} %`),
-    rows: b.top.map((t) => ({ name: t.kind ? upper(t.name) : t.name, qty: qtyText(t.qty, t.unit), sum: fmt(t.rsd),
+    rows: b.top.map((t) => ({ name: t.kind ? upper(t.name) : itemName(t.name), qty: qtyText(t.qty, t.unit), sum: fmt(t.rsd),
       open: t.kind ? { kind: t.kind } : { product: t.product } })),
     note: b.food == null ? '' : `По чекам видно ${b.food} % трат на продукты за ${OF_MONTH[m]}.`,
     empty: '',

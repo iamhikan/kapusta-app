@@ -113,3 +113,24 @@ test('«По товарам» открывается из «Продуктов»
   await loadMore({ kind: 'basket', month: '2026-11' }, nav);
   assert.deepEqual(asked, ['/api/basket?month=2026-11&cat=food']);
 });
+
+// R-31 п. 2 (ревью 26.11): «9009301009805 SIR TOPLJENI…» — штрихкод кассы в начале имени позиции; человеку он ничего
+// не говорит. Имя — без цифр штрихкода (8–14 цифр и пробел); запрос цены идёт по товару, как раньше
+test('R-31: штрихкод в начале имени позиции не виден — в поиске, карточке, истории цены и «По товарам»', async () => {
+  const { cardView, opRow } = await import('../js/ops.js');
+  const hit = opRow({ ref: 'r:1', date: '2026-11-10', where: 'Lidl', what: '', kind: 'spend', cats: ['продукты'], src: 'нал',
+    amount: { number: 200, currency: 'RSD' }, rsd: 200, receipt: true, flag: false,
+    hit: 'плавленый сыр: 9009301009805 SIR TOPLJENI CHEDDAR 100G — 199,99' });
+  assert.equal(hit.note, 'плавленый сыр: SIR TOPLJENI CHEDDAR 100G — 199,99');
+  const card = cardView({ ref: 'r:1', date: '2026-11-10', where: 'Lidl', what: '', kind: 'spend', cats: [], src: 'нал',
+    amount: { number: 200, currency: 'RSD' }, rsd: 200, flag: false, postings: [], similar: [],
+    receipt: { shop: 'Lidl', total: 200, url: null, items: [{ name: '9009301009805 SIR TOPLJENI', qty: 1, unit: 'шт', price: 200,
+      total: 200, kind: 'плавленый сыр', cat: 'продукты' }, { name: '2 KOM KIFLA', qty: 1, unit: 'шт', price: 0, total: 0 }] } });
+  assert.deepEqual(card.receipt.items.map((it) => it.name), ['SIR TOPLJENI', '2 KOM KIFLA']);   // «2 KOM» — не штрихкод
+  const p = priceView({ ...PRICE, name: '9009301009805 SIR TOPLJENI', stores: [{ ...PRICE.stores[0], name: '9009301009805 SIR TOPLJENI' }] },
+    '2026-11-13');
+  assert.equal(p.title, 'SIR TOPLJENI');
+  assert.match(p.stores[0].sub, /^SIR TOPLJENI · /);
+  const b = basketView({ ...BASKET, top: [{ name: '9009301009805 SIR TOPLJENI', rsd: 200, unit: 'шт', qty: 1, kind: null, product: 'P:1' }] });
+  assert.equal(b.rows[0].name, 'SIR TOPLJENI');
+});
