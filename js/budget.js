@@ -119,8 +119,9 @@ export function budgetView(b, health = null) {
 
 // S9C (находка 3 повтора ревью 26.11): Ангелине — из чего норма без дохода ПР: её лимиты и резерв (norm_parts fin)
 function normOf(p) {
-  const note = p.reserve >= 0 ? `лимиты ${fmt(p.limits)} + резерв ${fmt(p.reserve)}`
-    : `лимиты ${fmt(p.limits)} — больше нормы на ${fmt(-p.reserve)}`;
+  // слово и число — неразрывно: узко — перенос только перед «+» или «—»
+  const note = p.reserve >= 0 ? `лимиты\u00a0${fmt(p.limits)} + резерв\u00a0${fmt(p.reserve)}`
+    : `лимиты\u00a0${fmt(p.limits)} — больше нормы на\u00a0${fmt(-p.reserve)}`;
   return { name: NORM, sum: fmt(p.norm), note };
 }
 

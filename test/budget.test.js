@@ -227,10 +227,11 @@ const ANGELINA = { month: '2026-11', groups: ALEKSEY.groups.slice(0, 2), savings
 
 test('S9C: Ангелине — из чего норма: «Норма — переменные траты 257 975», под ней «лимиты 195 089 + резерв 62 886»', () => {
   const v = budgetView(ANGELINA);
-  assert.deepEqual(v.norm, { name: 'Норма — переменные траты', sum: sp('257 975'), note: sp('лимиты 195 089 + резерв 62 886') });
+  // слово и число — неразрывно: при 320 px перенос только перед «+» (стенд S9C: «резерв» / «62 886»)
+  assert.deepEqual(v.norm, { name: 'Норма — переменные траты', sum: sp('257 975'), note: sp('лимиты\u00a0195 089 + резерв\u00a062 886') });
   assert.deepEqual([v.income, v.alloc, v.plan, v.free, v.savings], [null, [], null, null, null], 'без дохода ПР и его долей');
   const over = budgetView({ ...ANGELINA, norm_parts: { norm: 190000, limits: 195089, reserve: -5089 } });
-  assert.equal(over.norm.note, sp('лимиты 195 089 — больше нормы на 5 089'));
+  assert.equal(over.norm.note, sp('лимиты\u00a0195 089 — больше нормы на\u00a05 089'));
   assert.equal(budgetView({ ...ANGELINA, norm_parts: undefined }).norm, null, 'fin до S9C — строки нет, как раньше');
   assert.deepEqual(budgetView(ALEKSEY).norm, { name: 'Норма — переменные траты', sum: sp('240 000') }, 'у Алексея — как было');
 });
@@ -241,7 +242,7 @@ test('S9C: на экране «Бюджета» Ангелины строка н
   const screen = moreScreen({ kind: 'budget', month: '2026-11', data: ANGELINA }, { health: () => null });
   const row = all(screen, 'line').find((l) => seen(l).startsWith('Норма — переменные траты'));
   assert.ok(row, 'строка нормы есть');
-  assert.equal(seen(one(row, 'muted')), sp('лимиты 195 089 + резерв 62 886'));
+  assert.equal(seen(one(row, 'muted')), sp('лимиты\u00a0195 089 + резерв\u00a062 886'));
   assert.equal(seen(one(row, 'nowrap')), sp('257 975'));
   assert.ok(seen(screen).indexOf('Норма — переменные траты') < seen(screen).indexOf(sp('Лимиты — 195 089')), 'над лимитами');
   assert.doesNotMatch(seen(screen), /Доход|ПР|Отложить/);
