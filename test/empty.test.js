@@ -70,3 +70,14 @@ test('экран: «Очистить поиск» снимает запрос и
   assert.equal(asked.length, 1);
   assert.doesNotMatch(asked[0], /q=/);
 });
+
+// R-12 (решение 98, ответ 5): жильё и кредит РФ до оплаты — шапка «ждёт оплаты»; список того же месяца — «ещё не
+// было», а не «не было»: платёж придёт. Прошлый месяц без платежа — «платежа не было», как у регулярной
+test('договорный платёж до оплаты — «В ноябре платежа ещё не было»; прошлый месяц — «платежа не было»', () => {
+  const ctx = { title: 'Жильё', params: { regular: 'жильё' }, limitWord: 'В норме' };
+  const g = { norm: 76390, carry: 0, cap: 0, contract: true, deal: { paid: false, waiting: true, status: 'ждёт оплаты' } };
+  assert.deepEqual(emptyView(entry({ ctx }), g, TODAY),
+    { title: 'В ноябре платежа ещё не было', text: 'Смените месяц стрелкой.', clear: false });
+  assert.deepEqual(emptyView(entry({ month: '2026-10', ctx }), { ...g, deal: { paid: false, waiting: false, status: 'платежа не было' } }, TODAY),
+    { title: 'В октябре платежа не было', text: 'Смените месяц стрелкой.', clear: false });
+});

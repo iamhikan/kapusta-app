@@ -127,7 +127,9 @@ export function emptyView(entry, g, today) {
       : out(`В ${IN_MONTH[i]} операций нет`, 'Смените месяц стрелкой.');
   }
   if (ctx.params && ctx.params.regular) {
-    if (!(g && g.cap > 0)) return out(`В ${IN_MONTH[i]} платежа не было`, 'Смените месяц стрелкой.');
+    // R-12: договорный платёж текущего месяца ждёт оплаты (шапка) — «ещё не было»
+    const yet = g && g.deal && g.deal.waiting ? 'ещё ' : '';
+    if (!(g && g.cap > 0)) return out(`В ${IN_MONTH[i]} платежа ${yet}не было`, 'Смените месяц стрелкой.');
     const into = Math.max(0, Math.min(g.norm, g.cap - g.carry));
     const past = entry.month < today.slice(0, 7);
     return out(`В ${IN_MONTH[i]} покупки не было`, `Так и задумано: покупка редкая. ${!into ? `Конверт уже полон — ${fmt(g.carry)}.`

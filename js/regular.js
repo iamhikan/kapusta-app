@@ -40,6 +40,7 @@ export function dealOf(e, closed = false) {
   const diff = Math.round(e.spent - e.norm);
   return {
     paid,
+    waiting: !paid && !closed,   // текущий месяц, платежа ещё нет
     sum: money(paid ? e.paid : e.due),
     status: paid ? `✓ оплачено ${payDays(e.paid_on)}` : closed ? 'платежа не было' : 'ждёт оплаты',
     terms: keep(paid && !same ? `${money(e.paid)}, ${e.basis}` : e.basis),
