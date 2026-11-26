@@ -48,7 +48,7 @@ export function daysView(b, mode) {
   const negative = cells.some((c) => c.neg);
   while (cells.length % 7) cells.push({ blank: true });
   const last = b.points.length ? Number(b.points[b.points.length - 1].date.slice(8)) : 0;
-  const tail = 'Тап по дню — операции дня.';
+  const tail = 'Нажмите на день — откроются его операции.';   // R-31: было «Тап по дню — операции дня.»
   let note;
   if (plan) {
     const twice = b.points.filter((p) => tone(p.scale, p.plan) === 'bad').map((p) => short(p.date));
