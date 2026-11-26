@@ -477,3 +477,22 @@ test('находка 1: «Категории» уже 390 px — доля и «�
   assert.ok(nameWidth(390) - 20 >= 93, `390 px: имя ${nameWidth(390)} px`);
   assert.equal(decls('.cat-row > .cat-share', 390)['grid-row'], undefined);
 });
+
+test('находка 11: «· откуда» не сжимается до «·» — не входит рядом с категорией и значком, уходит строкой ниже, без точки', () => {
+  const sub = decls('.op-sub.split');
+  assert.equal(sub['flex-wrap'], 'wrap');
+  // точка — ячейка ширины x в начале «откуда». Подпись сдвинута влево на x и обрезана слева на x: в одной строке с
+  // категорией точка на месте, в начале новой строки — за краем
+  const sep = decls('.sub-sep');
+  assert.equal(sep.display, 'inline-block');
+  const x = sep.width;
+  assert.match(x, /^[\d.]+em$/);
+  assert.equal(sub['margin-left'], `-${x}`);
+  assert.equal(sub['clip-path'], `inset(0 0 0 ${x})`);
+  assert.equal(decls('.op-sub.split > :first-child')['margin-left'], x, 'первая часть подписи — на прежнем месте');
+  // значок — в первой строке: категория не шире строки без значка (1,6em) и без сдвига x
+  assert.equal(decls('.sub-cats')['max-width'], `calc(100% - ${1.6 + Number.parseFloat(x)}em)`);
+  // «откуда» длиннее строки — многоточием уже в своей строке
+  assert.equal(decls('.sub-tail')['min-width'], '0');
+  assert.equal(decls('.sub-tail')['text-overflow'], 'ellipsis');
+});

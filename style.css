@@ -284,13 +284,17 @@ button { -webkit-tap-highlight-color: transparent; }
 .cat-tile { flex-shrink: 0; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; }
 .op .op-where .ellipsis { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .op-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* R-3: подпись с меткой 🔁 📌 — категория, значок, «· откуда»; узко — многоточие сначала у «откуда». Категория не
-   сжимается вместе с ним (доли пикселя давали «ба…»), длинная — до места без значка (1,6em) */
-.op-sub.split { display: flex; min-width: 0; }
+/* R-3: подпись с меткой 🔁 📌 — категория, значок, «· откуда». Категория не сжимается (доли пикселя давали «ба…»),
+   длинная — до места без значка (1,6em). «откуда» не входит рядом — строкой ниже, а не «·» (повтор ревью p46a,
+   находка 11); длиннее строки — многоточием. Точка — ячейка 1em в начале «откуда»: подпись сдвинута влево на 1em и
+   обрезана слева на 1em — в начале новой строки точка за краем, рядом с категорией — на месте */
+.op-sub.split { display: flex; flex-wrap: wrap; min-width: 0; margin-left: -1em; clip-path: inset(0 0 0 1em); }
 .op-sub.split > span { white-space: pre; }
-.sub-cats { flex: none; max-width: calc(100% - 1.6em); overflow: hidden; text-overflow: ellipsis; }
+.op-sub.split > :first-child { margin-left: 1em; }
+.sub-cats { flex: none; max-width: calc(100% - 2.6em); overflow: hidden; text-overflow: ellipsis; }
 .sub-glyph { flex: none; }
 .sub-tail { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sub-sep { display: inline-block; width: 1em; text-align: center; }
 .op-note { font-weight: 600; }
 .op-amount { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; text-align: right;
   font-weight: 600; }

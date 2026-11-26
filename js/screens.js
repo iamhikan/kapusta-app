@@ -161,14 +161,16 @@ function dayHead(d) {
   return h('div', { class: 'day-head muted small' }, h('span', {}, dayLabel(d.date)), total);
 }
 
-// R-3 (стенд, 320 px): подпись с меткой — три части: категория, значок, «· откуда». Узко — многоточие сначала у
-// «откуда», потом у категории; значок остаётся на виду (было «образование …» — значок уходил в многоточие)
+// R-3 (стенд, 320 px): подпись с меткой — три части: категория, значок, «· откуда»; значок остаётся на виду (было
+// «образование …» — значок уходил в многоточие). Узко «откуда» не входит рядом — уходит строкой ниже (повтор ревью
+// p46a, находка 11: сжималось до «·»); точка — своя ячейка, в начале новой строки её не видно (style.css)
 function subLine(text) {
   const m = /^(.*?)( ?(?:🔁|📌)+)((?: · .*)?)$/u.exec(text);
   if (!m) return h('span', { class: 'op-sub muted small' }, text);
   const [, cats, glyph, tail] = m;
   return h('span', { class: 'op-sub muted small split' }, cats ? h('span', { class: 'sub-cats' }, cats) : null,
-    h('span', { class: 'sub-glyph' }, ...glyphs(glyph)), tail ? h('span', { class: 'sub-tail' }, tail) : null);
+    h('span', { class: 'sub-glyph' }, ...glyphs(glyph)),
+    tail ? h('span', { class: 'sub-tail' }, h('span', { class: 'sub-sep' }, ' · '), tail.slice(3)) : null);
 }
 
 export function opLine(r, nav, opts = {}) {
