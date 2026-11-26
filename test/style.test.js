@@ -326,3 +326,14 @@ test('стенд p34a: штриховка текущего месяца не п�
   assert.equal(decls('.line.kv > .grow.kv-val')['flex-direction'], 'row');
   assert.equal(decls('.plan-cols > div')['justify-content'], 'space-between', 'подпись сверху, число снизу');
 });
+
+// ——— p43a: доступность и вёрстка по UI/UX-ревью 26.11.2026 (docs/ui-review-2026-11-26.md, решение 98) ———
+
+test('R-29: фокус с клавиатуры не прячется под нижними вкладками — отступ прокрутки снизу выше вкладок (WCAG 2.4.11)', () => {
+  // замер ревью: строка «Бюджета» 788–844 px, вкладки с 789 px — видно 1 px из 56
+  const pad = decls('html')['scroll-padding-bottom'] || '';
+  const tabs = px(decls('.tab')['min-height']) + px((decls('.tabs')['border-top'] || '').split(/\s+/)[0]);
+  assert.match(pad, /var\(--tg-safe-area-inset-bottom/, 'вкладки выше на безопасную зону iPhone — отступ тоже');
+  const fixed = Number((/(\d+)px/.exec(pad) || [])[1] || 0);
+  assert.ok(fixed >= tabs + 8, `отступ ${fixed} px, вкладки ${tabs} px`);
+});

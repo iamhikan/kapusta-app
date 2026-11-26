@@ -54,6 +54,8 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--fg); }
+/* R-29 (ревью 26.11, WCAG 2.4.11): фокус с клавиатуры прокручивает строку выше нижних вкладок (55 px + безопасная зона) */
+html { scroll-padding-bottom: calc(64px + var(--tg-safe-area-inset-bottom, 0px)); }
 body {
   font: 15px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", Roboto, "Segoe UI", sans-serif;
   font-variant-numeric: tabular-nums;
