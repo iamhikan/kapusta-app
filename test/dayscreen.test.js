@@ -23,7 +23,7 @@ const dayEntry = (day) => ({ kind: 'ops', month: '2026-11', expanded: new Set(),
   ctx: { title: '11 ноября', days: true, period: { kind: 'custom', from: '2026-11-11', to: '2026-11-11' }, params: {} },
   f: { q: '', transfers: false, account: '', who: '', source: '', flag: false },
   pages: [{ from: '2026-11-11', to: '2026-11-11', count: 9, total: 107763, next: null,
-    apart: ['📌 — обязательная трата: у неё своя норма; жильё и кредит РФ в «Потрачено» не идут, коммуналка — только сверх нормы'], days: [{ date: '2026-11-11', ops: [rent], ...day }] }] });
+    apart: ['📌 — обязательная трата: у неё своя норма; жильё и кредит РФ в «Потрачено» не идут, коммуналка\u00a0— только сверх нормы'], days: [{ date: '2026-11-11', ops: [rent], ...day }] }] });
 
 const NOV = { month: '2026-11', days: 30, scope: 'all', norm: 240000, points: [
   { date: '2026-11-11', rsd: 31238, scale: 31238, plan: 8000 }] };
