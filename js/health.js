@@ -110,7 +110,7 @@ function reserveNote(r) {
     const all = r.hit.reduce((sum, l) => sum + l.over, 0);
     const left = all - r.res.eaten;
     return `Резерв кончился: ${own} из\u00a0${fmt(all)} — ${quoted(r.hit)}.`   // «из» и число — на одной строке
-      + (left > 0 ? ` Не покрыто ${fmt(left)}: на столько меньше осталось другим лимитам.` : '');
+      + (left > 0 ? ` Не\u00a0покрыто\u00a0${fmt(left)}: на столько меньше осталось другим лимитам.` : '');
   }
   return `Резерв: ${own} — покрыл ${quoted(r.hit)}.`;
 }
@@ -122,8 +122,8 @@ function overview(h, rv, regs) {
   const hot = h.limits.filter((l) => l.state === 'over' || l.state === 'covered');
   const res = !rv ? '' : rv.short ? '; резерв кончился' : '; всё покрыл резерв';
   const sum = (rows) => fmt(rows.reduce((s, l) => s + l.over, 0));
-  return [hot.length ? `Сверх лимита — ${hot.length} из ${h.limits.length}, перерасход ${sum(hot)}${res}.` : '',
-    regs.length ? `Сверх своей нормы — ${count(regs.length, ['трата', 'траты', 'трат'])}, всего ${sum(regs)}.` : '']
+  return [hot.length ? `Сверх лимита — ${hot.length} из ${h.limits.length}, перерасход\u00a0${sum(hot)}${res}.` : '',
+    regs.length ? `Сверх своей нормы — ${count(regs.length, ['трата', 'траты', 'трат'])}, всего\u00a0${sum(regs)}.` : '']
     .filter(Boolean).join(' ');
 }
 
