@@ -16,6 +16,7 @@ const GLYPHS = {
   percent: ['M19 5L5 19', 'M6.5 4a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z', 'M17.5 15a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z'],
   inbound: ['M12 3v12', 'M7 10l5 5 5-5', 'M5 21h14'],
   card: ['M4 6h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z', 'M3 10h18'],
+  home: ['M4 10.5L12 4l8 6.5', 'M6 9v10.5h12V9', 'M10 19.5V14h4v5.5'],   // домик — как у категории «дом» (catcolor.js)
 };
 
 const WHITE = '#ffffff';
@@ -39,8 +40,9 @@ function hue(s) {
 }
 
 export function tileOf(account, name) {
-  // нал — по виду счёта у обоих: «…:Cash:<кто>»; новый счёт — первая буква имени, цвет по имени
-  if (account.includes(':Cash:')) return { bg: '#3f9d5f', fg: WHITE, glyph: 'cash' };
+  // нал — по виду счёта у обоих: «…:Cash:<кто>»; нал дома (шкаф, решение 99) — тот же зелёный, значок домика;
+  // новый счёт — первая буква имени, цвет по имени
+  if (account.includes(':Cash:')) return { bg: '#3f9d5f', fg: WHITE, glyph: /:Cash:Home(:|$)/.test(account) ? 'home' : 'cash' };
   // счёт ПР «Assets:PR:<банк>[:валюта]» — буква банка и портфель в углу; банк без плитки — портфель, как раньше
   const pr = /^Assets:PR:([^:]+)/.exec(account);
   if (pr) {

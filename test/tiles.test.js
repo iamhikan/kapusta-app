@@ -68,6 +68,18 @@ test('нал обоих — купюра; салон — ножницы; Walt, �
   assert.equal(new Set(tiles).size, tiles.length);            // у каждого вида — свой цвет (ПР — цвет банка и значок)
 });
 
+test('нал дома (решение 99) — зелёная плитка нала со значком домика: в «Наличных» видно, где кошельки, а где шкаф', () => {
+  const home = tileOf('Assets:Family:Cash:Home', 'нал дома');
+  const wallet = tileOf('Assets:Family:Cash:Aleksey', 'нал Алексея');
+  assert.equal(home.glyph, 'home');
+  assert.deepEqual([home.bg, home.fg], [wallet.bg, wallet.fg]);                // тот же цвет нала
+  assert.deepEqual(tileOf('Assets:Family:Cash:Home:EUR', 'нал дома'), home);   // кошелёк в карточке — счёт с валютой
+  const el = tile(home);
+  assert.equal(all(el, '<svg').length, 1);
+  assert.ok(all(el, '<path').length >= 2, 'домик нарисован');
+  assert.equal(el.getAttribute('aria-hidden'), 'true');                        // имя «нал дома» — в тексте строки
+});
+
 test('новый счёт без плитки — первая буква имени и цвет по имени: один и тот же при каждом открытии', () => {
   const t = tileOf('Assets:Family:Revolut', 'Revolut');
   assert.equal(t.text, 'R');

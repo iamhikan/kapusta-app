@@ -244,6 +244,21 @@ test('фильтр «Кошелёк или счёт» — счета зрите�
   assert.ok(filters([])[0].chips.length > 2 && filters()[0].chips[0][0] === 'все');
 });
 
+test('фильтр без остатков «Здоровья» — и нал дома, сразу после кошельков (решение 99)', () => {
+  const chips = filters()[0].chips.map(([label]) => label);
+  assert.deepEqual(chips.slice(2, 5), ['нал Алексея', 'нал Ангелины', 'нал дома']);
+  assert.deepEqual(filters()[0].chips.find(([l]) => l === 'нал дома'), ['нал дома', 'Assets:Family:Cash:Home']);
+});
+
+test('перелив в шкаф — серым «нал Алексея → нал дома», сумма — в валюте перелива (решение 99)', () => {
+  const r = opRow({ ref: 'add:h', date: '2026-11-26', where: 'Перелив', what: 'евро в шкаф', kind: 'transfer', cats: [],
+    src: 'нал Алексея', rsd: 87700, receipt: false, flag: false,
+    legs: [{ name: 'нал Алексея', number: -749, currency: 'EUR' }, { name: 'нал дома', number: 749, currency: 'EUR' }] });
+  assert.equal(r.gray, true);
+  assert.equal(r.sub, 'нал Алексея → нал дома');
+  assert.equal(r.amount, '749 €');
+});
+
 test('операции счёта (тап по остатку): под строкой нет этого счёта — он в шапке (решение 48)', () => {
   const op = { ...LIDL, account: 'Assets:Family:Freedom:EUR' };
   assert.equal(opRow(op, { account: 'Assets:Family:Freedom' }).sub, 'супермаркеты, алкоголь');
