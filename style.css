@@ -157,7 +157,8 @@ h1, h2, p { margin: 0; }
 
 .curve-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; min-height: 56px; }
 .curve-head .title { font-size: 17px; font-weight: 600; }
-.curve-head .note { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* подпись темпа — переносом: при 320 px было «… выше нормы н…» (повтор ревью p46a, находка 4); при 390 px — в строку */
+.curve-head .note { font-size: 13px; font-weight: 600; white-space: normal; text-wrap: pretty; }
 .curve-head svg { color: var(--accent); flex-shrink: 0; }
 .link { font-size: 15px; color: var(--accent-ink); padding: 8px 0; }
 /* R-4: пояснение меток над первым днём «Операций»; «Понятно» — слева, зона касания 44 px */
@@ -179,12 +180,14 @@ h1, h2, p { margin: 0; }
 .swatch.plan { border-top: 2px solid var(--muted); }
 .swatch.forecast { border-top: 2px dashed var(--accent); }
 /* легенда цветов полосок — одной строкой у «Лимиты» (решение 49) */
-.section-head:has(.legend) { gap: 12px; }
 .section-head .legend { gap: 2px 8px; justify-content: flex-end; font-size: 12px; }
 .section-head .legend-item { gap: 4px; }
 .swatch-bar { flex-shrink: 0; width: 10px; height: 6px; border-radius: 3px; }
 
-.section-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px; margin-bottom: -8px; }
+/* зазор — и без легенды (повтор ревью p46a, находка 10: при 320 px «ОСТАТКИналичные и карты…»); подпись в две строки —
+   справа, у своего края */
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 0 4px;
+  margin-bottom: -8px; }
 .section-head h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); padding: 8px 0; }
 .list > * + * { border-top: 1px solid var(--line); }
 .limit { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; min-height: 56px;
@@ -287,13 +290,17 @@ button { -webkit-tap-highlight-color: transparent; }
 .cat-tile { flex-shrink: 0; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; }
 .op .op-where .ellipsis { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .op-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* R-3: подпись с меткой 🔁 📌 — категория, значок, «· откуда»; узко — многоточие сначала у «откуда». Категория не
-   сжимается вместе с ним (доли пикселя давали «ба…»), длинная — до места без значка (1,6em) */
-.op-sub.split { display: flex; min-width: 0; }
+/* R-3: подпись с меткой 🔁 📌 — категория, значок, «· откуда». Категория не сжимается (доли пикселя давали «ба…»),
+   длинная — до места без значка (1,6em). «откуда» не входит рядом — строкой ниже, а не «·» (повтор ревью p46a,
+   находка 11); длиннее строки — многоточием. Точка — ячейка 1em в начале «откуда»: подпись сдвинута влево на 1em и
+   обрезана слева на 1em — в начале новой строки точка за краем, рядом с категорией — на месте */
+.op-sub.split { display: flex; flex-wrap: wrap; min-width: 0; margin-left: -1em; clip-path: inset(0 0 0 1em); }
 .op-sub.split > span { white-space: pre; }
-.sub-cats { flex: none; max-width: calc(100% - 1.6em); overflow: hidden; text-overflow: ellipsis; }
+.op-sub.split > :first-child { margin-left: 1em; }
+.sub-cats { flex: none; max-width: calc(100% - 2.6em); overflow: hidden; text-overflow: ellipsis; }
 .sub-glyph { flex: none; }
 .sub-tail { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sub-sep { display: inline-block; width: 1em; text-align: center; }
 .op-note { font-weight: 600; }
 .op-amount { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; text-align: right;
   font-weight: 600; }
@@ -355,6 +362,17 @@ button { -webkit-tap-highlight-color: transparent; }
 .dot { flex-shrink: 0; width: 10px; height: 10px; border-radius: 50%; }
 /* общий лимит на «Категориях» (R-27) — строкой под категорией: «в лимите «здоровье»: 31 144 из 14 103» */
 .cat-row > .cat-of { grid-column: 1 / -1; padding-left: 20px; margin-top: -4px; text-align: left; text-wrap: pretty; }
+/* уже 390 px (повтор ревью p46a, находка 1: при 320 px от имени — «жи…»): доля и «к …» — строкой под именем, «21 % · +86»;
+   в первой строке — имя и сумма. Шапка — так же: «категория … сумма», под ней «доля · к 1–26.10» */
+@media (max-width: 389px) {
+  .cat-row, .cat-row.no-cmp { grid-template-columns: auto minmax(0, 1fr) auto; row-gap: 2px; }
+  .cat-row > :first-child { grid-column: 1 / -2; }
+  .cat-row > .cat-share { grid-row: 2; grid-column: 1; padding-left: 20px; text-align: left; }
+  .cat-row > .cat-delta { grid-row: 2; grid-column: 2; margin-left: -4px; text-align: left; }
+  /* точка — для глаз, по 4 px с боков: диктор слышит строку её aria-label (вторая запись — для браузеров с текстом замены) */
+  .cat-row > .cat-delta::before { content: '·'; content: '·' / ''; margin-right: 4px; color: var(--muted); font-weight: 400; }
+  .cat-row > .cat-bar { grid-column: 1 / -1; }
+}
 .num { white-space: nowrap; font-weight: 600; }
 .num.small { font-weight: 600; }
 .num.muted { font-weight: 400; }
@@ -431,7 +449,7 @@ section .title { font-size: 17px; font-weight: 600; }
 .line.bal { gap: 12px; padding: 8px 12px 8px 16px; min-height: 56px; }
 .bal-amounts { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; text-align: right; white-space: nowrap; }
 .bal-amounts .num { font-weight: 600; }
-.section-head > span { padding: 8px 0; }
+.section-head > span { padding: 8px 0; text-align: right; }
 .acct-top { display: flex; align-items: center; gap: 12px; }
 .acct-name { font-size: 17px; font-weight: 600; }
 .acct-flow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
@@ -457,3 +475,57 @@ section .title { font-size: 17px; font-weight: 600; }
 .chips.wrap { row-gap: 10px; }
 /* слова только для диктора (фаза 12): состояние полоски лимита */
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* текст 200 % и окна уже 320 px (R-33, M-часть; повтор ревью p46a, находка 4: окно 195 px, страница была шириной 278 px):
+   ничего не шире окна — подписи и имена переносом, числа строкой ниже, справа. 320 px и шире — как было */
+@media (max-width: 319px) {
+  .row, .line, .search-row { flex-wrap: wrap; }
+  .chip { white-space: normal; }
+  .big-num { font-size: 30px; }
+  .cats-total { font-size: 26px; }
+  .cats-hero { flex-wrap: wrap; align-items: flex-start; }
+  .cats-hero .cmp { text-align: left; }
+  .limit .row > .nowrap, .line > .nowrap { margin-left: auto; }
+  .search-row .search { flex-basis: 100%; }
+  /* «‹ Ноябрь 2026 ›» в ряду чипов — уже на 16 px: касание стрелки — 32 px и добавка ::after по 6 px, те же 44 px */
+  .small-arrow { min-width: 32px; }
+  .chip-month { gap: 0; }
+  /* чип фильтра с длинным именем счёта («Райффайзен Ангелины» с плиткой) — переносом внутри чипа */
+  .chips.wrap .chip-btn { white-space: normal; max-width: 100%; text-align: left; }
+  /* шапка с одним длинным словом («Продукты») и стрелками по 44 px — заголовок строкой выше стрелок */
+  .month { flex-wrap: wrap; }
+  .month-title { order: -1; flex-basis: 100%; }
+  /* «Операции»: «чек» — под именем, если рядом не входит; имя и подпись — целиком, переносом */
+  .op-where { flex-wrap: wrap; }
+  .op-sub, .op-sub.split > span { white-space: normal; }
+  .op .op-where .ellipsis, .cat-row .cat-name .ellipsis { -webkit-line-clamp: none; }
+  /* имена с многоточием (лимит, трата, «Самые дорогие») — целиком, переносом; слово шире строки («SAMOSTALNA
+     TRGOVINSKA», «супермаркеты,») — переносом внутри слова, а не за край */
+  .ellipsis { white-space: normal; }
+  .ellipsis, .op-sub { overflow-wrap: anywhere; }
+  /* подпись с меткой — обычным текстом, по словам: сдвиг и обрезка слева (находка 11) срезали бы значок у края */
+  .op-sub.split { display: block; margin-left: 0; clip-path: none; }
+  .op-sub.split > :first-child { margin-left: 0; }
+  .sub-sep { display: inline; }
+  /* плитки счёта и категории — украшение (aria-hidden, имя — в тексте): отнимали у имени 48 px из 131 */
+  .line.bal > .tile, .op:not(.line) > .cat-tile { display: none; }
+  /* остаток: имя — во всю ширину, под ним суммы, справа; стрелка — у правого края */
+  .line.bal { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 12px;
+    row-gap: 2px; }
+  .line.bal > .bal-amounts { grid-row: 2; grid-column: 1; justify-self: end; }
+  .line.bal > svg { grid-column: 2; grid-row: 1 / 3; }
+  /* строка «Операций»: имя и подпись — во всю ширину, под ними сумма, справа */
+  .op:not(.line) { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
+  .op:not(.line) > .op-amount { justify-self: end; }
+  /* «план на сегодня 223 578» шире полосы — строкой под полосой, а не за край карточки (место у черты — в style) */
+  .plan-cap { height: auto; margin-bottom: 0; }
+  .plan-cap > span { position: static; transform: none !important; }
+  .section-head { flex-wrap: wrap; row-gap: 0; }
+  .section-head > span { text-align: left; }
+  /* «Категории»: имя — первой строкой во всю ширину, сумма — второй, «доля · к …» — третьей; чипы периода — по два */
+  .chips.periods { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 12px; }
+  .cat-row, .cat-row.no-cmp { grid-template-columns: auto minmax(0, 1fr); }
+  .cat-row > :first-child { grid-column: 1 / -1; }
+  .cat-row > :nth-child(2) { grid-row: 2; grid-column: 1 / -1; padding-left: 20px; text-align: left; }
+  .cat-row > .cat-share, .cat-row > .cat-delta { grid-row: 3; }
+}

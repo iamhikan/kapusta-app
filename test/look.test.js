@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { all, one, seen } from './fakedom.js';
 import { limitLegend, limitRow } from '../js/limitrow.js';
-import { barsChart, catRow, stripChart } from '../js/catscreen.js';
+import { barsChart, catRow, catsScreen, stripChart } from '../js/catscreen.js';
 import { barsView } from '../js/cats.js';
 import { cardScreen, opLine } from '../js/screens.js';
 import { opRow } from '../js/ops.js';
@@ -149,4 +149,21 @@ test('R-27: подпись общего лимита — строкой под �
   assert.doesNotMatch(seen(one(row, 'cat-name')), /в лимите/);
   const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
   assert.match(css, /\.cat-row > \.cat-of \{[^}]*grid-column: 1 \/ -1;[^}]*text-align: left;/);
+});
+
+// повтор ревью p46a, находка 1: при 320 px от имени категории — 2–3 буквы («жи…»). Узкий экран ставит долю и «к …»
+// строкой под именем (style.css) — у строки и у шапки это свои ячейки
+test('находка 1: доля и «к …» — свои ячейки строки и шапки «Категорий»: узкий экран ставит их строкой под именем', () => {
+  const row = catRow({ rowClass: 'cat-row', cmpHead: 'к 1–26.10' }, { key: 'f', name: 'жильё', sum: '76 460', share: '21 %',
+    delta: '+86', deltaTone: 'warn', color: '#8d6e63', limit: '', of: '', bar: null }, () => {});
+  assert.equal(seen(one(row, 'cat-share')), '21 %');
+  assert.equal(seen(one(row, 'cat-delta')), '+86');
+  assert.match(one(row, 'cat-delta').getAttribute('class'), /\bwarn\b/, 'цвет разницы — прежний');
+  const entry = { kind: 'cats', period: { kind: 'month', from: '2026-11-01', to: '2026-11-30' }, cat: null, title: '',
+    scope: 'all', bars: null, data: { from: '2026-11-01', to: '2026-11-30', end: '2026-11-26', scope: 'all', cat: null,
+      total: 10000, prev: { from: '2026-10-01', to: '2026-10-26', total: 9000 },
+      cats: [{ key: 'Expenses:Family:Rent', name: 'жильё', rsd: 10000, share: 1, limit: null, prev: 9000 }] } };
+  const head = one(catsScreen(entry, { today: () => '2026-11-26', focus() {}, render() {}, push() {} }), 'cat-head');
+  assert.equal(seen(one(head, 'cat-share')), 'доля');
+  assert.equal(seen(one(head, 'cat-delta')), 'к 1–26.10');
 });

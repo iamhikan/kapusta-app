@@ -5,16 +5,32 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-const RULES = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, sel, body]) => ({
-  sels: sel.trim().split(',').map((s) => s.trim()),
-  decls: Object.fromEntries(body.split(';').map((d) => d.trim()).filter(Boolean).map((d) => {
-    const i = d.indexOf(':');
-    return [d.slice(0, i).trim(), d.slice(i + 1).trim()];
-  })),
-}));
+// правила по порядку в файле; у правил внутри @media — его условие (media), у прочих — null
+const RULES = [];
+{
+  let media = null;
+  for (const m of css.matchAll(/@media([^{]+)\{|([^{}@]+)\{([^{}]*)\}|\}/g)) {
+    if (m[1] != null) { media = m[1].trim(); continue; }
+    if (m[2] == null) { media = null; continue; }   // конец блока @media
+    RULES.push({ media, sels: m[2].trim().split(',').map((s) => s.trim()),
+      decls: Object.fromEntries(m[3].split(';').map((d) => d.trim()).filter(Boolean).map((d) => {
+        const i = d.indexOf(':');
+        return [d.slice(0, i).trim(), d.slice(i + 1).trim()];
+      })) });
+  }
+}
 
-// объявления правил с этим селектором, по порядку в файле
-const decls = (sel) => Object.assign({}, ...RULES.filter((r) => r.sels.includes(sel)).map((r) => r.decls));
+// условие @media при ширине окна w (CSS px): только max-width и min-width в px; прочие условия — не выполнены
+function fits(media, w) {
+  if (media == null) return true;
+  const parts = [...media.matchAll(/\((max|min)-width:\s*([\d.]+)px\)/g)];
+  if (!parts.length) return false;
+  return parts.every(([, side, n]) => (side === 'max' ? w <= Number(n) : w >= Number(n)));
+}
+
+// объявления правил с этим селектором, по порядку в файле; w — ширина окна (без неё — только правила вне @media)
+const decls = (sel, w = null) => Object.assign({}, ...RULES.filter((r) => r.sels.includes(sel)
+  && (w == null ? r.media == null : fits(r.media, w))).map((r) => r.decls));
 const THEMES = { light: decls(':root'), dark: { ...decls(':root'), ...decls(':root[data-scheme="dark"]') } };
 
 function resolve(value, vars) {
@@ -88,11 +104,11 @@ const ratio = (a, b) => {
 
 // стиль элемента по его классам: правила из одних классов («.chip», «.chip.bad»), что подходят, — по числу классов,
 // затем по порядку в файле (как каскад для таких селекторов)
-function styleOf(classes) {
+function styleOf(classes, w = null) {
   const has = new Set(classes.split(/\s+/).filter(Boolean));
   const hits = [];
   RULES.forEach((r, i) => r.sels.forEach((s) => {
-    if (!/^(\.[\w-]+)+$/.test(s)) return;
+    if (!/^(\.[\w-]+)+$/.test(s) || !(w == null ? r.media == null : fits(r.media, w))) return;
     const need = s.slice(1).split('.');
     if (need.every((c) => has.has(c))) hits.push([need.length, i, r.decls]);
   }));
@@ -437,4 +453,149 @@ test('S9C: экран ошибки «Здоровья» с вкладками �
   // окне уходят под вкладки
   const pad = decls('.problem.with-tabs')['padding-bottom'] || '';
   assert.equal(pad, decls('.screen.with-tabs')['padding-bottom']);
+});
+
+// ——— p48a: вёрстка и фокус по повтору ревью p46a (docs/ui-review-2026-11-26.md, «Новые и оставшиеся находки») ———
+
+test('находка 10: заголовок раздела и подпись справа — с зазором и без легенды (320 px: «ОСТАТКИналичные и карты…»)', () => {
+  // зазор был только у заголовка с легендой (.section-head:has(.legend)); легенда давно ушла под заголовок
+  const [row, col = row] = (decls('.section-head').gap || '').split(/\s+/);
+  assert.ok(px(col) >= 8, `зазор ${decls('.section-head').gap}`);
+  // подпись в две строки при 320 px — справа, у своего края, как итог дня (R-33)
+  assert.equal(decls('.section-head > span')['text-align'], 'right');
+});
+
+// ширина имени в строке «Категорий» при окне w: поля экрана и строки — по 16 px, сумма «153 342» — до 64 px, доля 44 px,
+// «к …» 76 px. Имя — первая ячейка строки; в первой строке рядом с ним — колонки, которые оно не занимает
+const tracksOf = (cls, w) => styleOf(cls, w)['grid-template-columns'].split(/\s+(?![^(]*\))/);
+function nameWidth(w, cls = 'cat-row') {
+  const tracks = tracksOf(cls, w);
+  const line = (n) => (n < 0 ? tracks.length + 2 + n : n);
+  const [a, b = a + 1] = (decls('.cat-row > :first-child', w)['grid-column'] || '1').split('/').map((x) => line(Number(x)));
+  const rest = tracks.filter((_, i) => i < a - 1 || i >= b - 1);
+  const gap = px(styleOf(cls, w).gap.split(/\s+/).pop());
+  return w - 4 * 16 - rest.reduce((s, t) => s + (/^\d+px$/.test(t) ? px(t) : 64), 0) - rest.length * gap;
+}
+
+test('находка 1: «Категории» уже 390 px — доля и «к …» строкой под именем, имя не уже 120 px (320 px: было 48 — «жи…»)', () => {
+  for (const w of [320, 375]) {
+    assert.ok(nameWidth(w) >= 120, `${w} px: имя ${nameWidth(w)} px`);
+    assert.ok(nameWidth(w, 'cat-row no-cmp') >= 120, `${w} px без сравнения: имя ${nameWidth(w, 'cat-row no-cmp')} px`);
+    for (const cell of ['.cat-row > .cat-share', '.cat-row > .cat-delta']) {
+      assert.equal(decls(cell, w)['grid-row'], '2', `${w} px: ${cell} — строкой под именем`);
+      assert.equal(decls(cell, w)['text-align'], 'left', `${w} px: ${cell} — от края имени`);
+    }
+  }
+  // 390 px и шире — как было: четыре колонки в одну строку, имени хватает на «образование» (93 px) с точкой
+  assert.deepEqual(tracksOf('cat-row', 390), tracksOf('cat-row'));
+  assert.ok(nameWidth(390) - 20 >= 93, `390 px: имя ${nameWidth(390)} px`);
+  assert.equal(decls('.cat-row > .cat-share', 390)['grid-row'], undefined);
+});
+
+test('находка 11: «· откуда» не сжимается до «·» — не входит рядом с категорией и значком, уходит строкой ниже, без точки', () => {
+  const sub = decls('.op-sub.split');
+  assert.equal(sub['flex-wrap'], 'wrap');
+  // точка — ячейка ширины x в начале «откуда». Подпись сдвинута влево на x и обрезана слева на x: в одной строке с
+  // категорией точка на месте, в начале новой строки — за краем
+  const sep = decls('.sub-sep');
+  assert.equal(sep.display, 'inline-block');
+  const x = sep.width;
+  assert.match(x, /^[\d.]+em$/);
+  assert.equal(sub['margin-left'], `-${x}`);
+  assert.equal(sub['clip-path'], `inset(0 0 0 ${x})`);
+  assert.equal(decls('.op-sub.split > :first-child')['margin-left'], x, 'первая часть подписи — на прежнем месте');
+  // значок — в первой строке: категория не шире строки без значка (1,6em) и без сдвига x
+  assert.equal(decls('.sub-cats')['max-width'], `calc(100% - ${1.6 + Number.parseFloat(x)}em)`);
+  // «откуда» длиннее строки — многоточием уже в своей строке
+  assert.equal(decls('.sub-tail')['min-width'], '0');
+  assert.equal(decls('.sub-tail')['text-overflow'], 'ellipsis');
+});
+
+// R-33, M-часть (повтор ревью p46a, находка 4, WCAG 1.4.4): текст 200 % — окно 195 px. Было: страница шириной 278 px,
+// «тратим быс…», «прогноз 279 2…», от имён лимитов 0–12 px, суммы остатков налезали на имена. Уже 320 px строки
+// перестраиваются: подписи и имена — переносом, числа — строкой ниже; 320 px и шире — как было
+const NARROW = 195;
+const card = (w) => w - 2 * 16 - 2 * 16;   // поля экрана и карточки (строки)
+
+test('находка 4, «Здоровье» при 195 px: плашка зоны — под «Потрачено», подпись темпа — переносом, крупное число входит', () => {
+  assert.equal(decls('.row', NARROW)['flex-wrap'], 'wrap', 'плашка «тратим быстрее плана» — строкой ниже, а не за край');
+  assert.equal(decls('.chip', NARROW)['white-space'], 'normal');
+  // подпись темпа — переносом при любой ширине: при 320 px было «… выше нормы н…», при 195 px — «прогноз 279 2…»
+  assert.equal(decls('.curve-head .note')['white-space'], 'normal', '«прогноз 279 846 · выше нормы на 21 871» целиком');
+  assert.equal(decls('.curve-head .note')['text-overflow'], undefined);
+  // «242 036» — 7 знаков, цифра жирным — до 0,6 em
+  assert.ok(7 * 0.6 * px(decls('.big-num', NARROW)['font-size']) <= card(NARROW), decls('.big-num', NARROW)['font-size']);
+  assert.ok(7 * 0.6 * px(decls('.cats-total', NARROW)['font-size']) <= card(NARROW), 'итог «Категорий»');
+  for (const sel of ['.row', '.chip', '.big-num']) assert.deepEqual(decls(sel, 320), decls(sel), `320 px: ${sel}`);
+});
+
+test('находка 4, строки при 195 px: имя — целиком во всю ширину, числа — строкой ниже, справа', () => {
+  // лимит: имя переносом (было многоточие и 0 px; .ellipsis — тест ниже), «53 342 / 5 876» — строкой ниже (.row — выше)
+  assert.equal(decls('.limit .row > .nowrap', NARROW)['margin-left'], 'auto');
+  // плитки счёта и категории — украшение (aria-hidden, имя — в тексте): при 195 px они отнимали у имени 48 px из 131
+  for (const sel of ['.line.bal > .tile', '.op:not(.line) > .cat-tile']) assert.equal(decls(sel, NARROW).display, 'none', sel);
+  // остаток: имя — во всю ширину, суммы — строкой ниже, справа (было: «Нал Алексея» под «77 780 RSD»)
+  assert.equal(decls('.line.bal', NARROW).display, 'grid');
+  assert.deepEqual([decls('.line.bal > .bal-amounts', NARROW)['grid-row'], decls('.line.bal > .bal-amounts', NARROW)['justify-self']],
+    ['2', 'end']);
+  // строка «Операций»: так же — имя и подпись во всю ширину, сумма — под ними, справа
+  assert.equal(decls('.op:not(.line)', NARROW).display, 'grid');
+  assert.equal(decls('.op:not(.line) > .op-amount', NARROW)['justify-self'], 'end');
+  // подпись «план на сегодня 223 578» шире полосы — строкой под полосой, не за край карточки (стояла у черты плана)
+  assert.equal(decls('.plan-cap > span', NARROW).position, 'static');
+  assert.equal(decls('.plan-cap > span', NARROW).transform, 'none !important');
+  // прочие строки (бюджет, карточка): часть справа не входит — строкой ниже, справа
+  assert.equal(decls('.line', NARROW)['flex-wrap'], 'wrap');
+  assert.equal(decls('.line > .nowrap', NARROW)['margin-left'], 'auto');
+  for (const sel of ['.line.bal', '.op:not(.line)', '.line', '.ellipsis', '.plan-cap > span']) assert.deepEqual(decls(sel, 320), decls(sel), `320 px: ${sel}`);
+});
+
+test('находка 4, «Категории» при 195 px: имя — первой строкой во всю ширину, сумма — второй, доля и «к …» — третьей', () => {
+  assert.equal(decls('.cat-row > :first-child', NARROW)['grid-column'], '1 / -1');
+  assert.equal(nameWidth(NARROW) - 20, card(NARROW) - 20, 'имени — вся строка без точки');
+  assert.equal(decls('.cat-row > :nth-child(2)', NARROW)['grid-row'], '2');
+  for (const cell of ['.cat-row > .cat-share', '.cat-row > .cat-delta']) assert.equal(decls(cell, NARROW)['grid-row'], '3', cell);
+  assert.equal(decls('.cats-hero', NARROW)['flex-wrap'], 'wrap', '«−340 367 к 1–26 октября» — под итогом');
+  // две колонки: доля и «· к 1–26.10» (68 px) — в одной строке; третья пустая колонка с зазором её резала
+  assert.equal(tracksOf('cat-row', NARROW).length, 2);
+  assert.equal(tracksOf('cat-row no-cmp', NARROW).length, 2);
+  // чипы периода — пять в ряд по 25 px налезали друг на друга («еделМесКварта.»): по два в ряд, с зазором под касание
+  const periods = decls('.chips.periods', NARROW);
+  assert.equal(periods['grid-template-columns'], 'repeat(2, minmax(0, 1fr))');
+  assert.ok(px(periods['row-gap']) >= 2 * hit('.chip-btn').y, `зазор рядов ${periods['row-gap']}`);
+  assert.deepEqual(decls('.chips.periods', 320), decls('.chips.periods'));
+});
+
+test('находка 4, шапки и «Операции» при 195 px: месяц, имя траты, «чек» и подпись — целиком; стрелки месяца — касание 44 px', () => {
+  // «‹ Ноябрь 2026 ›» в ряду с чипами был шире окна (186 px из 163): стрелки уже, касание — прежние 44 px
+  const arrow = hit('.small-arrow');
+  const narrow = px(decls('.small-arrow', NARROW)['min-width']);
+  assert.ok(narrow + arrow.w - px(decls('.small-arrow')['min-width']) >= 44, `стрелка ${narrow} px + добавка`);
+  assert.ok(2 * narrow + 96 <= card(NARROW) + 32, 'месяц с двумя стрелками — в ряду чипов');   // ряд — без полей карточки
+  // лист «Фильтры»: чип «Райффайзен Ангелины» с плиткой был шире окна (213 px) — имя переносом внутри чипа
+  assert.equal(decls('.chips.wrap .chip-btn', NARROW)['white-space'], 'normal');
+  assert.equal(decls('.chips.wrap .chip-btn', NARROW)['max-width'], '100%');
+  // шапка экрана категории: «Продукты» 20 px и стрелки по 44 px не входят в 131 px — заголовок строкой выше стрелок
+  assert.equal(decls('.month', NARROW)['flex-wrap'], 'wrap');
+  assert.equal(decls('.month-title', NARROW)['flex-basis'], '100%');
+  assert.equal(decls('.month-title', NARROW).order, '-1');
+  // строка «Операций»: «чек» — под именем, если рядом не входит; имя и подпись — без многоточия
+  assert.equal(decls('.op-where', NARROW)['flex-wrap'], 'wrap');
+  assert.equal(decls('.op-sub', NARROW)['white-space'], 'normal');
+  assert.equal(decls('.op-sub.split > span', NARROW)['white-space'], 'normal');
+  assert.equal(decls('.op .op-where .ellipsis', NARROW)['-webkit-line-clamp'], 'none');
+  assert.equal(decls('.cat-row .cat-name .ellipsis', NARROW)['-webkit-line-clamp'], 'none');
+  // слово шире строки («SAMOSTALNA TRGOVINSKA», «супермаркеты,» — 95 px из 89) — переносом внутри слова, не за край
+  // и любое имя с многоточием (лимит, «Самые дорогие», товары) — целиком, переносом
+  for (const sel of ['.ellipsis', '.op-sub']) assert.equal(decls(sel, NARROW)['overflow-wrap'], 'anywhere', sel);
+  assert.equal(decls('.ellipsis', NARROW)['white-space'], 'normal');
+  // подпись с меткой — обычным текстом: «образование 🔁 · Райффайзен РФ» переносится по словам; значок не обрезан у
+  // края (сдвиг на 1em и обрезка слева — только когда подпись в одну строку с переносом «откуда», находка 11)
+  const split = decls('.op-sub.split', NARROW);
+  assert.deepEqual([split.display, split['margin-left'], split['clip-path']], ['block', '0', 'none']);
+  assert.equal(decls('.op-sub.split > :first-child', NARROW)['margin-left'], '0');
+  assert.equal(decls('.sub-sep', NARROW).display, 'inline', '« · » — как текст: одна точка строкой не остаётся');
+  for (const sel of ['.small-arrow', '.month', '.month-title', '.op-where', '.op-sub', '.op .op-where .ellipsis']) {
+    assert.deepEqual(decls(sel, 320), decls(sel), `320 px: ${sel}`);
+  }
 });
