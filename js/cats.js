@@ -4,6 +4,7 @@ import { fmt } from './health.js';
 import { dayLabel, money } from './ops.js';
 import { prevText } from './period.js';
 import { colorOf, OTHER } from './catcolor.js';
+import { restOf } from './api.js';
 
 export { colorOf, OTHER };   // цвет категории живёт в catcolor.js (правка 4): им же красит строки «Операций»
 
@@ -56,8 +57,11 @@ function head(body) {
   };
 }
 
-export function catsView(body) {
-  const sub = !!body.cat;
+export function catsView(input) {
+  const sub = !!input.cat;
+  // R-31 п. 3: в подкатегориях траты самой категории — «прочие продукты» в списке, полосе, у диктора и в самых дорогих
+  const body = sub ? { ...input, cats: input.cats.map((c) => (c.exact ? { ...c, name: restOf(c.name) } : c)),
+    top: (input.top || []).map((o) => ({ ...o, cats: (o.cats || []).map((n) => (n === input.name ? restOf(n) : n)) })) } : input;
   const base = sub ? colorOf(body.cat) : null;
   const rows = body.cats.map((c, i) => ({
     key: c.key, name: c.name, sum: fmt(c.rsd), share: `${Math.round(c.share * 100)} %`,
