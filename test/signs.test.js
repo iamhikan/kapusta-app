@@ -209,16 +209,21 @@ function regularScreen(key, health, days, total) {
   entry.pages = [{ days, total, count: 5, next: null }];
   return opsScreen(entry, nav);
 }
-const dayHeads = (tree) => all(tree, 'day-head').map((d) => [flat(eyes(d)), d.kids[1].classes.join(' ')]);
+// день выигрыша или потери — класс дня (gain, loss): цвет итога даёт style.css
+const dayHeads = (tree) => all(tree, 'day').map((d) => [flat(eyes(one(d, 'day-head'))), d.classes.filter((c) => c !== 'day').join(' ')]);
 const head = (tree) => {
   const big = one(all(tree, 'card')[0], 'big');
   return [shown(big.kids[0]), big.kids[0].classes.join(' '), shown(big.kids[1]), big.kids[1].classes.join(' ').trim()];
 };
 
-test('«Обмен валюты»: день — «выигрыш +3 888» зелёным и «потеря −3 961», а не «−3 888» над выигрышами', () => {
+test('«Обмен валюты»: день — «выигрыш +3 888» зелёным и «потеря −3 961», а не «−3 888» над выигрышами', async () => {
   const screen = regularScreen('обмен валюты', fxHealth(-189), FX_DAYS, -189);
-  assert.deepEqual(dayHeads(screen), [['25 ноября, ср выигрыш +3 888', 'good'], ['12 ноября, чт потеря −520', 'warn'],
-    ['6 ноября, пт потеря −3 961', 'warn']]);
+  assert.deepEqual(dayHeads(screen), [['25 ноября, ср выигрыш +3 888', 'gain'], ['12 ноября, чт потеря −520', 'loss'],
+    ['6 ноября, пт потеря −3 961', 'loss']]);
+  const { readFileSync } = await import('node:fs');
+  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  assert.match(css, /\.day\.gain > \.day-head > span \+ span \{ color: var\(--good\); \}/);
+  assert.match(css, /\.day\.loss > \.day-head > span \+ span \{ color: var\(--warn\); \}/);
   assert.deepEqual(head(screen), ['+189', 'big-num good', 'выигрыш на обмене', 'muted']);
   // у других регулярных день — как был: сумма трат дня без знака и цвета
   const bank = regularScreen('банк', { month: '2026-11', envelopes: [ENV('банк', 1580, 2535)] },

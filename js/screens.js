@@ -182,7 +182,7 @@ function dayHead(d) {
   // итог дня с 🔁📌 — диктору словами (daySay), глазам — как в чате
   const say = daySay(d);
   const total = !d.sum ? null : say ? h('span', {}, h('span', { 'aria-hidden': 'true' }, dayTotal(d)), h('span', { class: 'sr' }, say))
-    : h('span', { class: d.fx ? (d.sum < 0 ? 'good' : 'warn') : null }, dayTotal(d));   // выигрыш — зелёным
+    : h('span', {}, dayTotal(d));
   return h('div', { class: 'day-head muted small' }, h('span', {}, dayLabel(d.date)), total);
 }
 
@@ -410,7 +410,8 @@ export function opsScreen(entry, nav) {
   } else if (!list.length) {
     body = emptyBody(entry, nav);
   } else {
-    body = h('div', { class: 'stack' }, marksBlock(entry, nav), ...list.map((d) => h('div', { class: 'day' },
+    // «Обмен валюты»: день выигрыша или потери — цвет итога даёт класс дня (style.css)
+    body = h('div', { class: 'stack' }, marksBlock(entry, nav), ...list.map((d) => h('div', { class: d.fx ? `day ${d.sum < 0 ? 'gain' : 'loss'}` : 'day' },
       dayHead(d),
       h('section', { class: 'card list' }, ...d.ops.map((op, i) => opLine(opRow(op, { inCategory: !!(params.cat || params.limit || params.regular),
         account: entry.ctx ? '' : entry.f.account, bare: !!params.regular }), nav,

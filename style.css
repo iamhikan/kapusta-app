@@ -282,6 +282,9 @@ button { -webkit-tap-highlight-color: transparent; }
 .day-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; padding: 0 4px; font-weight: 600;
   text-transform: none; }
 .day-head > span + span { margin-left: auto; text-align: right; }   /* итог строкой ниже — справа, как в ряд (R-33) */
+/* «Обмен валюты»: итог дня — выигрыш зелёным, потеря — цветом строки потери (повтор 2 ревью p48a, находка 1) */
+.day.gain > .day-head > span + span { color: var(--good); }
+.day.loss > .day-head > span + span { color: var(--warn); }
 .op { width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 16px; min-height: 56px; text-align: left; }
 .op.nested { padding-left: 32px; background: color-mix(in srgb, var(--muted) 6%, transparent); }
 .op.gray .op-where, .op.gray .op-amount > :first-child { color: var(--muted); }
