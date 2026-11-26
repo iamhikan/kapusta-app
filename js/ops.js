@@ -127,8 +127,9 @@ function tileOfOp(op) {
 }
 
 export function opRow(op, { inCategory = false, account = '' } = {}) {
-  // регулярная (budget.yaml/regular) — в норме отдельно, в «Потрачено» идёт только перебор (Алексей 25.11.2026)
-  const marks = [op.receipt && 'чек', op.flag && '!', op.secret && 'секрет', op.regular && 'регулярная'].filter(Boolean);
+  // регулярная и обязательная — в норме отдельно от шкалы, правило градусника (решение 97)
+  const marks = [op.receipt && 'чек', op.flag && '!', op.secret && 'секрет', op.regular && 'регулярная',
+    op.mandatory && 'обязательная'].filter(Boolean);
   const base = { ref: op.ref, where: op.count > 1 ? `${op.where} · ${records(op.count)}` : op.where, marks, note: op.hit || '', noteTone: '', gray: false,
     group: (op.group || []).map((g) => opRow(g)), count: op.count || 1, tile: tileOfOp(op) };
   if (op.kind === 'exchange') return { ...base, gray: true, ...exchange(op) };

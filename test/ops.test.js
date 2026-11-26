@@ -65,9 +65,10 @@ test('трата в валюте — валюта операции и RSD; «!»
   assert.deepEqual(r.marks, ['!', 'секрет']);
 });
 
-test('регулярная трата — меткой «регулярная» (Алексей 25.11.2026: «чтобы понимать, идут ли они в учёт плановых трат»)', () => {
+test('регулярная и обязательная трата — метками «регулярная» и «обязательная» (решение 97: «чтобы понимать, идут ли они в учёт плановых трат»)', () => {
   assert.deepEqual(opRow({ ...LIDL, receipt: false, regular: 'подписки' }).marks, ['регулярная']);
   assert.deepEqual(opRow({ ...LIDL, regular: 'подписки' }).marks, ['чек', 'регулярная']);
+  assert.deepEqual(opRow({ ...LIDL, receipt: false, mandatory: 'жильё' }).marks, ['обязательная']);
   assert.deepEqual(opRow({ ...LIDL, receipt: false }).marks, []);
 });
 
