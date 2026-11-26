@@ -160,6 +160,8 @@ h1, h2, p { margin: 0; }
 .curve-head .note { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .curve-head svg { color: var(--accent); flex-shrink: 0; }
 .link { font-size: 15px; color: var(--accent-ink); padding: 8px 0; }
+/* R-4: пояснение меток над первым днём «Операций»; «Понятно» — слева, зона касания 44 px */
+.marks-note .link { align-self: flex-start; min-height: 44px; font-weight: 600; }
 .curve-body { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 8px; }
 .chart { display: block; }
 .chart .grid { stroke: var(--line); stroke-width: 1; }

@@ -52,6 +52,22 @@ export function dayTotal(d) {
   return d.plain == null ? money(d.sum) : `${money(d.sum)} · без 🔁📌 ${money(d.plain)}`;
 }
 
+// R-4, R-8 (ревью 26.11): что значат 🔁 и 📌 — строками чата (apart сервера, names.APART_NOTE fin), «без 🔁📌» — если у
+// дня есть вторая сумма, минус — если день меньше нуля. Строка: glyph — значок для глаз, text — слова; say — вся строка
+// диктору, когда её вид для глаз — значками
+export function marksNote(pages) {
+  const lines = [...new Set(pages.flatMap((p) => p.apart || []))].map((n) => {
+    const [, glyph, text] = /^(\S+) — (.+)$/u.exec(n) || [];
+    return glyph ? { glyph, text: ` — ${text}.` } : { text: `${n}.` };
+  });
+  const days = pages.flatMap((p) => p.days || []);
+  if (days.some((d) => d.plain != null)) {
+    lines.push({ text: '«без 🔁📌» — траты дня без них.', say: 'Вторая сумма дня — траты без регулярных и обязательных.' });
+  }
+  if (days.some((d) => d.sum < 0 || d.plain < 0)) lines.push({ text: 'Минус — в этот день вернули больше, чем потратили.' });
+  return lines;
+}
+
 // тот же итог для диктора — словами (R-5, ревью 26.11): значки 🔁📌 он читает названиями эмодзи. Без меток — не нужен
 export function daySay(d) {
   return d.sum && d.plain != null ? `траты ${money(d.sum)}, без регулярных и обязательных ${money(d.plain)}` : '';
@@ -275,6 +291,19 @@ function whoOf(c) {
 const TAX = 'https://suf.purs.gov.rs/';
 export const taxLink = (url) => (typeof url === 'string' && url.startsWith(TAX) ? url : null);
 
+// карточка (R-4): метка регулярной и обязательной — своей строкой с переходом на её операции, ниже — пояснение чата
+// без значка («Регулярная трата: она в норме отдельно, …»); у имени остаются «чек», «!», «секрет»
+const APART = [['regular', '🔁', 'регулярная'], ['mandatory', '📌', 'обязательная']];
+const APART_MARK = /^(🔁|📌) /u;
+
+function apartLines(c) {
+  return APART.filter(([k]) => c[k]).map(([kind, glyph, word]) => {
+    const note = (c.apart || []).find((n) => n.startsWith(`${glyph} — `));
+    const why = note ? note.slice(glyph.length + 3) : '';
+    return { kind, glyph, word, name: c[kind], why: why ? `${why.charAt(0).toUpperCase()}${why.slice(1)}.` : '' };
+  });
+}
+
 export function cardView(c) {
   const check = c.opening === 'check';
   const postings = (c.postings || []).map((p) => (check && p.account === OPENING ? { ...p, name: 'сверка остатка' } : p));
@@ -289,6 +318,8 @@ export function cardView(c) {
     when: dayLabel(c.date) + (time ? ` · ${time}` : ''),
     by: c.by ? `записал${c.by === 'Ангелина' ? 'а' : ''} ${c.by}` : FROM[c.origin || c.source] || 'из выписки банка',   // origin — без учёта чека (решение 71)
     row: check && c.after ? checkHead(opRow(c), c.after) : opRow(c),
+    marks: opRow(c).marks.filter((m) => !APART_MARK.test(m)),
+    apart: apartLines(c),
     flow: sides,
     receipt: c.receipt && {
       shop: c.receipt.shop, total: money(c.receipt.total), url: taxLink(c.receipt.url),

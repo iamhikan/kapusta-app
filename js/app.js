@@ -32,7 +32,9 @@ let seq = 0;             // листают быстро — рисуем тол�
 let stack = [{ kind: 'health' }];   // экраны: низ — вкладка, сверху — операции лимита, карточка
 let opsTab = null;                  // вкладка «Операции» помнит фильтры и прокрутку
 let catsTab = null;                 // вкладка «Категории» — период и «В лимитах / Все траты»
-const STORE = 'kapusta.period';     // localStorage — только период «Категорий» (спека, «Безопасность»)
+const STORE = 'kapusta.period';     // localStorage — период «Категорий» (спека, «Безопасность»)
+const MARKS = 'kapusta.marks';      // и «Понятно» у пояснения меток 🔁 📌 (R-4): на этом устройстве
+let marksOk = false;                // localStorage нет — «Понятно» действует до закрытия
 const cloud = tg && tg.CloudStorage;   // снимок «Здоровья» (этап 5): у каждого человека своё хранилище Telegram
 let snap = null;                       // показанный снимок: Мак молчит
 let hasSnap = false;                   // снимок есть в CloudStorage — ссылка на него с «Операций» и «Категорий»
@@ -115,6 +117,14 @@ const nav = {
     const hh = cache.get(m);
     const l = hh && view(hh).limits.find((x) => x.key === ctx.params.limit);
     return (l && l.note) || 'перерасход других лимитов';
+  },
+  marksHidden() {
+    if (marksOk) return true;
+    try { return localStorage.getItem(MARKS) === '1'; } catch { return false; }
+  },
+  hideMarks() {
+    marksOk = true;
+    try { localStorage.setItem(MARKS, '1'); } catch { /* приватный режим */ }
   },
   savePeriod(p) {
     try { localStorage.setItem(STORE, JSON.stringify({ kind: p.kind, from: p.from, to: p.to })); } catch { /* приватный режим */ }

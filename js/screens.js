@@ -1,8 +1,8 @@
 // Экраны «Операции» и карточка операции (DOM). Данные — только из /api/tx и /api/tx/{ref}, в памяти страницы.
 import { healthPath, screen } from './api.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
-import { FLAG, accountView, cardView, dayLabel, daySay, dayTotal, emptyText, filters, headView, money, monthRange, monthTitle, opRow, taxLink,
-  txPath } from './ops.js';
+import { FLAG, accountView, cardView, dayLabel, daySay, dayTotal, emptyText, filters, headView, marksNote, money, monthRange, monthTitle,
+  opRow, taxLink, txPath } from './ops.js';
 import { tile, tileOf } from './tiles.js';
 import { GLYPHS } from './catcolor.js';
 import { shiftMonth } from './health.js';
@@ -286,6 +286,20 @@ export function offlineBody(kind, entry, nav, retry, key = 'retry') {
     h('p', { class: 'small detail muted' }, entry.error));
 }
 
+// R-4 (ревью 26.11): над первым днём — что значат 🔁 и 📌 словами чата, «без 🔁📌» и минус дня (R-8). «Понятно» прячет
+// пояснение на этом устройстве. На экране регулярной его нет: шапка там — «В норме N»
+function marksBlock(entry, nav) {
+  if (entry.ctx && entry.ctx.params && entry.ctx.params.regular) return null;
+  if (nav.marksHidden && nav.marksHidden()) return null;
+  const lines = marksNote(entry.pages);
+  if (!lines.length) return null;
+  const line = (l) => h('p', { class: 'small' }, l.say ? [h('span', { 'aria-hidden': 'true' }, l.text), h('span', { class: 'sr' }, l.say)]
+    : [l.glyph ? h('span', { 'aria-hidden': 'true' }, l.glyph) : null, l.text]);
+  return h('section', { class: 'card pad stack-s marks-note' }, ...lines.map(line),
+    h('button', { type: 'button', class: 'link', 'data-focus': 'marks-ok', on: { click: () => {
+      tap(); if (nav.hideMarks) nav.hideMarks(); nav.focus('title'); nav.render(); } } }, 'Понятно'));
+}
+
 export function opsScreen(entry, nav) {
   const list = days(entry);
   const last = entry.pages[entry.pages.length - 1];
@@ -299,7 +313,7 @@ export function opsScreen(entry, nav) {
     body = h('div', { class: 'empty' }, h('h2', {}, emptyText(entry.month, entry.ctx && entry.ctx.title,
       entry.ctx && entry.ctx.period)), h('p', { class: 'muted' }, 'Смените период или фильтры.'));
   } else {
-    body = h('div', { class: 'stack' }, ...list.map((d) => h('div', { class: 'day' },
+    body = h('div', { class: 'stack' }, marksBlock(entry, nav), ...list.map((d) => h('div', { class: 'day' },
       dayHead(d),
       h('section', { class: 'card list' }, ...d.ops.map((op, i) => opLine(opRow(op, { inCategory: !!entry.ctx,
         account: entry.ctx ? '' : entry.f.account }), nav,
@@ -410,6 +424,17 @@ function factsCard(entry, nav, v) {
     kv(v.who.label, h('span', { class: 'grow' }, v.who.value)));
 }
 
+// R-4: строка метки — переход на операции регулярной (обязательной) за месяц операции, с её градусником в шапке
+function apartCard(entry, nav, c) {
+  if (!c.apart.length) return null;
+  const month = entry.data.date.slice(0, 7);
+  return h('section', { class: 'card list' }, ...c.apart.map((a) => h('button', { type: 'button', class: 'line op',
+    'data-focus': `apart:${a.kind}`, on: { click: () => { tap(); nav.push(newOps(month, { title: a.name.charAt(0).toUpperCase()
+      + a.name.slice(1), params: { regular: a.name }, limitWord: 'В норме' })); } } },
+  h('span', { class: 'grow' }, h('span', {}, h('span', { 'aria-hidden': 'true' }, a.glyph), ` ${a.word} · ${a.name}`),
+    a.why ? h('span', { class: 'muted small' }, a.why) : null), icon(ICONS.right, 16))));
+}
+
 function pickerSheet(entry, nav) {
   // холст card-picker / card-item: «Часто», поиск, «Все категории», «Сменить на …»; позиция — только она
   const p = entry.picker;
@@ -500,12 +525,13 @@ export function cardScreen(entry, nav) {
     notice(entry, nav),
     h('section', { class: 'card pad stack' },
       h('div', { class: 'op-where' }, h('h1', { class: 'card-title', ...TITLE }, c.title),
-        ...r.marks.map(mark)),
+        ...c.marks.map(mark)),
       c.what ? h('p', { class: 'muted' }, c.what) : null,
       h('div', { class: 'big' }, h('span', { class: `big-num${r.gray ? ' muted' : ''}` }, bigNum),
         bigUnit ? h('span', { class: 'muted' }, bigUnit) : null, r.amountSub ? h('span', { class: 'muted' }, r.amountSub) : null),
       r.note ? h('div', { class: `small ${r.noteTone}` }, r.note) : null,
       h('div', { class: 'muted small' }, spend ? c.when : `${r.sub ? `${r.sub} · ` : ''}${c.when} · ${c.by}`)),
+    apartCard(entry, nav, c),
     spend ? factsCard(entry, nav, c) : null,
     // решение 51: было «Проводки»; решение 65: «Откуда» и «Куда» подписями, суммы без знаков, валюты счёта — в одной строке
     c.flow.length && !c.simple ? [h('div', { class: 'section-head' }, h('h2', {}, 'Откуда и куда')),

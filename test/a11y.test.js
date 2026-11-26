@@ -628,10 +628,14 @@ test('R-5: метка «🔁 регулярная» — диктор слыши�
   assert.match(eyes(row), /Lidl🔁 регулярная/);
   assert.equal(heard(row).match(/регулярная/g).length, 1);
   assert.doesNotMatch(heard(row), /🔁/);
+  // карточка (R-4): метка — своей строкой под шапкой, диктор слышит слово один раз; у имени — только «чек»
   const card = cardScreen({ kind: 'card', ref: 'sms:1', data: { ...CARD, mandatory: 'жильё' } }, nav);
   const title = find(card, (e) => e.classes.includes('op-where'))[0];
-  assert.match(eyes(title), /📌 обязательная/);
-  assert.equal(heard(title).replace(/\s+/g, ' '), 'Lidl чек обязательная');
+  assert.equal(heard(title).replace(/\s+/g, ' '), 'Lidl чек');
+  const line = byKey(card, 'apart:mandatory');
+  assert.match(eyes(line), /📌 обязательная · жильё/);
+  assert.equal(heard(line).match(/обязательная/g).length, 1);
+  assert.doesNotMatch(heard(line), /📌/);
 });
 
 // R-18 на стенде: фокус встал на «Повторить» под списком, а кнопка — ниже окна (видно 0 px из 50). Раскладки в
