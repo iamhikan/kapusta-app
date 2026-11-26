@@ -236,7 +236,8 @@ export function opRow(op, { inCategory = false, account = '', bare = false } = {
       amountSub: op.amount.currency !== 'RSD' ? `${money(op.rsd)} RSD` : '', income: true };
   }
   const foreign = op.amount && op.amount.currency !== 'RSD' && op.total == null;
-  return { ...base, sub, gray: op.kind === 'other',
+  // поправка дублей SMS (R-30, решение 98): fin шлёт одной строкой с `correction` — серая, как служебная
+  return { ...base, sub, gray: op.kind === 'other' || !!op.correction,
     amount: foreign ? cur(op.amount.number, op.amount.currency) : full(op.rsd, 'RSD'),   // RSD — у каждой суммы (ревью)
     amountSub: op.total != null ? `из платежа ${money(op.total)}` : foreign ? `${money(op.rsd)} RSD` : '' };   // R-16: «из» в шапке — из нормы
 }
