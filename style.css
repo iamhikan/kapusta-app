@@ -29,6 +29,11 @@
   --track: color-mix(in srgb, var(--muted) 20%, transparent);
   --tile-ink: 100%;          /* значок плитки категории: в светлой — цвет категории, в тёмной — светлее (правка 4) */
   --skel: color-mix(in srgb, var(--muted) 16%, transparent);
+  /* лист снизу (R-28, ревью 26.11): в светлой — фон экрана с белыми карточками; в тёмной — см. ниже */
+  --sheet: var(--bg);
+  --sheet-card: var(--card);
+  --sheet-line: var(--line);
+  --scrim: rgba(0, 0, 0, 0.35);
   color-scheme: light;
 }
 :root[data-scheme="dark"] {
@@ -50,6 +55,12 @@
   --bar-yellow: #ffd60a;
   --bar-orange: #ff9f0a;
   --tile-ink: 65%;
+  /* лист — цвета карточки над чёрным экраном (было: фон #000 на затемнении поверх чёрного, края не видно); карточки
+     в листе — на ступень светлее, как в iOS (#2c2c2e); серый темы на них — 4,9:1 */
+  --sheet: var(--card);
+  --sheet-card: color-mix(in srgb, var(--fg) 7%, var(--card));
+  --sheet-line: color-mix(in srgb, var(--fg) 16%, var(--card));
+  --scrim: rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -276,10 +287,16 @@ button { -webkit-tap-highlight-color: transparent; }
 .empty { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 48px 16px; }
 .empty h2 { font-size: 18px; }
 .card-title { font-size: 22px; letter-spacing: -0.01em; }
-.sheet-back { position: fixed; inset: 0; z-index: 10; background: rgba(0, 0, 0, 0.35); display: flex; align-items: flex-end; }
-.sheet { width: 100%; max-width: 560px; margin: 0 auto; background: var(--bg); border-radius: 16px 16px 0 0;
+.sheet-back { position: fixed; inset: 0; z-index: 10; background: var(--scrim); display: flex; align-items: flex-end; }
+.sheet { width: 100%; max-width: 560px; margin: 0 auto; background: var(--sheet); border-radius: 16px 16px 0 0;
+  border-top: 1px solid var(--sheet-line);
   padding: 16px 16px calc(16px + var(--tg-safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px;
   max-height: 85vh; overflow-y: auto; }
+/* ручка листа 36×5 — знак, что это лист поверх экрана (R-28); закрывают его «Отмена», «Назад» или нажатие мимо */
+.sheet::before { content: ''; flex-shrink: 0; align-self: center; width: 36px; height: 5px; border-radius: 3px;
+  margin: -10px 0 -4px; background: color-mix(in srgb, var(--muted) 45%, transparent); }
+.sheet .card, .sheet .search, .sheet .toggle, .sheet .chip-btn:not(.on) { background: var(--sheet-card); }
+.sheet .list > * + *, .sheet .chip-btn:not(.on) { border-color: var(--sheet-line); }
 .sheet h2 { font-size: 18px; }
 /* лист — на --bg: ссылка цвета темы на нём 3,6:1 в светлой — притемнённая, как метки (critique 12.11) */
 .sheet .link { color: var(--accent-ink); }

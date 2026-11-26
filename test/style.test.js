@@ -350,3 +350,30 @@ test('R-29: фокус с клавиатуры не прячется под ни
   const fixed = Number((/(\d+)px/.exec(pad) || [])[1] || 0);
   assert.ok(fixed >= tabs + 8, `отступ ${fixed} px, вкладки ${tabs} px`);
 });
+
+test('R-28: лист в тёмной теме отделён от экрана — фон светлее затемнённого экрана, край сверху и ручка', () => {
+  // ревью 26.11: лист цвета фона (#000) на затемнении поверх чёрного — края не видно
+  const vars = THEMES.dark;
+  const sheet = color(resolve(decls('.sheet').background, vars));
+  const under = over(color(resolve(decls('.sheet-back').background, vars)), color(resolve('var(--bg)', vars)));
+  assert.ok(ratio(sheet, under) >= 1.2, `лист к экрану ${ratio(sheet, under).toFixed(2)}:1`);
+  assert.match(decls('.sheet')['border-top'] || '', /^1px solid /, 'край сверху');
+  const grip = decls('.sheet::before');
+  assert.equal(grip.content, "''");
+  assert.equal(`${grip.width}×${grip.height}`, '36px×5px', 'ручка');
+});
+
+test('R-28: в листе карточки, поиск и чипы отделены от фона листа; текст на них — не ниже 4,5:1, в обеих темах', () => {
+  for (const theme of ['light', 'dark']) {
+    const vars = THEMES[theme];
+    const sheet = color(resolve(decls('.sheet').background, vars));
+    for (const sel of ['.sheet .card', '.sheet .search', '.sheet .toggle', '.sheet .chip-btn:not(.on)']) {
+      const inner = color(resolve(decls(sel).background || 'transparent', vars));
+      assert.ok(inner[3] && ratio(inner, sheet) >= 1.1, `${theme}, ${sel}: ${ratio(over(inner, sheet), sheet).toFixed(2)}:1 к листу`);
+      for (const ink of ['--muted', '--fg', '--accent-ink']) {
+        const r = ratio(color(resolve(`var(${ink})`, vars)), inner);
+        assert.ok(r >= 4.5, `${theme}, ${sel}, ${ink}: ${r.toFixed(2)}:1`);
+      }
+    }
+  }
+});
