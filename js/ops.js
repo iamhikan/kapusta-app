@@ -226,7 +226,7 @@ export function opRow(op, { inCategory = false, account = '' } = {}) {
   const foreign = op.amount && op.amount.currency !== 'RSD' && op.total == null;
   return { ...base, sub, gray: op.kind === 'other',
     amount: foreign ? cur(op.amount.number, op.amount.currency) : full(op.rsd, 'RSD'),   // RSD — у каждой суммы (ревью)
-    amountSub: op.total != null ? `из ${money(op.total)}` : foreign ? `${money(op.rsd)} RSD` : '' };
+    amountSub: op.total != null ? `из платежа ${money(op.total)}` : foreign ? `${money(op.rsd)} RSD` : '' };   // R-16: «из» в шапке — из нормы
 }
 
 export function headView(ctx, body) {
