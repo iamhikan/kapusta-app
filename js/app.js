@@ -16,6 +16,7 @@ import { body as jobBody, flush, path as jobPath, queue } from './recat.js';
 import { backStep, escapes, returnTo, showBack } from './back.js';
 import { painter } from './a11y.js';
 import { startAt } from './start.js';
+import { fit, probe, reporter } from './theme.js';
 
 // правка 7: на iOS :active у кнопок срабатывает, только если на странице есть слушатель touchstart
 document.addEventListener('touchstart', () => {}, { passive: true });
@@ -54,8 +55,14 @@ const today = () => {
 const upper = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const onHealth = () => stack[stack.length - 1].kind === 'health';
 
+// R-24 (решение 98, ответ 4): цвета темы — в fin раз за открытие и при смене темы; ответ странице не нужен
+const tell = reporter((n) => { if (apiBase(location.search)) nav.post('/api/theme', n).catch(() => {}); });
+const ink = probe(document, window);   // цвета переменных темы глазами браузера
+
 function theme() {
   document.documentElement.dataset.scheme = (tg && tg.colorScheme) || 'light';
+  fit(document.documentElement, ink);   // серый и красный темы — не ниже 4,5:1 (вариант Б)
+  tell(tg);
   try {
     tg.setHeaderColor('secondary_bg_color');
     tg.setBackgroundColor('secondary_bg_color');
