@@ -177,11 +177,13 @@ export function view(h) {
   // сверх; лимита у неё нет — «из» её сумма в норме (у спортпита — с конвертом), тап — её операции
   const regulars = (h.regulars || []).map((r) => ({
     key: `regular:${r.key}`, name: r.label, ops: { regular: r.key }, limitWord: 'В норме',
+    // R-9 (решение 98, ответ 6): значок — как метка в чате (коммуналка, kind mandatory, — 📌); подпись — что перебор
+    // делает с «Потрачено». Основа суммы («обычно за месяц», конверт) — на экране регулярной (было: «регулярная: сумма
+    // в норме — медиана за 3 мес.»)
+    glyph: r.kind === 'mandatory' ? '📌' : '🔁',
     spent: fmt(r.spent), limit: fmt(r.limit), over: `+${fmt(r.over)}`, fill: r.limit / r.spent,
     limitAt: r.limit / r.spent, color: COLOR.over, state: '', heat: r.limit ? r.spent / r.limit : Infinity,
-    // коммуналка (kind mandatory) — «обязательная»; основа суммы — словами сервера, прежний сервер — среднее за 3 месяца
-    hint: r.carry ? `регулярная: ${fmt(r.norm)} в норме + ${fmt(r.carry)} конверт`
-      : `${r.kind === 'mandatory' ? 'обязательная' : 'регулярная'}: сумма в норме — ${r.basis || 'среднее за 3 месяца'}` }));
+    hint: `в «Потрачено» — только перебор +${fmt(r.over)}` }));
   // порядок лимитов — сервера (горячие первыми); строка регулярной встаёт перед первым лимитом холоднее её
   for (const r of regulars.sort((a, b) => b.heat - a.heat)) {
     const at = limits.findIndex((l) => !(l.ops && l.ops.regular) && l.heat < r.heat);

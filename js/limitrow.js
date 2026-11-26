@@ -37,7 +37,9 @@ export function limitRow(l, { plan = null, open }) {
     h('span', { class: 'limit-body' },
       h('span', { class: 'sr' }, limitSay(l)),
       h('span', { class: 'row', 'aria-hidden': 'true' },
-        h('span', { class: 'limit-name' }, h('span', { class: 'ellipsis' }, l.name),
+        // значок перебора регулярной (R-9): 🔁 или 📌 перед именем, как строка «🔁 Регулярные сверх нормы» в чате
+        h('span', { class: 'limit-name' }, l.glyph ? h('span', { class: 'limit-glyph' }, l.glyph) : null,
+          h('span', { class: 'ellipsis' }, l.name),
           l.over ? h('span', { class: `badge${l.covered ? ' calm' : ''}` }, l.over) : null),
         // решение 63: перерасход, который покрыл резерв, — без красного; подпись «покрыто резервом» — ниже (hint)
         h('span', { class: 'nowrap' }, h('b', { class: l.over && !l.covered ? 'bad' : '' }, l.spent),
