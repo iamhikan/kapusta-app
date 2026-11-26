@@ -469,3 +469,57 @@ section .title { font-size: 17px; font-weight: 600; }
 .chips.wrap { row-gap: 10px; }
 /* слова только для диктора (фаза 12): состояние полоски лимита */
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* текст 200 % и окна уже 320 px (R-33, M-часть; повтор ревью p46a, находка 4: окно 195 px, страница была шириной 278 px):
+   ничего не шире окна — подписи и имена переносом, числа строкой ниже, справа. 320 px и шире — как было */
+@media (max-width: 319px) {
+  .row, .line, .search-row { flex-wrap: wrap; }
+  .chip, .curve-head .note { white-space: normal; }
+  .big-num { font-size: 30px; }
+  .cats-total { font-size: 26px; }
+  .cats-hero { flex-wrap: wrap; align-items: flex-start; }
+  .cats-hero .cmp { text-align: left; }
+  .limit .row > .nowrap, .line > .nowrap { margin-left: auto; }
+  .search-row .search { flex-basis: 100%; }
+  /* «‹ Ноябрь 2026 ›» в ряду чипов — уже на 16 px: касание стрелки — 32 px и добавка ::after по 6 px, те же 44 px */
+  .small-arrow { min-width: 32px; }
+  .chip-month { gap: 0; }
+  /* чип фильтра с длинным именем счёта («Райффайзен Ангелины» с плиткой) — переносом внутри чипа */
+  .chips.wrap .chip-btn { white-space: normal; max-width: 100%; text-align: left; }
+  /* шапка с одним длинным словом («Продукты») и стрелками по 44 px — заголовок строкой выше стрелок */
+  .month { flex-wrap: wrap; }
+  .month-title { order: -1; flex-basis: 100%; }
+  /* «Операции»: «чек» — под именем, если рядом не входит; имя и подпись — целиком, переносом */
+  .op-where { flex-wrap: wrap; }
+  .op-sub, .op-sub.split > span { white-space: normal; }
+  .op .op-where .ellipsis, .cat-row .cat-name .ellipsis { -webkit-line-clamp: none; }
+  /* имена с многоточием (лимит, трата, «Самые дорогие») — целиком, переносом; слово шире строки («SAMOSTALNA
+     TRGOVINSKA», «супермаркеты,») — переносом внутри слова, а не за край */
+  .ellipsis { white-space: normal; }
+  .ellipsis, .op-sub { overflow-wrap: anywhere; }
+  /* подпись с меткой — обычным текстом, по словам: сдвиг и обрезка слева (находка 11) срезали бы значок у края */
+  .op-sub.split { display: block; margin-left: 0; clip-path: none; }
+  .op-sub.split > :first-child { margin-left: 0; }
+  .sub-sep { display: inline; }
+  /* плитки счёта и категории — украшение (aria-hidden, имя — в тексте): отнимали у имени 48 px из 131 */
+  .line.bal > .tile, .op:not(.line) > .cat-tile { display: none; }
+  /* остаток: имя — во всю ширину, под ним суммы, справа; стрелка — у правого края */
+  .line.bal { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 12px;
+    row-gap: 2px; }
+  .line.bal > .bal-amounts { grid-row: 2; grid-column: 1; justify-self: end; }
+  .line.bal > svg { grid-column: 2; grid-row: 1 / 3; }
+  /* строка «Операций»: имя и подпись — во всю ширину, под ними сумма, справа */
+  .op:not(.line) { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
+  .op:not(.line) > .op-amount { justify-self: end; }
+  /* «план на сегодня 223 578» шире полосы — строкой под полосой, а не за край карточки (место у черты — в style) */
+  .plan-cap { height: auto; margin-bottom: 0; }
+  .plan-cap > span { position: static; transform: none !important; }
+  .section-head { flex-wrap: wrap; row-gap: 0; }
+  .section-head > span { text-align: left; }
+  /* «Категории»: имя — первой строкой во всю ширину, сумма — второй, «доля · к …» — третьей; чипы периода — по два */
+  .chips.periods { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 12px; }
+  .cat-row, .cat-row.no-cmp { grid-template-columns: auto minmax(0, 1fr); }
+  .cat-row > :first-child { grid-column: 1 / -1; }
+  .cat-row > :nth-child(2) { grid-row: 2; grid-column: 1 / -1; padding-left: 20px; text-align: left; }
+  .cat-row > .cat-share, .cat-row > .cat-delta { grid-row: 3; }
+}
