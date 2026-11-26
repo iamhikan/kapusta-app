@@ -197,10 +197,10 @@ function head(entry, nav) {
 }
 
 function accountHead(entry, nav) {
-  // решение 48: «Операции» счёта — плитка, имя, остаток сейчас, пришло и ушло за месяц списка
+  // решение 48: «Операции» счёта — плитка, имя, остаток на конец месяца списка (у текущего — сейчас, R-25), пришло и ушло
   const acc = entry.f.account;
   const name = (nav.accounts().find(([, a]) => a === acc) || [acc.split(':').pop()])[0];
-  const bal = nav.balanceOf(acc) || { name: name.charAt(0).toUpperCase() + name.slice(1), lines: [], tile: tileOf(acc, name) };
+  const bal = nav.balanceOf(acc, entry.month) || { name: name.charAt(0).toUpperCase() + name.slice(1), lines: [], tile: tileOf(acc, name) };
   const v = accountView(bal, entry.pages[0] || { count: 0 }, entry.month);
   return h('section', { class: 'card pad stack acct' },
     h('div', { class: 'acct-top' }, tile(v.tile, 40),

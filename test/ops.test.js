@@ -424,3 +424,16 @@ test('правка 4: у каждой категории fin — свой зна
   assert.equal(glyphOf('Expenses:Family:Transport:Taxi'), glyphOf('Expenses:Family:Transport'));
   assert.equal(glyphOf('Expenses:Family:Нечто'), 'dots');
 });
+
+test('R-25: шапка счёта из прошлого месяца — «остаток на 31.10», «сейчас» — только у текущего месяца', async () => {
+  const { balanceRow, view } = await import('../js/health.js');
+  const base = { zone: { status: 'ok', word: 'в норме' }, norm: 100, spent: 10, left: 90, plan_today: 5, per_day: 3,
+    regular: 0, oneoff: 0, limits: [], curve: [], empty: [], fresh: { last: '2026-11-25 22:31', now: '2026-11-26T10:00' } };
+  const pr = (rsd) => [{ account: 'Assets:PR:ALTA', name: 'ПР · ALTA', group: 'business', amounts: { RSD: rsd } }];
+  const oct = view({ ...base, month: '2026-10', date: '2026-10-31', day: 31, days: 31, closed: true, balances: pr(314823) });
+  const nov = view({ ...base, month: '2026-11', date: '2026-11-26', day: 26, days: 30, closed: false, balances: pr(1000) });
+  const head = (v) => accountView(balanceRow(v, 'Assets:PR:ALTA'), { count: 3 }, v === oct ? '2026-10' : '2026-11');
+  assert.deepEqual([head(oct).label, head(oct).lines], ['остаток на 31.10', [sp('314 823 RSD')]]);
+  assert.equal(head(nov).label, 'остаток сейчас');
+  assert.equal(balanceRow(nov, 'Assets:Family:Walt'), null);              // счёта нет в остатках месяца — шапка без остатка
+});

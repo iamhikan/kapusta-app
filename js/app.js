@@ -1,7 +1,7 @@
 // Mini App «Капуста»: вкладки «Здоровье», «Операции» и «Категории», карточка операции. Тема — themeParams Telegram (CSS-переменные
 // --tg-theme-*), отступы — safeAreaInset. «Назад» — системная BackButton. Данные — только в памяти страницы.
 import { apiBase, get, healthPath, post, screen } from './api.js';
-import { fmt, shiftMonth, view } from './health.js';
+import { balanceRow, fmt, shiftMonth, view } from './health.js';
 import { BOX, curve } from './chart.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
 import { tile } from './tiles.js';
@@ -40,7 +40,9 @@ let retrying = false;                  // «Повторить» на снимк
 let pending = [];                      // смены категории в очереди CloudStorage: Мак молчал (решение 18)
 let flushing = false;
 let accounts = [];                     // счета зрителя из остатков «Здоровья» — в фильтр «Операций» (решение 38)
-let balanceRows = new Map();           // строки остатков по счёту — шапка «Операций» счёта (решение 48)
+// остатки по месяцам — шапка «Операций» счёта (решение 48): месяц списка, иначе текущий (R-25). Смена категории их не
+// сбрасывает: остатки от неё не меняются
+const balanceViews = new Map();
 
 const today = () => {
   const d = new Date();
@@ -77,7 +79,10 @@ const nav = {
   },
   changed: () => stale(),
   accounts: () => accounts,
-  balanceOf: (account) => balanceRows.get(account) || null,
+  balanceOf(account, m) {
+    const v = balanceViews.get(m) || balanceViews.get(today().slice(0, 7));
+    return v ? balanceRow(v, account) : null;
+  },
   healthView(m) {
     const d = nav.health(m);
     return d ? view(d) : null;
@@ -364,7 +369,7 @@ async function load(next) {
   cache.set(month, r.data);
   const fresh = view(r.data);
   accounts = fresh.accounts;
-  balanceRows = new Map(fresh.groups.flatMap((g) => g.rows).map((b) => [b.ops.account, b]));
+  balanceViews.set(month, fresh);
   snap = null;
   // после каждого удачного ответа — снимок в CloudStorage (ключ на месяц, до 4096 знаков, решение 32)
   save(cloud, r.data).then((ok) => { if (ok) hasSnap = true; });

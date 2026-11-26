@@ -208,8 +208,17 @@ export function view(h) {
     accounts: h.balances.map((b) => [b.name, b.account]),
     empty: h.empty.length ? `Пустые счета: ${h.empty.join(', ')}.` : '',
     balTitle: h.closed ? `Остатки на ${when(h.date)}` : 'Остатки',
+    // R-25 (ревью 26.11): у шапки счёта — та же дата, что у заголовка остатков; «сейчас» — только у текущего месяца
+    balLabel: h.closed ? `остаток на ${when(h.date)}` : 'остаток сейчас',
     fresh: h.closed ? `месяц закрыт · последняя запись ${when(h.fresh.last)}`
       : `последняя запись ${when(h.fresh.last)} · обновлено в ${h.fresh.now.slice(11, 16)}`,
     canNext: h.closed,
   };
+}
+
+// строка остатка счёта для шапки его «Операций» (решение 48) — из «Здоровья» месяца списка, с подписью даты (R-25):
+// у прошлого месяца — «остаток на 31.10», а не «сейчас». Счёта нет в остатках месяца — null
+export function balanceRow(v, account) {
+  const b = v.groups.flatMap((g) => g.rows).find((r) => r.ops.account === account);
+  return b ? { ...b, label: v.balLabel } : null;
 }

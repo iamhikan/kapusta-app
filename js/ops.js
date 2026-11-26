@@ -212,9 +212,10 @@ export function headView(ctx, body) {
 }
 
 export function accountView(bal, body, month) {
-  // шапка «Операций» счёта (решение 48): плитка, имя, остаток на сейчас, пришло и ушло за месяц списка
+  // шапка «Операций» счёта (решение 48): плитка, имя, остаток, пришло и ушло за месяц списка. Остаток — из «Здоровья»
+  // месяца списка (balanceRow): у прошлого — «остаток на 31.10», «сейчас» — только у текущего (R-25)
   const flow = body.flow ? [['пришло', `+${fmt(body.flow.in)}`], ['ушло', fmt(-body.flow.out)]] : [];
-  return { title: bal.name, tile: bal.tile, lines: bal.lines, label: bal.lines.length ? 'остаток сейчас' : '', flow,
+  return { title: bal.name, tile: bal.tile, lines: bal.lines, label: bal.lines.length ? bal.label || 'остаток сейчас' : '', flow,
     sub: [monthTitle(month).split(' ')[0].toLowerCase(), records(body.count || 0)].join(' · ') };
 }
 
