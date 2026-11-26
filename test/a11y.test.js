@@ -619,14 +619,15 @@ test('R-5: итог дня — диктору словами «без регул
   assert.equal(norm(heard(heads[1])), '9 ноября, пн 300', 'день без меток — как был');
 });
 
-test('R-5: метка «🔁 регулярная» — диктор слышит слово один раз, без значка; на экране значок и слово', () => {
+test('R-5, R-3: метка 🔁 — на экране значок после категории, диктор слышит «регулярная трата» один раз, без значка', () => {
   const { root, entry, n } = opsSetup();
   entry.pages = [{ days: [{ date: '2026-11-10', sum: 400, plain: 0, ops: [{ ...OP, regular: 'подписки' }] }],
     total: 400, count: 1, next: null }];
   n.render();
   const row = byKey(root, 'op:sms:1');
-  assert.match(eyes(row), /Lidl🔁 регулярная/);
-  assert.equal(heard(row).match(/регулярная/g).length, 1);
+  assert.match(eyes(row), /🔁 ·/);
+  assert.doesNotMatch(eyes(row), /регулярная/);
+  assert.equal(heard(row).match(/регулярная трата/g).length, 1);
   assert.doesNotMatch(heard(row), /🔁/);
   // карточка (R-4): метка — своей строкой под шапкой, диктор слышит слово один раз; у имени — только «чек»
   const card = cardScreen({ kind: 'card', ref: 'sms:1', data: { ...CARD, mandatory: 'жильё' } }, nav);

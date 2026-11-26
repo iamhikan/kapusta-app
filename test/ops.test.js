@@ -65,11 +65,12 @@ test('трата в валюте — валюта операции и RSD; «!»
   assert.deepEqual(r.marks, ['!', 'секрет']);
 });
 
-test('регулярная и обязательная трата — метками со значками чата 🔁 и 📌 (решение 97; Алексей 26.11.2026: «там какие-то эмоджи, а там просто текст»)', () => {
-  assert.deepEqual(opRow({ ...LIDL, receipt: false, regular: 'подписки' }).marks, ['🔁 регулярная']);
-  assert.deepEqual(opRow({ ...LIDL, regular: 'подписки' }).marks, ['чек', '🔁 регулярная']);
-  assert.deepEqual(opRow({ ...LIDL, receipt: false, mandatory: 'жильё' }).marks, ['📌 обязательная']);
-  assert.deepEqual(opRow({ ...LIDL, receipt: false }).marks, []);
+test('регулярная и обязательная трата — значками чата 🔁 и 📌 после категории, как в `fin last` (решение 97; решение 98, ответ 3: было «🔁 регулярная» у имени)', () => {
+  assert.deepEqual(opRow({ ...LIDL, receipt: false, regular: 'подписки' }).marks, []);
+  assert.equal(opRow({ ...LIDL, regular: 'подписки' }).sub, 'супермаркеты, алкоголь 🔁 · Freedom');
+  assert.deepEqual(opRow({ ...LIDL, regular: 'подписки' }).marks, ['чек']);
+  assert.equal(opRow({ ...LIDL, receipt: false, mandatory: 'жильё' }).sub, 'супермаркеты, алкоголь 📌 · Freedom');
+  assert.equal(opRow({ ...LIDL, receipt: false }).sub, 'супермаркеты, алкоголь · Freedom');
 });
 
 test('итог дня — с тратами без регулярных и обязательных, если они в дне есть (Алексей 26.11.2026)', () => {

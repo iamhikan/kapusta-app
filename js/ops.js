@@ -183,13 +183,21 @@ function tileOfOp(op) {
   return op.key ? { color: colorOf(op.key), glyph: glyphOf(op.key) } : { color: OTHER, glyph: 'dots' };
 }
 
-export function opRow(op, { inCategory = false, account = '' } = {}) {
-  // регулярная и обязательная — в норме отдельно от шкалы, правило градусника; значки — как в чате (решение 97)
-  const marks = [op.receipt && 'чек', op.flag && '!', op.secret && 'секрет', op.regular && '🔁 регулярная',
-    op.mandatory && '📌 обязательная'].filter(Boolean);
+// регулярная и обязательная — в норме отдельно от шкалы, правило градусника (решение 97). R-3 (решение 98, ответ 3):
+// в строке — только значок после категории, как в `fin last` («образование 🔁 · Райффайзен»); слово — в карточке и в
+// пояснении. bare — экран самой регулярной (и карточка): там значок ничего не добавляет
+const GLYPHS = [['regular', '🔁'], ['mandatory', '📌']];
+
+export function opRow(op, { inCategory = false, account = '', bare = false } = {}) {
+  const marks = [op.receipt && 'чек', op.flag && '!', op.secret && 'секрет'].filter(Boolean);
+  const glyph = bare ? '' : GLYPHS.filter(([k]) => op[k]).map(([, g]) => g).join('');
   const base = { ref: op.ref, where: op.count > 1 ? `${op.where} · ${records(op.count)}` : op.where, marks, note: itemName(op.hit), noteTone: '', gray: false,
-    group: (op.group || []).map((g) => opRow(g)), count: op.count || 1, tile: tileOfOp(op) };
-  if (op.kind === 'exchange') return { ...base, gray: true, ...exchange(op) };
+    group: (op.group || []).map((g) => opRow(g, { bare })), count: op.count || 1, tile: tileOfOp(op) };
+  if (op.kind === 'exchange') {
+    // R-6: у обмена регулярная — только разница к курсу НБС (решение 88): значок — у строки выигрыша или потери
+    const ex = exchange(op);
+    return { ...base, gray: true, ...ex, note: glyph && ex.note ? `${glyph} ${ex.note}` : ex.note };
+  }
   if (op.kind === 'transfer') {
     const from = op.legs.filter((l) => l.number < 0).map((l) => l.name);
     const to = op.legs.filter((l) => l.number > 0);
@@ -221,8 +229,8 @@ export function opRow(op, { inCategory = false, account = '' } = {}) {
   // операции счёта (решение 48): счёт — в шапке, под строкой его не повторяем
   const own = account && op.account && op.account.startsWith(account);
   // сверка нала (`pad`, решение 72) — «сверка остатка», как у сверки через начальный остаток (решение 68)
-  const sub = op.opening === 'check' ? 'сверка остатка'
-    : [inCategory ? '' : op.cats.join(', '), own ? '' : op.src].filter(Boolean).join(' · ');
+  const cats = inCategory ? glyph : [op.cats.join(', '), glyph].filter(Boolean).join(' ');   // значок — после категории
+  const sub = op.opening === 'check' ? 'сверка остатка' : [cats, own ? '' : op.src].filter(Boolean).join(' · ');
   if (op.kind === 'income') {
     return { ...base, sub, amount: `+${full(op.amount.number, op.amount.currency)}`, noteTone: 'good',
       amountSub: op.amount.currency !== 'RSD' ? `${money(op.rsd)} RSD` : '', income: true };
@@ -332,7 +340,6 @@ export const taxLink = (url) => (typeof url === 'string' && url.startsWith(TAX) 
 // карточка (R-4): метка регулярной и обязательной — своей строкой с переходом на её операции, ниже — пояснение чата
 // без значка («Регулярная трата: она в норме отдельно, …»); у имени остаются «чек», «!», «секрет»
 const APART = [['regular', '🔁', 'регулярная'], ['mandatory', '📌', 'обязательная']];
-const APART_MARK = /^(🔁|📌) /u;
 
 function apartLines(c) {
   return APART.filter(([k]) => c[k]).map(([kind, glyph, word]) => {
@@ -349,14 +356,15 @@ export function cardView(c) {
   const sides = flow(postings);
   const simple = simpleOf(c.kind, sides);
   const payer = simple ? postings.find((p) => p.number < 0) : null;
+  const row = opRow(c, { bare: true });   // метка в карточке — своей строкой со словом (apart), значок у суммы не нужен
   return {
     simple, who: whoOf(c),
     wallet: payer ? { name: payer.name, tile: tileOf(payer.account || '', payer.name) } : null,
     title: c.where, what: c.what && c.what !== c.where && !repeatsStart(c) ? c.what : '',
     when: dayLabel(c.date) + (time ? ` · ${time}` : ''),
     by: c.by ? `записал${c.by === 'Ангелина' ? 'а' : ''} ${c.by}` : FROM[c.origin || c.source] || 'из выписки банка',   // origin — без учёта чека (решение 71)
-    row: check && c.after ? checkHead(opRow(c), c.after) : opRow(c),
-    marks: opRow(c).marks.filter((m) => !APART_MARK.test(m)),
+    row: check && c.after ? checkHead(row, c.after) : row,
+    marks: row.marks,
     apart: apartLines(c),
     flow: sides,
     receipt: c.receipt && {

@@ -139,11 +139,16 @@ function catTile(t) {
     color: `color-mix(in srgb, ${t.color} var(--tile-ink), var(--fg))` } }, icon(GLYPHS[t.glyph], 18));
 }
 
-// метка строки и карточки: значок чата (🔁, 📌) — только для глаз, диктор слышит слово один раз (R-5, ревью 26.11)
+// метка у имени строки и карточки: «чек», «!», «секрет» (🔁 и 📌 — значком в подписи, R-3)
 function mark(m) {
-  const [, glyph, word] = /^(\p{Extended_Pictographic})\s(.+)$/u.exec(m) || [];
-  return h('span', { class: `mark${m === '!' ? ' bad' : m === 'секрет' ? ' secret' : ''}` },
-    glyph ? [h('span', { 'aria-hidden': 'true' }, glyph), ` ${word}`] : m);
+  return h('span', { class: `mark${m === '!' ? ' bad' : m === 'секрет' ? ' secret' : ''}` }, m);
+}
+
+// значок чата 🔁 📌 в подписи строки — только для глаз, диктор слышит слово (R-3, R-5, ревью 26.11)
+const SAY = { '🔁': 'регулярная трата', '📌': 'обязательная трата' };
+function glyphs(text) {
+  return String(text).split(/(🔁|📌)/u).filter(Boolean)
+    .map((p) => (SAY[p] ? [h('span', { 'aria-hidden': 'true' }, p), h('span', { class: 'sr' }, ` ${SAY[p]} `)] : p));
 }
 
 function dayHead(d) {
@@ -160,8 +165,8 @@ export function opLine(r, nav, opts = {}) {
     h('span', { class: 'grow' },
       h('span', { class: 'op-where' }, h('span', { class: 'ellipsis' }, r.where),
         ...r.marks.map(mark)),
-      r.sub ? h('span', { class: 'op-sub muted small' }, r.sub) : null,
-      r.note ? h('span', { class: `op-note small ${r.noteTone}` }, r.note) : null),
+      r.sub ? h('span', { class: 'op-sub muted small' }, ...glyphs(r.sub)) : null,
+      r.note ? h('span', { class: `op-note small ${r.noteTone}` }, ...glyphs(r.note)) : null),
     h('span', { class: 'op-amount' }, sum(r.amount, r.income ? 'good' : ''),
       r.amountSub ? h('span', { class: 'muted small' }, r.amountSub) : null),
   ];
@@ -339,7 +344,7 @@ export function opsScreen(entry, nav) {
     body = h('div', { class: 'stack' }, marksBlock(entry, nav), ...list.map((d) => h('div', { class: 'day' },
       dayHead(d),
       h('section', { class: 'card list' }, ...d.ops.map((op, i) => opLine(opRow(op, { inCategory: !!entry.ctx,
-        account: entry.ctx ? '' : entry.f.account }), nav,
+        account: entry.ctx ? '' : entry.f.account, bare: !!(entry.ctx && entry.ctx.params && entry.ctx.params.regular) }), nav,
         { expanded: entry.expanded, key: `${d.date}:${i}:${op.where}` }))))),
     // М14: следующие 50 не пришли — под списком тот же вид ошибки (М2) и «Повторить»; кнопки «Показать ещё» нет —
     // подгрузка при прокрутке не повторяет запрос сама (было: ошибка молчала, список прежний)
