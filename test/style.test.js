@@ -418,3 +418,9 @@ test('R-3 (стенд 320 px): значок метки в подписи стр�
   assert.equal(tail['min-width'], '0');
   for (const d of [cats, tail]) assert.equal(d['text-overflow'], 'ellipsis');
 });
+
+test('R-31 п. 3 (стенд S5): имя на «Категориях» — до двух строк, потом многоточие: «прочие продукты» при 390 px было «прочие продук…»', () => {
+  const d = decls('.cat-row .cat-name .ellipsis');
+  assert.equal(d['-webkit-line-clamp'], '2');
+  assert.equal(d['white-space'], 'normal');
+});

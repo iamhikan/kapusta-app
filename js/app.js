@@ -1,6 +1,6 @@
 // Mini App «Капуста»: вкладки «Здоровье», «Операции» и «Категории», карточка операции. Тема — themeParams Telegram (CSS-переменные
 // --tg-theme-*), отступы — safeAreaInset. «Назад» — системная BackButton. Данные — только в памяти страницы.
-import { apiBase, get, healthPath, post, screen } from './api.js';
+import { apiBase, get, healthPath, post, refusedStep, screen } from './api.js';
 import { balanceRow, fmt, shiftMonth, view } from './health.js';
 import { BOX, curve } from './chart.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
@@ -106,6 +106,8 @@ const nav = {
     else if (kind === 'budget') budgets.set(data.month, data);
   },
   render: () => render(),
+  back: () => back(),                  // R-19: «К списку» и «Назад» у отказа fin
+  under: () => (stack.length > 1 ? stack[stack.length - 2].kind : null),
   focus: (key) => paint.focus(key),
   problem: (kind, detail) => problem(kind, detail),
   get hasSnap() { return hasSnap; },
@@ -237,8 +239,12 @@ function skeleton() {
 }
 
 function problem(kind, detail) {
-  // М2 на весь экран (js/screens.js): «Повторить» — снова «Здоровье» месяца, «Закрыть» — закрыть Капусту
-  show(problemScreen(screen(kind, detail), { retry: () => load(month), close: () => tg && tg.close(), family: nav.family() }));
+  // М2 на весь экран (js/screens.js): «Повторить» — снова «Здоровье» месяца, «Закрыть» — закрыть Капусту. Отказ fin
+  // (R-19): другой месяц — «К текущему месяцу», текущий — «Прошлый месяц»; повтор дал бы тот же отказ
+  const now = today().slice(0, 7);
+  const s = kind === 'refused' ? refusedStep('health', { month: month || now }, { today: today() }) : null;
+  show(problemScreen(screen(kind, detail), { retry: () => load(month), close: () => tg && tg.close(), family: nav.family(),
+    step: s && { label: s.label, run: () => load(s.act === 'prev' ? shiftMonth(now, -1) : now) } }));
 }
 
 function banner(s) {

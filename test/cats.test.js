@@ -197,3 +197,20 @@ test('R-27: «здоровье» 12 351 в общем лимите «здоро�
   assert.deepEqual([health.bar, health.of, health.limit], [null, '', sp('в лимите «здоровье»: 31 144 из 14 103')]);
   assert.equal(pharmacy.limit, health.limit);
 });
+
+// R-31 п. 3 (ревью 26.11, решение 98, ответ 8): в подкатегориях «Продуктов» строка самих продуктов (`exact`) — «прочие
+// продукты»: рядом с «супермаркетами» просто «продукты» читалось как вся категория. Сервер и чат говорят по-старому
+// (решения 52, 58: `names.py` не трогаем); на «Категориях» и в строках «Операций» категория — «продукты», как была
+test('R-31: в «Продуктах» подкатегория самих продуктов — «прочие продукты» в списке, полосе, для диктора и в самых дорогих', () => {
+  const sub = { ...BODY, cat: 'Expenses:Family:Food', name: 'продукты', total: 3000, limit: null,
+    cats: [{ key: 'Expenses:Family:Food:Supermarket', name: 'супермаркеты', rsd: 2000, share: 0.667, exact: false, prev: 1000 },
+      { key: 'Expenses:Family:Food', name: 'продукты', rsd: 1000, share: 0.333, exact: true, prev: 1500 }],
+    top: [{ ref: 'sms:1', date: '2026-11-03', where: 'Lidl', cats: ['супермаркеты', 'продукты'], src: 'карта', rsd: 1200 }] };
+  const v = catsView(sub);
+  assert.deepEqual(v.rows.map((r) => r.name), ['супермаркеты', 'прочие продукты']);
+  assert.deepEqual(v.strip.map((s) => s.name), ['супермаркеты', 'прочие продукты']);
+  assert.match(v.aria, /прочие продукты 1/);
+  assert.equal(v.top[0].sub, '3 ноября, вт · супермаркеты, прочие продукты');
+  assert.equal(v.head.title, 'Продукты', 'шапка — сама категория');
+  assert.equal(catsView(BODY).rows[0].name, 'продукты', 'на «Категориях» — «продукты»');
+});

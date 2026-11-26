@@ -19,6 +19,10 @@ const WORDS = { неразобранное: 'без категории', 'Raiffe
   'Opening-Balances': 'начальный остаток', учёба: 'образование', курс: 'обмен валюты',
   'Регулярные по карте': 'Регулярные платежи' };
 const OWN = new Set(['key', 'label']);
+// R-31 п. 3 (решение 98, ответ 8): траты самой категории среди её подкатегорий (строка `exact`) — «прочие продукты».
+// Не через WORDS: «продукты» — ещё и имя категории на «Категориях», в строках «Операций» и в лимитах
+const REST = { продукты: 'прочие продукты' };
+export const restOf = (name) => (Object.hasOwn(REST, name) ? REST[name] : name);
 
 // Служебные счета (решение 67): у счёта без своего слова сервер отдаёт последнюю часть имени («cashunrecorded»,
 // «DROIT», «USDT») или одно имя на два счёта («кредит РФ»). Подменяем по полному имени счёта — имя проводки или ноги
@@ -132,7 +136,8 @@ const SCREENS = {
   down: { title: 'Капуста не отвечает', icon: 'warn', retry: true,
     text: 'Мак спит или Капуста перезапускается. Попробуйте ещё раз через минуту.' },
   // М2: fin ответил, но не данными — отказ его словами (текст — из detail) или его ошибка; снимка нет: Мак не спит
-  refused: { title: 'Капуста не может это показать', icon: 'warn', retry: true, text: 'Капуста не приняла запрос.' },
+  // R-19: у отказа «Повторить» нет — повтор даст тот же отказ; действие по месту — js/refused.js
+  refused: { title: 'Капуста не может это показать', icon: 'warn', retry: false, text: 'Капуста не приняла запрос.' },
   fault: { title: 'Капуста ошиблась', icon: 'warn', retry: true,
     text: 'Мак на связи, но Капуста не смогла ответить. Попробуйте ещё раз через минуту.' },
 };
@@ -142,4 +147,29 @@ export function screen(kind, detail = null) {
   const s = { retry: false, link: null, ...SCREENS[kind], detail: detail || null };
   if (kind === 'refused') return { ...s, text: detail ? `${detail.charAt(0).toUpperCase()}${detail.slice(1)}.` : s.text, detail: null };
   return s;
+}
+
+// R-19 (ревью 26.11; решение 98, ответ 8 — меняет решение 83): fin отказал по сути запроса (4xx) — повтор даст тот же
+// отказ. Вместо «Повторить» — действие по месту. Ошибка fin (5xx) и молчание Мака — «Повторить», как раньше.
+
+// экраны за месяц (у «Категорий» — период): отказ за другой месяц — «К текущему месяцу»
+const MONTHLY = new Set(['health', 'ops', 'cats', 'budget', 'days', 'basket']);
+const NARROW = ['q', 'transfers', 'account', 'who', 'source', 'flag'];   // фильтры и поиск «Операций»
+
+// kind — экран, entry — его состояние (месяц, период, категория, фильтры), today — ГГГГ-ММ-ДД, under — вид экрана под
+// ним (null — экран-вкладка), more — отказали следующие 50. -> { label, act } или null: действия по месту нет, а
+// стрелки месяца и фильтры на экране и так есть
+export function refusedStep(kind, entry, { today, under = null, more = false }) {
+  const now = today.slice(0, 7);
+  // «Здоровье» текущего месяца fin отказывает, когда часы телефона впереди часов Мака: «месяц ещё не начался»
+  if (kind === 'health' && entry.month === now) return { label: 'Прошлый месяц', act: 'prev' };
+  if (kind === 'card') return { label: under === 'card' ? 'Назад' : 'К списку', act: 'back' };
+  if (kind === 'ops' && more) return { label: 'Загрузить список заново', act: 'reload' };
+  if (kind === 'ops' && (entry.ctx || NARROW.some((k) => entry.f && entry.f[k]))) {
+    return { label: 'Все операции месяца', act: 'all' };
+  }
+  const p = entry.period;
+  const month = kind === 'cats' ? (p && p.kind === 'month' ? p.from.slice(0, 7) : null) : entry.month;
+  if (MONTHLY.has(kind) && month !== now) return { label: 'К текущему месяцу', act: 'now' };
+  return under ? { label: 'Назад', act: 'back' } : null;
 }

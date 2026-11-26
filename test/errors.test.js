@@ -68,7 +68,9 @@ for (const [what, status, body, want] of CASES) {
     if (want.text) assert.equal(seen(one(box, '<p')), want.text);
     const small = one(box, 'detail');
     assert.equal(small ? seen(small) || null : null, want.small);
-    assert.ok(button(box, 'Повторить'), '«Повторить» есть');
+    // R-19 (решение 98): отказ fin повтор не исправит — «Повторить» только у ошибки fin и молчания Мака; у отказа в
+    // текущем месяце без фильтров кнопки нет: над ошибкой стрелки месяца и «Фильтры» (test/refused.test.js)
+    assert.equal(!!button(box, 'Повторить'), want.title !== 'Капуста не может это показать', '«Повторить» — не у отказа');
     assert.equal(!!button(box, 'Открыть снимок «Здоровья»'), want.snap, 'ссылка на снимок — только когда Мак молчит');
     if (!want.snap) assert.doesNotMatch(seen(tree), /не отвечает|Мак спит/);
   });

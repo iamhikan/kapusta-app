@@ -14,7 +14,8 @@ const IN_MONTH = ['январе', 'феврале', 'марте', 'апреле'
 const WEEKDAY = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
 const SYMBOL = { RSD: '', EUR: ' €', RUB: ' ₽', USD: ' $' };
 // regular — регулярная трата (решение 86): строка её перебора в списке лимитов «Здоровья»
-const KEYS = ['from', 'to', 'limit', 'regular', 'cat', 'q', 'transfers', 'account', 'who', 'source', 'flag', 'cursor'];
+// exact — траты самой категории без подкатегорий: строка «прочие продукты» (R-31 п. 3; fin знает его с этапа «Категорий»)
+const KEYS = ['from', 'to', 'limit', 'regular', 'cat', 'exact', 'q', 'transfers', 'account', 'who', 'source', 'flag', 'cursor'];
 
 // фильтры (холст «Операции» → «Фильтры»): значение — параметр /api/tx. Кошелёк или счёт — счета зрителя из остатков
 // «Здоровья» (решение 38); «Здоровье» ещё не грузилось — прежний список
@@ -236,7 +237,8 @@ export function opRow(op, { inCategory = false, account = '', bare = false } = {
       amountSub: op.amount.currency !== 'RSD' ? `${money(op.rsd)} RSD` : '', income: true };
   }
   const foreign = op.amount && op.amount.currency !== 'RSD' && op.total == null;
-  return { ...base, sub, gray: op.kind === 'other',
+  // поправка дублей SMS (R-30, решение 98): fin шлёт одной строкой с `correction` — серая, как служебная
+  return { ...base, sub, gray: op.kind === 'other' || !!op.correction,
     amount: foreign ? cur(op.amount.number, op.amount.currency) : full(op.rsd, 'RSD'),   // RSD — у каждой суммы (ревью)
     amountSub: op.total != null ? `из платежа ${money(op.total)}` : foreign ? `${money(op.rsd)} RSD` : '' };   // R-16: «из» в шапке — из нормы
 }

@@ -65,9 +65,9 @@ test('экраны ошибок — словами человека', () => {
   assert.equal(screen('stale').retry, false);
 });
 
-test('отказ fin — его словами, ошибка Капусты — своим видом и «Повторить»; причина мелко — код и слова fin (М2)', () => {
+test('отказ fin — его словами, без «Повторить» (R-19); ошибка Капусты — своим видом и «Повторить»; причина мелко — код и слова fin (М2)', () => {
   assert.deepEqual(screen('refused', 'месяц ещё не начался'), { title: 'Капуста не может это показать', icon: 'warn',
-    text: 'Месяц ещё не начался.', retry: true, link: null, detail: null });
+    text: 'Месяц ещё не начался.', retry: false, link: null, detail: null });
   assert.deepEqual(screen('fault', 'HTTP 503 · ledger не грузится'), { title: 'Капуста ошиблась', icon: 'warn',
     text: 'Мак на связи, но Капуста не смогла ответить. Попробуйте ещё раз через минуту.', retry: true, link: null,
     detail: 'HTTP 503 · ledger не грузится' });

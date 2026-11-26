@@ -438,3 +438,22 @@ test('R-25: шапка счёта из прошлого месяца — «ос�
   assert.equal(head(nov).label, 'остаток сейчас');
   assert.equal(balanceRow(nov, 'Assets:Family:Walt'), null);              // счёта нет в остатках месяца — шапка без остатка
 });
+
+// R-30 (ревью 26.11, решение 98, ответ 8): дубли SMS дня и «Без SMS», который их гасит, fin шлёт одной строкой с
+// `correction` — она серая, как служебная; категории нет (нетто 0), сумма — 0 RSD
+test('R-30: «Поправка дубля SMS» — одна серая строка: откуда и 0 RSD, без категории', () => {
+  const fix = { ref: 'sms:d1', date: '2026-10-30', where: 'Поправка дубля SMS', what: 'та же SMS пришла дважды', kind: 'spend',
+    cats: [], src: 'карта ALTA, динары', key: null, amount: { number: 0, currency: 'RSD' }, rsd: 0, receipt: false,
+    flag: false, by: null, correction: true };
+  const r = opRow(fix);
+  assert.deepEqual([r.where, r.sub, r.amount, r.gray], ['Поправка дубля SMS', 'карта ALTA, динары', '0 RSD', true]);
+  assert.equal(opRow({ ...fix, correction: undefined }).gray, false, 'обычная трата — не серая');
+});
+
+// R-31 п. 3 (стенд S5): строка «прочие продукты» открывала все операции «Продуктов» (38 707 из 37 записей при строке
+// 2 240): страница не слала `exact` — fin знает его с этапа «Категорий» (спека: «сумма операций = строка «Категорий»»)
+test('R-31: операции «прочих продуктов» — только сами продукты: в запросе exact=1', () => {
+  assert.equal(txPath({ from: '2026-11-01', to: '2026-11-26', cat: 'Expenses:Family:Food', exact: true }),
+    '/api/tx?from=2026-11-01&to=2026-11-26&cat=Expenses%3AFamily%3AFood&exact=1');
+  assert.doesNotMatch(txPath({ from: '2026-11-01', to: '2026-11-26', cat: 'Expenses:Family:Food:Supermarket', exact: false }), /exact/);
+});
