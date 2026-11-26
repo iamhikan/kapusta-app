@@ -249,6 +249,20 @@ for (const [key, name, subKey, subName, rest] of REST_11) {
   });
 }
 
+// Стенд S8 (данные 26.11): у «Ресторанов», «Доставки», «Выходов» за весь 2026 год, у «Путешествий» за ноябрь строка
+// самой категории — единственная. «прочие рестораны» без других строк говорили бы о «других», которых нет: одна строка —
+// это вся категория, имя — её имя. «Прочие …» — только рядом с другими подкатегориями
+test('R-31 п. 3: строка самой категории без других подкатегорий — имя категории, не «прочие …»', () => {
+  const alone = words({ ...BODY, cat: 'Expenses:Family:Restaurants', name: 'рестораны', total: 7906, limit: null,
+    cats: [{ key: 'Expenses:Family:Restaurants', name: 'рестораны', rsd: 7906, share: 1, exact: true, prev: 5000 }],
+    top: [{ ref: 'sms:1', date: '2026-11-03', where: 'Лала', cats: ['рестораны'], src: 'карта', rsd: 1200 }] });
+  const v = catsView(alone);
+  assert.deepEqual(v.rows.map((r) => r.name), ['рестораны']);
+  assert.deepEqual(v.strip.map((s) => s.name), ['рестораны']);
+  assert.equal(v.top[0].sub, '3 ноября, вт · рестораны');
+  assert.equal(v.rows[0].exact, true, 'открывает те же операции: exact=1');
+});
+
 test('R-31 п. 3: на «Категориях» имена 11 категорий — как были, «прочие …» — только среди подкатегорий', () => {
   const top = words({ ...BODY, cats: REST_11.map(([key, name]) => cat(key, name, 100)) });
   assert.deepEqual(catsView(top).rows.map((r) => r.name), REST_11.map(([, name]) => words(name)));

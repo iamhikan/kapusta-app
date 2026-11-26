@@ -59,9 +59,11 @@ function head(body) {
 
 export function catsView(input) {
   const sub = !!input.cat;
-  // R-31 п. 3: в подкатегориях траты самой категории — «прочие продукты» в списке, полосе, у диктора и в самых дорогих
-  const body = sub ? { ...input, cats: input.cats.map((c) => (c.exact ? { ...c, name: restOf(c.name) } : c)),
-    top: (input.top || []).map((o) => ({ ...o, cats: (o.cats || []).map((n) => (n === input.name ? restOf(n) : n)) })) } : input;
+  // R-31 п. 3: в подкатегориях траты самой категории — «прочие продукты» в списке, полосе, у диктора и в самых дорогих.
+  // Только рядом с другими подкатегориями: одна строка — вся категория, «прочие» говорили бы о других, которых нет
+  const own = sub && input.cats.some((c) => !c.exact) ? restOf : (n) => n;
+  const body = sub ? { ...input, cats: input.cats.map((c) => (c.exact ? { ...c, name: own(c.name) } : c)),
+    top: (input.top || []).map((o) => ({ ...o, cats: (o.cats || []).map((n) => (n === input.name ? own(n) : n)) })) } : input;
   const base = sub ? colorOf(body.cat) : null;
   const rows = body.cats.map((c, i) => ({
     key: c.key, name: c.name, sum: fmt(c.rsd), share: `${Math.round(c.share * 100)} %`,
