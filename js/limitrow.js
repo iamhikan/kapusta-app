@@ -33,7 +33,8 @@ export function limitLegend(items) {
 
 // l — строка view().limits или скрытого лимита; plan — доля месяца для черты (null — без черты); open — по тапу
 export function limitRow(l, { plan = null, open }) {
-  return h('button', { type: 'button', class: 'limit', 'data-focus': `limit:${l.name}`, on: { click: open } },
+  // focus — свой ключ строки (регулярная в «Бюджете», R-11: «regular:подписки»), иначе — лимит
+  return h('button', { type: 'button', class: 'limit', 'data-focus': l.focus || `limit:${l.name}`, on: { click: open } },
     h('span', { class: 'limit-body' },
       h('span', { class: 'sr' }, limitSay(l)),
       h('span', { class: 'row', 'aria-hidden': 'true' },

@@ -2,7 +2,7 @@
 // (fin limits) и деньги на месяц (fin plan) — только Алексею: Ангелине сервер их не шлёт (решение 11).
 import { amountLines, fmt } from './health.js';
 import { monthTitle } from './ops.js';
-import { regularOf } from './regular.js';
+import { FX, regularOf } from './regular.js';
 
 const FOR_MONTH = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь',
   'ноябрь', 'декабрь'];
@@ -18,8 +18,10 @@ const OF_MONTH = ['января', 'февраля', 'марта', 'апреля'
 const LABEL = { 'курсовые разницы': 'обмен валюты' };
 
 const strip = (s) => (s || '').replace(/^\(|\)$/g, '');
-// решение 61: «в ср. с 05.2026» сервера — «в среднем с мая 2026», «в ср.» — «в среднем»
-const avg = (s) => s.replace(/^в ср\.(?: с (\d\d)\.(\d{4}))?/, (_, m, y) => (m ? `в среднем с ${OF_MONTH[Number(m) - 1]} ${y}` : 'в среднем'));
+// решение 61: «в ср. с 05.2026» сервера — «в среднем с мая 2026», «в ср.» — «в среднем»; решение 98 (ответ 6):
+// «медиана за 3 мес.» — «обычно за месяц» (слово статистики Ангелине ничего не даёт)
+const avg = (s) => s.replace(/^в ср\.(?: с (\d\d)\.(\d{4}))?/, (_, m, y) => (m ? `в среднем с ${OF_MONTH[Number(m) - 1]} ${y}` : 'в среднем'))
+  .replace(/^медиана за \d+ мес\.$/, 'обычно за месяц');
 
 // R-15 (ревью 26.11): под суммой строки — одно понятие словами. Жильё и кредит РФ — basis сервера, как в шапке их
 // «Операций» («по договору 650 €», «по графику 25 000 ₽»); сумма регулярной из budget.yaml («5 €») — «в норме 5 €»
@@ -31,6 +33,29 @@ function noteOf(r, regularGroup, env) {
   if (e && e.contract && e.basis) return e.basis;
   return regularGroup && BARE.test(note) ? `в норме ${note}` : note;
 }
+
+// значки групп — как метки в «Операциях» и в чате (решение 97): 📌 обязательные, 🔁 регулярные
+const GLYPH = { Обязательные: '📌' };
+const glyphOf = (name) => GLYPH[name] || (/^Регулярные/.test(name) ? '🔁' : '');
+
+// R-11 (решение 98, ответ 5): строка регулярной (и коммуналки) — потрачено против суммы в норме и полоса, как у лимита
+// (решение 78, правка 1): перебор — плашкой «+N», штриховкой и подписью про «Потрачено», как на «Здоровье» (R-9).
+// Числа — envelopes «Здоровья» месяца; limit — сумма с конвертом (спортпит), под полосой — из чего она. Вернули больше,
+// чем потратили (обмен с выигрышем, R-13), — без полосы и «из»: «+189», словами — в подписи
+function withGauge(row, e, note) {
+  if (e.spent < 0) {
+    const word = row.name === FX ? 'выигрыш к курсу НБС' : 'вернули больше, чем потратили';
+    return { ...row, sum: `+${fmt(-e.spent)}`, note: [word, BARE_NOTE.test(note) ? note : ''].filter(Boolean).join(' · ') };
+  }
+  const over = e.over > 0;
+  const limitAt = over ? e.limit / e.spent : null;
+  const hint = over ? `в «Потрачено» — только перебор +${fmt(e.over)}`
+    : e.carry ? `в норме ${fmt(e.norm)} + конверт ${fmt(e.carry)}` : BARE_NOTE.test(note) ? note : '';
+  return { ...row, note: '', gauge: { name: row.name, focus: `regular:${row.name}`, spent: fmt(e.spent), limit: fmt(e.limit),
+    over: over ? `+${fmt(e.over)}` : '', fill: limitAt ?? (e.limit > 0 ? Math.min(1, e.spent / e.limit) : 0), limitAt,
+    color: over ? 'var(--bad)' : 'var(--bar-green)', state: '', hint } };
+}
+const BARE_NOTE = /^в норме /;
 
 // решение 81: месяц без курса (до начала учёта) — сервер шлёт пустой бюджет: дохода, групп, лимитов, нормы и плана нет.
 // Слово — как плашка «Здоровья» (zone.word): /api/budget zone не шлёт
@@ -60,10 +85,20 @@ export function budgetView(b, health = null) {
     sub: b.income ? 'куда идёт доход' : 'обязательные траты и лимиты месяца',
     income,
     alloc,
-    groups: b.groups.map((g) => ({ name: g.name, sum: fmt(g.rsd), sub: g.avg_months ? `в среднем за ${g.avg_months} мес.` : '',
-      rows: g.rows.map((r) => ({ name: r.name, sum: fmt(r.rsd),
-        note: noteOf(r, /^Регулярные/.test(g.name), env),
-        ...(g.name !== 'ПР' && regular(r.name) ? { regular: regular(r.name) } : {}) })) })),
+    groups: b.groups.map((g) => {
+      const rows = g.rows.map((r) => {
+        const row = { name: r.name, sum: fmt(r.rsd), note: noteOf(r, /^Регулярные/.test(g.name), env),
+          ...(g.name !== 'ПР' && regular(r.name) ? { regular: regular(r.name) } : {}) };
+        const e = row.regular && env.get(r.name);
+        return e && !e.contract ? withGauge(row, e, row.note) : row;
+      });
+      // R-11: у группы регулярных — сколько ушло из её суммы (envelopes есть у каждой строки)
+      const spent = g.rows.map((r) => env.get(r.name));
+      const gone = /^Регулярные/.test(g.name) && spent.length && spent.every(Boolean)
+        ? `ушло ${fmt(spent.reduce((x, e) => x + e.spent, 0))} из ${fmt(g.rsd)}` : '';
+      return { name: g.name, glyph: glyphOf(g.name), sum: gone || fmt(g.rsd),
+        sub: g.avg_months ? `в среднем за ${g.avg_months} мес.` : '', rows };
+    }),
     savings: b.savings ? { name: 'Отложить', sum: fmt(b.savings.rsd), note: b.savings.set || '' } : null,
     norm: b.norm == null ? null : { name: NORM, sum: fmt(b.norm) },
     limits: {

@@ -368,3 +368,26 @@ test('E14: кредит РФ — весь платёж месяца против
   assert.deepEqual(header(opsScreen(entry, nav)), { sum: '32 009', note: 'из 32 855', tone: 'big-num ', fill: '97.4%',
     sub: 'В норме 32 855 · 1 запись · 1–20 ноября', basis: 'сумма в норме — по графику 25 000 ₽' });
 });
+
+// R-11 (решение 98, ответ 5): строка регулярной в «Бюджете» — как строка лимита на «Здоровье»: имя, «+N» при переборе,
+// «потрачено / в норме», полоса; нажатие — те же «Операции» регулярной, фокус после «Назад» — на ту же строку
+test('R-11: «Бюджет» — строка регулярной с полосой и «потрачено / в норме»; группа — «🔁 Регулярные платежи · ушло N из M»', async () => {
+  const nov = { ...NOV, envelopes: NOV_ENV.map((e) => (e.key === 'образование' ? { ...e, spent: 15684, over: 1362 } : e)) };
+  const nav = navOf({ health: { '2026-11': await served(nov) },
+    budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG, ALEKSEY)) },
+    tx: { 'образование 2026-11': { total: 15684, count: 4 } } });
+  const screen = moreScreen({ kind: 'budget', month: '2026-11', data: nav.budget('2026-11') }, nav);
+  const edu = all(screen, '<button').find((b) => b.getAttribute('data-focus') === 'regular:образование');
+  assert.equal(flat(shown(edu)), 'образование +1 362 15 684 / 14 322 в «Потрачено» — только перебор +1 362');
+  assert.equal(flat(heard(edu)), 'образование: 15 684 из 14 322, сверх на 1 362, в «Потрачено» — только перебор +1 362');
+  assert.ok(one(edu, 'bar') && one(edu, 'limit-mark'));
+  const subs = all(screen, '<button').find((b) => b.getAttribute('data-focus') === 'regular:подписки');
+  assert.equal(flat(heard(subs)), 'подписки: 12 610 из 20 684');
+  const heads = all(screen, 'section-head').map((x) => flat(shown(x)));
+  assert.ok(heads.includes('🔁 Регулярные платежи ушло 36 422 из 47 812'), heads.join(' | '));
+  assert.ok(heads.includes('📌 Обязательные 121 290'), heads.join(' | '));
+  assert.ok(all(screen, 'section-head').every((x) => !/[🔁📌]/u.test(heard(x))));   // значок диктору не читается
+  edu.handlers.click({});
+  const entry = nav.pushed.at(-1);
+  assert.deepEqual([entry.ctx.title, entry.ctx.params, entry.ctx.limitWord], ['Образование', { regular: 'образование' }, 'В норме']);
+});
