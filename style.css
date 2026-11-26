@@ -157,7 +157,8 @@ h1, h2, p { margin: 0; }
 
 .curve-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; min-height: 56px; }
 .curve-head .title { font-size: 17px; font-weight: 600; }
-.curve-head .note { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* подпись темпа — переносом: при 320 px было «… выше нормы н…» (повтор ревью p46a, находка 4); при 390 px — в строку */
+.curve-head .note { font-size: 13px; font-weight: 600; white-space: normal; text-wrap: pretty; }
 .curve-head svg { color: var(--accent); flex-shrink: 0; }
 .link { font-size: 15px; color: var(--accent-ink); padding: 8px 0; }
 /* R-4: пояснение меток над первым днём «Операций»; «Понятно» — слева, зона касания 44 px */
@@ -474,7 +475,7 @@ section .title { font-size: 17px; font-weight: 600; }
    ничего не шире окна — подписи и имена переносом, числа строкой ниже, справа. 320 px и шире — как было */
 @media (max-width: 319px) {
   .row, .line, .search-row { flex-wrap: wrap; }
-  .chip, .curve-head .note { white-space: normal; }
+  .chip { white-space: normal; }
   .big-num { font-size: 30px; }
   .cats-total { font-size: 26px; }
   .cats-hero { flex-wrap: wrap; align-items: flex-start; }

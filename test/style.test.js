@@ -506,11 +506,13 @@ const card = (w) => w - 2 * 16 - 2 * 16;   // поля экрана и карт�
 test('находка 4, «Здоровье» при 195 px: плашка зоны — под «Потрачено», подпись темпа — переносом, крупное число входит', () => {
   assert.equal(decls('.row', NARROW)['flex-wrap'], 'wrap', 'плашка «тратим быстрее плана» — строкой ниже, а не за край');
   assert.equal(decls('.chip', NARROW)['white-space'], 'normal');
-  assert.equal(decls('.curve-head .note', NARROW)['white-space'], 'normal', '«прогноз 279 846 · выше нормы…» целиком');
+  // подпись темпа — переносом при любой ширине: при 320 px было «… выше нормы н…», при 195 px — «прогноз 279 2…»
+  assert.equal(decls('.curve-head .note')['white-space'], 'normal', '«прогноз 279 846 · выше нормы на 21 871» целиком');
+  assert.equal(decls('.curve-head .note')['text-overflow'], undefined);
   // «242 036» — 7 знаков, цифра жирным — до 0,6 em
   assert.ok(7 * 0.6 * px(decls('.big-num', NARROW)['font-size']) <= card(NARROW), decls('.big-num', NARROW)['font-size']);
   assert.ok(7 * 0.6 * px(decls('.cats-total', NARROW)['font-size']) <= card(NARROW), 'итог «Категорий»');
-  for (const sel of ['.row', '.chip', '.curve-head .note', '.big-num']) assert.deepEqual(decls(sel, 320), decls(sel), `320 px: ${sel}`);
+  for (const sel of ['.row', '.chip', '.big-num']) assert.deepEqual(decls(sel, 320), decls(sel), `320 px: ${sel}`);
 });
 
 test('находка 4, строки при 195 px: имя — целиком во всю ширину, числа — строкой ниже, справа', () => {
