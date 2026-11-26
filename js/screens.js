@@ -1,12 +1,12 @@
 // Экраны «Операции» и карточка операции (DOM). Данные — только из /api/tx и /api/tx/{ref}, в памяти страницы.
-import { healthPath, screen } from './api.js';
+import { healthPath, refusedStep, screen } from './api.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
 import { FLAG, accountView, cardView, dayLabel, daySay, dayTotal, emptyView, filters, headView, marksNote, money, monthRange, monthTitle,
   opRow, taxLink, txPath } from './ops.js';
 import { tile, tileOf } from './tiles.js';
 import { GLYPHS } from './catcolor.js';
 import { shiftMonth } from './health.js';
-import { canNext, periodEnd, shiftPeriod } from './period.js';
+import { canNext, periodEnd, periodOf, shiftPeriod } from './period.js';
 import { offline } from './snapshot.js';
 import { body as jobBody, category, job, path as jobPath, picker, result } from './recat.js';
 import { itemPrice } from './shop.js';
@@ -36,12 +36,14 @@ const detailFor = (detail, family) => (detail && family ? ASK : detail);
 const isFamily = (nav) => !!(nav && nav.family && nav.family());
 
 // М2 на весь экран: вход, «Здоровье» без ответа. У отказа fin его слова — текст экрана (s.text), мелким шрифтом — только
-// причина ошибки или молчания (Ангелине — ASK). Заголовок — с ключом title: фокус не падает в BODY (R-18)
-export function problemScreen(s, { retry, close, family = false }) {
+// причина ошибки или молчания (Ангелине — ASK). Заголовок — с ключом title: фокус не падает в BODY (R-18). step — действие
+// по месту у отказа fin вместо «Повторить» (R-19): { label, run }
+export function problemScreen(s, { retry, close, family = false, step = null }) {
   const pic = s.icon === 'logo' ? h('div', { class: 'logo' }, 'К')
     : icon(s.icon === 'lock' ? ['M7 11V7a5 5 0 0 1 10 0v4', 'M5 11h14v10H5z'] : ['M12 9v4', 'M12 17h.01',
       'M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'], 56);
   const act = s.link ? h('a', { class: 'button', href: s.link, 'data-focus': 'problem' }, s.linkText)
+    : step ? h('button', { class: 'button', type: 'button', 'data-focus': 'problem', on: { click: () => { tap(); step.run(); } } }, step.label)
     : s.retry ? h('button', { class: 'button', type: 'button', 'data-focus': 'problem', on: { click: () => { tap(); retry(); } } },
       'Повторить')
       : h('button', { class: 'button', type: 'button', 'data-focus': 'problem', on: { click: () => close() } }, 'Закрыть');
@@ -299,9 +301,35 @@ export function failBody(kind, entry, nav, retry, key = 'retry') {
   // снимка: Мак не спит
   if (entry.fail !== 'refused' && entry.fail !== 'fault') return offlineBody(kind, entry, nav, retry, key);
   const s = screen(entry.fail, entry.error);
-  return h('div', { class: 'empty', 'data-say': `${s.title}. ${s.text}` }, h('h2', {}, s.title), h('p', { class: 'muted' }, s.text),
-    h('button', { type: 'button', class: 'button', 'data-focus': key, on: { click: () => { tap(); retry(); } } }, 'Повторить'),
+  const text = kind === 'card' && entry.status === 404 ? `${s.text} Её могли удалить или заменить.` : s.text;
+  // R-19: отказ fin — действие по месту (js/refused.js): повтор дал бы тот же отказ; ошибка fin — «Повторить»
+  const step = entry.fail === 'refused' ? refusedStep(kind, entry,
+    { today: nav.today(), under: nav.under ? nav.under() : null, more: key === 'ops-more' }) : null;
+  const act = entry.fail !== 'refused' ? h('button', { type: 'button', class: 'button', 'data-focus': key,
+    on: { click: () => { tap(); retry(); } } }, 'Повторить')
+    : step ? h('button', { type: 'button', class: 'button', 'data-focus': key,
+      on: { click: () => { tap(); onRefused(step, kind, entry, nav, retry); } } }, step.label) : null;
+  return h('div', { class: 'empty', 'data-say': `${s.title}. ${text}` }, h('h2', {}, s.title), h('p', { class: 'muted' }, text), act,
     s.detail ? h('p', { class: 'small detail muted' }, detailFor(s.detail, isFamily(nav))) : null);
+}
+
+// действие по месту у отказа (R-19): «Назад»; следующие 50 — список с начала; иначе меняем месяц, период или фильтры
+// экрана и грузим его заново (retry читает их из entry)
+function onRefused(step, kind, entry, nav, retry) {
+  if (step.act === 'back') return nav.back();
+  nav.focus('title');
+  if (step.act === 'reload') return loadOps(entry, nav);
+  if (step.act === 'all') {
+    entry.ctx = null;
+    entry.f = newOps(entry.month).f;
+    entry.typed = '';
+  } else if (kind === 'cats') {
+    entry.period = periodOf('month', nav.today());
+    if (!entry.cat) nav.savePeriod(entry.period);
+  } else {
+    entry.month = nav.today().slice(0, 7);
+  }
+  return retry();
 }
 
 export function offlineBody(kind, entry, nav, retry, key = 'retry') {
@@ -384,6 +412,7 @@ export async function loadCard(entry, nav) {
   if (r.error === 'stale' || r.error === 'stranger') return nav.problem(r.error);
   entry.data = r.data || null;
   [entry.error, entry.fail] = r.error ? [r.detail || r.error, r.error] : [null, null];
+  entry.status = r.status || null;                // 404 — операции нет: её могли удалить или заменить (R-19)
   const waiting = nav.queued(entry.ref);          // смена ждёт в очереди с прошлого раза (холст card-error)
   // R-23: и после нового открытия — «Отменить» (было без него)
   if (waiting.length && !entry.notice) entry.notice = { tone: 'warn', text: result({ error: 'down' }, waiting[0]).text, cancel: waiting[0].id };

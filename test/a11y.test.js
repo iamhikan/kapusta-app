@@ -595,12 +595,16 @@ test('R-18: заголовки экрана ошибки, месяца «Здо�
   for (const t of titles) assert.equal(t.getAttribute('tabindex'), '-1');
 });
 
-test('R-18: на экране ошибки без заголовка с ключом фокус — на «Повторить»', () => {
+test('R-18: на экране ошибки без заголовка с ключом фокус — на «Повторить»; у отказа fin — на действие по месту (R-19)', () => {
   const { p } = setup();
   p.show(btn('op:sms:1'));
   doc.body.querySelector('[data-focus]').focus();
-  p.show(h('div', {}, failBody('card', { error: 'нет такой операции', fail: 'refused' }, nav, () => {})));
+  p.show(h('div', {}, failBody('card', { error: 'ledger не грузится', fail: 'fault' }, nav, () => {})));
   assert.equal(doc.activeElement.textContent, 'Повторить');
+  p.show(btn('op:sms:1'));
+  doc.body.querySelector('[data-focus]').focus();
+  p.show(h('div', {}, failBody('card', { error: 'нет такой операции', fail: 'refused' }, nav, () => {})));
+  assert.equal(doc.activeElement.textContent, 'К списку');
 });
 
 // ——— p43a, R-5 (ревью 26.11, WCAG 1.1.1): диктор слышит слова, а не эмодзи; значки чата на экране остаются ———
