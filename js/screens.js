@@ -1,7 +1,7 @@
 // Экраны «Операции» и карточка операции (DOM). Данные — только из /api/tx и /api/tx/{ref}, в памяти страницы.
 import { healthPath, screen } from './api.js';
 import { h, icon, tap, ICONS, tg } from './dom.js';
-import { FLAG, accountView, cardView, dayLabel, emptyText, filters, headView, money, monthRange, monthTitle, opRow, taxLink,
+import { FLAG, accountView, cardView, dayLabel, dayTotal, emptyText, filters, headView, money, monthRange, monthTitle, opRow, taxLink,
   txPath } from './ops.js';
 import { tile, tileOf } from './tiles.js';
 import { GLYPHS } from './catcolor.js';
@@ -259,7 +259,7 @@ export function opsScreen(entry, nav) {
       entry.ctx && entry.ctx.period)), h('p', { class: 'muted' }, 'Смените период или фильтры.'));
   } else {
     body = h('div', { class: 'stack' }, ...list.map((d) => h('div', { class: 'day' },
-      h('div', { class: 'day-head muted small' }, h('span', {}, dayLabel(d.date)), d.sum ? h('span', {}, money(d.sum)) : null),
+      h('div', { class: 'day-head muted small' }, h('span', {}, dayLabel(d.date)), d.sum ? h('span', {}, dayTotal(d)) : null),
       h('section', { class: 'card list' }, ...d.ops.map((op, i) => opLine(opRow(op, { inCategory: !!entry.ctx,
         account: entry.ctx ? '' : entry.f.account }), nav,
         { expanded: entry.expanded, key: `${d.date}:${i}:${op.where}` }))))),

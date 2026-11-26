@@ -1,7 +1,7 @@
 // Вид «Операций» и карточки из ответов /api/tx и /api/tx/{ref}. Числа в тестах придуманы.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { accountView, cardView, dayLabel, emptyText, filters, headView, money, monthRange, opRow, txPath } from '../js/ops.js';
+import { accountView, cardView, dayLabel, dayTotal, emptyText, filters, headView, money, monthRange, opRow, txPath } from '../js/ops.js';
 import { colorOf, glyphOf, OTHER } from '../js/catcolor.js';
 
 const sp = (s) => s.replace(/(\d) (\d{3})/g, '$1 $2');   // разделитель тысяч — неразрывный пробел
@@ -65,11 +65,18 @@ test('трата в валюте — валюта операции и RSD; «!»
   assert.deepEqual(r.marks, ['!', 'секрет']);
 });
 
-test('регулярная и обязательная трата — метками «регулярная» и «обязательная» (решение 97: «чтобы понимать, идут ли они в учёт плановых трат»)', () => {
-  assert.deepEqual(opRow({ ...LIDL, receipt: false, regular: 'подписки' }).marks, ['регулярная']);
-  assert.deepEqual(opRow({ ...LIDL, regular: 'подписки' }).marks, ['чек', 'регулярная']);
-  assert.deepEqual(opRow({ ...LIDL, receipt: false, mandatory: 'жильё' }).marks, ['обязательная']);
+test('регулярная и обязательная трата — метками со значками чата 🔁 и 📌 (решение 97; Алексей 26.11.2026: «там какие-то эмоджи, а там просто текст»)', () => {
+  assert.deepEqual(opRow({ ...LIDL, receipt: false, regular: 'подписки' }).marks, ['🔁 регулярная']);
+  assert.deepEqual(opRow({ ...LIDL, regular: 'подписки' }).marks, ['чек', '🔁 регулярная']);
+  assert.deepEqual(opRow({ ...LIDL, receipt: false, mandatory: 'жильё' }).marks, ['📌 обязательная']);
   assert.deepEqual(opRow({ ...LIDL, receipt: false }).marks, []);
+});
+
+test('итог дня — с тратами без регулярных и обязательных, если они в дне есть (Алексей 26.11.2026)', () => {
+  assert.equal(dayTotal({ sum: 77760, plain: 1300 }), `${sp('77 760')} · без 🔁📌 ${sp('1 300')}`);
+  assert.equal(dayTotal({ sum: 76460, plain: 0 }), `${sp('76 460')} · без 🔁📌 0`);
+  assert.equal(dayTotal({ sum: 300 }), '300');
+  assert.equal(dayTotal({ sum: 0 }), '');
 });
 
 test('доля в категории — «из» всей операции (решение 23); найденная позиция чека — подписью', () => {
