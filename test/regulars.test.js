@@ -196,7 +196,7 @@ test('E10: строка регулярной в «Бюджете» ведёт н
   assert.equal(nav.asked.at(-1), `/api/tx?from=2026-11-01&to=2026-11-20&regular=${encodeURIComponent('связь')}`);
   // E13: числа — envelopes «Здоровья», второй строкой — на чём сумма (basis)
   assert.deepEqual(header(opsScreen(entry, nav)), { sum: '3 068', note: 'из 4 272', tone: 'big-num ', fill: '71.8%',
-    sub: 'В норме 4 272 · 2 записи · 1–20 ноября', basis: 'сумма в норме — медиана за 3 мес.' });
+    sub: 'В норме 4 272 · 2 записи · 1–20 ноября', basis: 'сумма в норме — обычно за месяц' });
 });
 
 test('E10, E13: сервер до E14 — нажимаются регулярные и коммуналка; жильё, кредит РФ (их нет в envelopes) и строки ПР («ПР коммуналка») — без перехода', async () => {
@@ -274,7 +274,7 @@ test('E10, E13: прошлый месяц стрелкой — градусни�
   assert.ok(nav.asked.includes('/api/health?month=2026-10&envelopes=1'), nav.asked.join(' '));
   assert.ok(!nav.asked.includes('/api/budget?month=2026-10'), nav.asked.join(' '));   // строка «Бюджета» не нужна
   assert.deepEqual(header(opsScreen(entry, nav)), { sum: '4 272', note: 'из 5 734', tone: 'big-num ', fill: '74.5%',
-    sub: 'В норме 5 734 · 3 записи · 1–31 октября', basis: 'сумма в норме — медиана за 3 мес.' });
+    sub: 'В норме 5 734 · 3 записи · 1–31 октября', basis: 'сумма в норме — обычно за месяц' });
   assert.ok(drawn > 0);
 });
 
@@ -447,4 +447,16 @@ test('R-12: «Бюджет» — строка жилья: «✓ оплачено
   assert.equal(flat(shown(line('кредит РФ'))), 'кредит РФ ✓ оплачено 13 ноября · 24 937 ₽, по графику 25 000 ₽'
     + ' −846 — курс дня оплаты и сумма платежа, в «Потрачено» не идёт 32 855');
   assert.equal(one(line('жильё'), 'good').kids.join(''), '✓ оплачено 11 ноября');
+});
+
+// R-15, R-9 (решение 98, ответ 6): основа суммы — на экране регулярной словами «обычно за месяц», без «медианы».
+// fin с p46a шлёт basis «обычно за месяц»; прежний fin («медиана за 3 мес.») — страница пишет те же слова
+test('R-15: на экране регулярной — «сумма в норме — обычно за месяц»; и у прежнего fin', async () => {
+  for (const basis of ['обычно за месяц', 'медиана за 3 мес.']) {
+    const nov = { ...NOV, envelopes: NOV_ENV.map((e) => (e.key === 'связь' ? { ...e, basis } : e)) };
+    const nav = navOf({ health: { '2026-11': await served(nov) },
+      budget: { '2026-11': await served(budgetOf('2026-11', NOV_REG)) }, tx: { 'связь 2026-11': { total: 3068, count: 2 } } });
+    const h = header(opsScreen(await openFromBudget(nav, '2026-11', 'связь'), nav));
+    assert.equal(h.basis, 'сумма в норме — обычно за месяц', basis);
+  }
 });

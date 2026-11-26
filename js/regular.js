@@ -15,6 +15,8 @@ const OF_MONTH = ['января', 'февраля', 'марта', 'апреля'
   'ноября', 'декабря'];
 const SIGN = { EUR: '€', RUB: '₽' };
 const money = (a) => `${fmt(a.number)}\u00a0${SIGN[a.currency] || a.currency}`;
+// R-15 (решение 98, ответ 6): «медиана за 3 мес.» прежнего fin — «обычно за месяц», как fin с p46a
+const usual = (s) => s.replace(/^медиана за \d+ мес\.$/, 'обычно за месяц');
 // «25 000 ₽» сервера — одной строкой: при 320 px было «по графику 25 / 000 ₽»
 const keep = (s) => s.replace(/(\d) (?=\d{3}(?!\d))/g, '$1\u00a0').replace(/(\d) (?=[€₽])/g, '$1\u00a0');
 
@@ -79,7 +81,7 @@ function inNorm(key, budget) {
 export function gaugeOf(key, health, budget) {
   const e = envelope(key, health);
   if (e) {
-    return { limit: e.limit, norm: e.norm ?? e.limit, carry: e.carry || 0, over: e.over > 0, basis: keep(e.basis || ''),
+    return { limit: e.limit, norm: e.norm ?? e.limit, carry: e.carry || 0, over: e.over > 0, basis: keep(usual(e.basis || '')),
       contract: !!e.contract, cap: e.cap || 0, deal: dealOf(e, !!health.closed) };
   }
   const n = inNorm(key, budget);
