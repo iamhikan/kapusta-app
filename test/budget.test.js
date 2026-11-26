@@ -218,3 +218,32 @@ test('R-12: жильё и кредит РФ — «✓ оплачено» в ва
   assert.deepEqual(budgetView(MANDATORY, old).groups[0].rows.map((r) => [r.note, r.deal]),
     [['по договору 650 €', undefined], ['по графику 25 000 ₽', undefined]]);
 });
+
+// S9C (находка 3 повтора ревью 26.11): норму Ангелина видит на «Здоровье» («из 257 975»), а «Бюджет» не говорил, из чего
+// она. У Алексея её даёт доход ПР — Ангелине его видеть нельзя. fin шлёт ей norm_parts: её лимиты и резерв
+const ANGELINA = { month: '2026-11', groups: ALEKSEY.groups.slice(0, 2), savings: null, norm: null, free: null,
+  limits: { rsd: 195089, eur: 1660, rows: ALEKSEY.limits.rows.slice(0, 2) },
+  norm_parts: { norm: 257975, limits: 195089, reserve: 62886 } };
+
+test('S9C: Ангелине — из чего норма: «Норма — переменные траты 257 975», под ней «лимиты 195 089 + резерв 62 886»', () => {
+  const v = budgetView(ANGELINA);
+  // слово и число — неразрывно: при 320 px перенос только перед «+» (стенд S9C: «резерв» / «62 886»)
+  assert.deepEqual(v.norm, { name: 'Норма — переменные траты', sum: sp('257 975'), note: sp('лимиты\u00a0195 089 + резерв\u00a062 886') });
+  assert.deepEqual([v.income, v.alloc, v.plan, v.free, v.savings], [null, [], null, null, null], 'без дохода ПР и его долей');
+  const over = budgetView({ ...ANGELINA, norm_parts: { norm: 190000, limits: 195089, reserve: -5089 } });
+  assert.equal(over.norm.note, sp('лимиты\u00a0195 089 — больше нормы на\u00a05 089'));
+  assert.equal(budgetView({ ...ANGELINA, norm_parts: undefined }).norm, null, 'fin до S9C — строки нет, как раньше');
+  assert.deepEqual(budgetView(ALEKSEY).norm, { name: 'Норма — переменные траты', sum: sp('240 000') }, 'у Алексея — как было');
+});
+
+test('S9C: на экране «Бюджета» Ангелины строка нормы — над лимитами, с частями; слов дохода ПР нет', async () => {
+  const { all, one, seen } = await import('./fakedom.js');
+  const { moreScreen } = await import('../js/more.js');
+  const screen = moreScreen({ kind: 'budget', month: '2026-11', data: ANGELINA }, { health: () => null });
+  const row = all(screen, 'line').find((l) => seen(l).startsWith('Норма — переменные траты'));
+  assert.ok(row, 'строка нормы есть');
+  assert.equal(seen(one(row, 'muted')), sp('лимиты\u00a0195 089 + резерв\u00a062 886'));
+  assert.equal(seen(one(row, 'nowrap')), sp('257 975'));
+  assert.ok(seen(screen).indexOf('Норма — переменные траты') < seen(screen).indexOf(sp('Лимиты — 195 089')), 'над лимитами');
+  assert.doesNotMatch(seen(screen), /Доход|ПР|Отложить/);
+});

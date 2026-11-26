@@ -104,7 +104,7 @@ export function budgetView(b, health = null) {
         sub: g.avg_months ? `в среднем за ${g.avg_months} мес.` : '', rows };
     }),
     savings: b.savings ? { name: 'Отложить', sum: fmt(b.savings.rsd), note: b.savings.set || '' } : null,
-    norm: b.norm == null ? null : { name: NORM, sum: fmt(b.norm) },
+    norm: b.norm != null ? { name: NORM, sum: fmt(b.norm) } : b.norm_parts ? normOf(b.norm_parts) : null,
     limits: {
       title: `Лимиты — ${fmt(lim.rsd)}`,
       sub: lim.eur ? `${fmt(lim.eur)} €` : '',
@@ -116,6 +116,14 @@ export function budgetView(b, health = null) {
       : { text: `Лимиты больше нормы на ${fmt(-b.free)}`, tone: 'bad' },
     plan: b.plan ? planView(b.plan, word, b.month) : null,
   };
+}
+
+// S9C (находка 3 повтора ревью 26.11): Ангелине — из чего норма без дохода ПР: её лимиты и резерв (norm_parts fin)
+function normOf(p) {
+  // слово и число — неразрывно: узко — перенос только перед «+» или «—»
+  const note = p.reserve >= 0 ? `лимиты\u00a0${fmt(p.limits)} + резерв\u00a0${fmt(p.reserve)}`
+    : `лимиты\u00a0${fmt(p.limits)} — больше нормы на\u00a0${fmt(-p.reserve)}`;
+  return { name: NORM, sum: fmt(p.norm), note };
 }
 
 // правка 5 (ui-ux-pro-max, 13.11): вывод — первым (плашка словом и значком, что делать, сколько), «есть» и «нужно» —

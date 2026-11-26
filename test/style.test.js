@@ -431,3 +431,10 @@ test('повтор ревью p46a, п. 12: значок метки в стро�
   assert.equal(t['min-width'], '0', 'длинное имя сжимается многоточием');
   assert.equal(decls('.limit-glyph').flex, 'none', 'значок не сжимается');
 });
+
+test('S9C: экран ошибки «Здоровья» с вкладками — низ экрана не под вкладками (как у экранов с вкладками)', () => {
+  // .problem занимает всё окно (min-height: 100vh) и центрирует текст: без отступа «Повторить» и причина при низком
+  // окне уходят под вкладки
+  const pad = decls('.problem.with-tabs')['padding-bottom'] || '';
+  assert.equal(pad, decls('.screen.with-tabs')['padding-bottom']);
+});

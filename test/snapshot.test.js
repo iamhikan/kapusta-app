@@ -139,3 +139,19 @@ test('E10: envelopes в снимок не идут — кривая и лими�
   assert.equal(back.envelopes, undefined);
   assert.deepEqual(back.curve, big.curve);
 });
+
+// S9C (остаток R-22): вид зрителя (view «Здоровья») — своим ключом CloudStorage: ошибка при первом открытии не ждёт
+// ответа, чтобы решить, кому показать техническую строку. Ключа ещё нет (до p48a) — вид из последнего снимка
+test('S9C: вид зрителя — ключ view в CloudStorage; ключа нет — из последнего снимка; мусор и пусто — вида нет', async () => {
+  const { keepView, viewOf, familyWords } = await import('../js/snapshot.js');
+  const cs = cloud();
+  assert.equal(await viewOf(cs), null);
+  assert.equal(await keepView(cs, 'family'), true);
+  assert.equal(cs.items.view, 'family');
+  assert.equal(await viewOf(cs), 'family');
+  assert.equal(await keepView(cs, 'нет такого'), false, 'чужое слово не кладём');
+  assert.equal(await viewOf(cloud({ view: 'root' })), null, 'чужое слово не читаем');
+  assert.equal(await viewOf(cloud({ [key('2026-10')]: pack({ ...NOW, month: '2026-10', view: 'all' }) })), 'all', 'из снимка');
+  assert.equal(await viewOf({ getItem() { throw new Error('not supported'); }, getKeys() { throw new Error('x'); } }), null);
+  assert.deepEqual([null, 'family', 'all'].map(familyWords), [true, true, false], 'вида нет — слова для семьи');
+});

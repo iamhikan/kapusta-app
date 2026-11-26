@@ -146,9 +146,13 @@ const SCREENS = {
     text: 'Мак на связи, но Капуста не смогла ответить. Попробуйте ещё раз через минуту.' },
 };
 
+// S9C (остаток R-22): у ошибки «Здоровья» — вкладки: «Операции» и «Категории» могут ответить. Вход не прошёл, чужой
+// аккаунт, страница вне Telegram — без вкладок: там ничего не откроется
+const TABS = new Set(['down', 'refused', 'fault']);
+
 export function screen(kind, detail = null) {
   // detail — причина мелким шрифтом; у отказа это слова fin, и они — сам текст экрана
-  const s = { retry: false, link: null, ...SCREENS[kind], detail: detail || null };
+  const s = { retry: false, link: null, ...SCREENS[kind], tabs: TABS.has(kind), detail: detail || null };
   if (kind === 'refused') return { ...s, text: detail ? `${detail.charAt(0).toUpperCase()}${detail.slice(1)}.` : s.text, detail: null };
   return s;
 }
